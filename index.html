@@ -3,7 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none';">
+<!--
+  CSP note: connect-src is 'self' (not 'none') so the browser can fetch
+  the vendored OCR engine and language files from this same origin —
+  it still forbids every request to any other host, so no data can
+  reach a remote server. worker-src allows the local OCR engine to run
+  in a Web Worker, which is how tesseract.js avoids freezing the page.
+-->
+<!--
+  'wasm-unsafe-eval' below is required for the browser to compile/run the
+  OCR engine's WebAssembly module at all. Without it, Chrome silently
+  blocks WebAssembly.instantiate() inside the OCR worker — this showed up
+  as the scan getting stuck forever on "Loading OCR model", with no error
+  ever reaching the page (the failure happens inside the worker thread).
+  This keyword only allows compiling WASM bytecode; it grants no network
+  access and does not weaken the "no outbound requests" guarantee below.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; form-action 'none';">
 <title>PII Redactor</title>
 <style>
   :root {
@@ -156,6 +172,55 @@
   .custom-io { display: flex; gap: 8px; }
   .custom-io button { padding: 7px 12px; font-size: 12px; }
   .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .warn-banner {
+    background: rgba(250, 199, 117, 0.12);
+    color: #facf6f;
+    border: 1px solid rgba(250, 199, 117, 0.35);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .warn-banner code {
+    background: rgba(0,0,0,0.25);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 8px;
+    padding: 28px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .dropzone.drag-over { border-color: var(--accent); color: var(--text); }
+  .img-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .img-row select {
+    background: #0d0f13;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  #imgCanvasWrap {
+    margin-top: 14px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #0d0f13;
+    display: none;
+  }
+  #imgCanvasWrap canvas { display: block; max-width: 100%; }
+  .img-progress {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
   button {
     background: var(--accent);
     color: white;
@@ -221,9 +286,34 @@
 
 <div class="badge" data-i18n="badge">● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn</div>
 
+<div class="warn-banner" id="fileProtocolWarning" style="display:none;">
+  <span data-i18n="fileProtocolWarning">⚠ Bạn đang mở file này trực tiếp (file://). Tính năng xử lý ảnh cần chạy qua một local server để trình duyệt cho phép đọc file cục bộ khác — chạy <code>python3 -m http.server</code> trong thư mục này rồi mở <code>http://localhost:8000</code>. Phần văn bản ở trên vẫn hoạt động bình thường.</span>
+</div>
+
 <div class="panel">
   <h2 data-i18n="section1">1. Dán văn bản cần xử lý</h2>
   <textarea id="input" data-i18n-placeholder="placeholder"></textarea>
+</div>
+
+<div class="panel">
+  <h2 data-i18n="sectionImage">1b. Hoặc tải ảnh / ảnh chụp màn hình</h2>
+  <div class="subtitle" data-i18n="imageDesc" style="margin-bottom:10px;">OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.</div>
+  <div class="dropzone" id="dropzone" data-i18n="dropzoneText">Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file</div>
+  <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+  <div class="img-row">
+    <label data-i18n="ocrLangLabel" style="font-size:13px;color:var(--muted);">Ngôn ngữ OCR:</label>
+    <select id="ocrLangSelect">
+      <option value="eng">English</option>
+      <option value="vie">Tiếng Việt</option>
+      <option value="fra">Français</option>
+      <option value="deu">Deutsch</option>
+    </select>
+    <button id="imgScanBtn" data-i18n="imgScanBtn" disabled>Quét &amp; làm đen vùng nhạy cảm</button>
+    <button id="imgDownloadBtn" class="secondary" data-i18n="imgDownloadBtn" disabled>Tải ảnh đã xử lý (.png)</button>
+    <button id="imgClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
+  </div>
+  <div class="img-progress" id="imgProgress"></div>
+  <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
 </div>
 
 <div class="panel">
@@ -265,6 +355,12 @@
 
 <footer data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài · xem mã nguồn để tự kiểm chứng</footer>
 
+<!--
+  Vendored locally (see /vendor and NOTICE.md) so OCR never needs an
+  outbound request — tesseract.js and tesseract.js-core are Apache-2.0.
+-->
+<script src="vendor/tesseract/tesseract.min.js"></script>
+
 <script>
 // ============================================================
 // I18N — 4 languages: vi, en, fr, de
@@ -288,6 +384,18 @@ const I18N = {
     customMatchLabel: 'Từ khóa tùy chỉnh',
     section2: '3. Loại dữ liệu cần nhận diện',
     section3: '4. Kết quả',
+    fileProtocolWarning: '⚠ Bạn đang mở file này trực tiếp (file://). Tính năng xử lý ảnh cần chạy qua một local server để trình duyệt cho phép đọc file cục bộ khác — chạy python3 -m http.server trong thư mục này rồi mở http://localhost:8000. Phần văn bản ở trên vẫn hoạt động bình thường.',
+    sectionImage: '1b. Hoặc tải ảnh / ảnh chụp màn hình',
+    imageDesc: 'OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.',
+    dropzoneText: 'Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file',
+    ocrLangLabel: 'Ngôn ngữ OCR:',
+    imgScanBtn: 'Quét & làm đen vùng nhạy cảm',
+    imgDownloadBtn: 'Tải ảnh đã xử lý (.png)',
+    imgProgressLoading: 'Đang tải mô hình OCR (chỉ lần đầu)...',
+    imgProgressRecognizing: p => `Đang nhận diện chữ trong ảnh... ${p}%`,
+    imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
+    imgProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong ảnh.',
+    imgProgressError: 'Lỗi khi xử lý ảnh — xem Ghi chú Bước 4 (cần chạy qua local server, không phải file://).',
     scanBtn: 'Quét & đánh dấu',
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
@@ -339,6 +447,18 @@ const I18N = {
     customMatchLabel: 'Custom term',
     section2: '3. Data types to detect',
     section3: '4. Result',
+    fileProtocolWarning: '⚠ You\'re opening this file directly (file://). Image processing needs to run through a local server so the browser allows reading other local files — run python3 -m http.server in this folder, then open http://localhost:8000. The text section above still works normally.',
+    sectionImage: '1b. Or upload an image / screenshot',
+    imageDesc: 'OCR finds text in the image, then draws real pixels over sensitive regions — not a transparent overlay.',
+    dropzoneText: 'Drag and drop an image here, paste (Ctrl/Cmd+V), or click to choose a file',
+    ocrLangLabel: 'OCR language:',
+    imgScanBtn: 'Scan & black out sensitive regions',
+    imgDownloadBtn: 'Download processed image (.png)',
+    imgProgressLoading: 'Loading OCR model (first time only)...',
+    imgProgressRecognizing: p => `Recognizing text in image... ${p}%`,
+    imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
+    imgProgressNone: 'No sensitive regions found in the image.',
+    imgProgressError: 'Error processing the image — see the Step 4 note (must run via a local server, not file://).',
     scanBtn: 'Scan & highlight',
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
@@ -390,6 +510,18 @@ const I18N = {
     customMatchLabel: 'Terme personnalisé',
     section2: '3. Types de données à détecter',
     section3: '4. Résultat',
+    fileProtocolWarning: "⚠ Vous ouvrez ce fichier directement (file://). Le traitement d'image nécessite un serveur local pour que le navigateur autorise la lecture d'autres fichiers locaux — lancez python3 -m http.server dans ce dossier, puis ouvrez http://localhost:8000. La section texte ci-dessus fonctionne normalement.",
+    sectionImage: '1b. Ou importez une image / capture d\'écran',
+    imageDesc: 'L\'OCR trouve le texte dans l\'image, puis noircit réellement les pixels des zones sensibles — pas un calque transparent.',
+    dropzoneText: 'Glissez-déposez une image ici, collez (Ctrl/Cmd+V), ou cliquez pour choisir un fichier',
+    ocrLangLabel: 'Langue OCR :',
+    imgScanBtn: 'Analyser et noircir les zones sensibles',
+    imgDownloadBtn: 'Télécharger l\'image traitée (.png)',
+    imgProgressLoading: 'Chargement du modèle OCR (première fois seulement)...',
+    imgProgressRecognizing: p => `Reconnaissance du texte dans l'image... ${p}%`,
+    imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
+    imgProgressNone: 'Aucune zone sensible trouvée dans l\'image.',
+    imgProgressError: 'Erreur lors du traitement de l\'image — voir la note de l\'étape 4 (doit passer par un serveur local, pas file://).',
     scanBtn: 'Analyser et surligner',
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
@@ -441,6 +573,18 @@ const I18N = {
     customMatchLabel: 'Benutzerdefinierter Begriff',
     section2: '3. Zu erkennende Datentypen',
     section3: '4. Ergebnis',
+    fileProtocolWarning: '⚠ Sie öffnen diese Datei direkt (file://). Die Bildverarbeitung benötigt einen lokalen Server, damit der Browser das Lesen anderer lokaler Dateien erlaubt — führen Sie python3 -m http.server in diesem Ordner aus und öffnen Sie dann http://localhost:8000. Der Textbereich oben funktioniert weiterhin normal.',
+    sectionImage: '1b. Oder ein Bild / einen Screenshot hochladen',
+    imageDesc: 'OCR findet Text im Bild und übermalt sensible Bereiche dann mit echten Pixeln — keine durchsichtige Ebene.',
+    dropzoneText: 'Bild hierher ziehen, einfügen (Strg/Cmd+V) oder klicken, um eine Datei auszuwählen',
+    ocrLangLabel: 'OCR-Sprache:',
+    imgScanBtn: 'Scannen & sensible Bereiche schwärzen',
+    imgDownloadBtn: 'Bearbeitetes Bild herunterladen (.png)',
+    imgProgressLoading: 'OCR-Modell wird geladen (nur beim ersten Mal)...',
+    imgProgressRecognizing: p => `Text im Bild wird erkannt... ${p}%`,
+    imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
+    imgProgressNone: 'Keine sensiblen Bereiche im Bild gefunden.',
+    imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Hinweis zu Schritt 4 (muss über einen lokalen Server laufen, nicht file://).',
     scanBtn: 'Scannen & markieren',
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
@@ -833,6 +977,175 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   currentLang = e.target.value;
   applyI18n();
   buildRuleCheckboxes();
+});
+
+// ============================================================
+// IMAGE / SCREENSHOT REDACTION
+// OCR runs fully offline against the vendored engine + language
+// files under /vendor — nothing is uploaded anywhere. Each OCR word
+// is checked against the same detection pipeline as the text panel
+// (custom terms first, then regex), and any flagged word has its
+// bounding box filled with solid black pixels directly on the
+// canvas — not a transparent overlay, so the original pixels are
+// actually gone from the exported image.
+//
+// Limitation: because detection runs word-by-word, a sensitive value
+// that OCR splits across multiple words (e.g. a phone number with
+// spaces) may only be partially redacted. Always review the result
+// before sharing it.
+// ============================================================
+if (location.protocol === 'file:') {
+  document.getElementById('fileProtocolWarning').style.display = 'block';
+}
+
+const dropzone = document.getElementById('dropzone');
+const imageFileInput = document.getElementById('imageFileInput');
+const imgCanvas = document.getElementById('imgCanvas');
+const imgCanvasWrap = document.getElementById('imgCanvasWrap');
+const imgCtx = imgCanvas.getContext('2d');
+const imgScanBtn = document.getElementById('imgScanBtn');
+const imgDownloadBtn = document.getElementById('imgDownloadBtn');
+const imgClearBtn = document.getElementById('imgClearBtn');
+const imgProgressEl = document.getElementById('imgProgress');
+const ocrLangSelect = document.getElementById('ocrLangSelect');
+
+let originalImageBitmap = null;
+
+function loadImageFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const img = new Image();
+  img.onload = () => {
+    imgCanvas.width = img.naturalWidth;
+    imgCanvas.height = img.naturalHeight;
+    imgCtx.drawImage(img, 0, 0);
+    originalImageBitmap = img;
+    imgCanvasWrap.style.display = 'block';
+    imgScanBtn.disabled = false;
+    imgDownloadBtn.disabled = true;
+    imgProgressEl.textContent = '';
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+dropzone.addEventListener('click', () => imageFileInput.click());
+imageFileInput.addEventListener('change', (e) => loadImageFile(e.target.files[0]));
+
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+});
+
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      loadImageFile(item.getAsFile());
+      break;
+    }
+  }
+});
+
+// Collects every word (with its bounding box) out of tesseract.js's
+// nested blocks → paragraphs → lines → words structure.
+function collectWords(data) {
+  const words = [];
+  (data.blocks || []).forEach(block => {
+    (block.paragraphs || []).forEach(para => {
+      (para.lines || []).forEach(line => {
+        (line.words || []).forEach(word => {
+          if (word.text && word.text.trim()) words.push(word);
+        });
+      });
+    });
+  });
+  return words;
+}
+
+imgScanBtn.addEventListener('click', async () => {
+  const t = I18N[currentLang];
+  if (!originalImageBitmap) return;
+  imgScanBtn.disabled = true;
+  imgDownloadBtn.disabled = true;
+  imgProgressEl.textContent = t.imgProgressLoading;
+
+  // Redraw the clean original before each scan, so re-scanning after
+  // changing language/rules never stacks redactions on redactions.
+  imgCanvas.width = originalImageBitmap.naturalWidth;
+  imgCanvas.height = originalImageBitmap.naturalHeight;
+  imgCtx.drawImage(originalImageBitmap, 0, 0);
+
+  try {
+    const worker = await Tesseract.createWorker(ocrLangSelect.value, 1, {
+      workerPath: 'vendor/tesseract/worker.min.js',
+      corePath: 'vendor/tesseract/',
+      langPath: 'vendor/tessdata',
+      gzip: true,
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          imgProgressEl.textContent = t.imgProgressRecognizing(Math.round((m.progress || 0) * 100));
+        } else {
+          imgProgressEl.textContent = t.imgProgressLoading;
+        }
+      }
+    });
+
+    const { data } = await worker.recognize(imgCanvas, {}, { blocks: true });
+    await worker.terminate();
+
+    const words = collectWords(data);
+    const activeRules = getActiveRules();
+    let redactedCount = 0;
+
+    imgCtx.fillStyle = '#000000';
+    words.forEach(word => {
+      const matches = findMatches(word.text, activeRules, customTerms, customCaseSensitiveEl.checked);
+      if (matches.length > 0) {
+        const { x0, y0, x1, y1 } = word.bbox;
+        const pad = 2;
+        imgCtx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+        redactedCount++;
+      }
+    });
+
+    imgProgressEl.textContent = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
+    imgDownloadBtn.disabled = false;
+  } catch (err) {
+    // Log the real error to the DevTools console and append its message
+    // to the on-screen text, so the actual cause (404, MIME type, CORS,
+    // worker crash, etc.) is visible instead of only a generic string.
+    console.error('OCR processing failed:', err);
+    const detail = (err && (err.message || err.toString())) || 'unknown error';
+    imgProgressEl.textContent = t.imgProgressError + ' [' + detail + ']';
+  } finally {
+    imgScanBtn.disabled = false;
+  }
+});
+
+imgDownloadBtn.addEventListener('click', () => {
+  imgCanvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'redacted-image.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+});
+
+imgClearBtn.addEventListener('click', () => {
+  originalImageBitmap = null;
+  imgCanvasWrap.style.display = 'none';
+  imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+  imgScanBtn.disabled = true;
+  imgDownloadBtn.disabled = true;
+  imgProgressEl.textContent = '';
+  imageFileInput.value = '';
 });
 
 // Initialization
