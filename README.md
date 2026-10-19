@@ -156,6 +156,11 @@ restriction.
   at the browser level (`connect-src 'self'`, scoped to this page's own
   origin only — never a remote host), independent of what the
   JavaScript tries to do.
+- `script-src` also includes `'wasm-unsafe-eval'`, which the browser
+  requires before it will compile/run *any* WebAssembly module (the OCR
+  engine is WASM). This keyword only permits compiling WASM bytecode —
+  it grants no extra network or eval access, and does not loosen the
+  `connect-src 'self'` guarantee above.
 - All processing (regex matching, OCR, NER inference) happens in-browser;
   nothing is uploaded anywhere.
 - The custom keyword list is stored only in `localStorage` on the user's
