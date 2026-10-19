@@ -5,9 +5,9 @@ infrastructure secrets out of text, PDFs, and screenshots **before** that
 content is pasted into any AI tool — so sensitive information never leaves
 your machine in the first place.
 
-> Status: early MVP. Text redaction (regex + custom term list) and
-> image/screenshot OCR redaction are working; PDF handling and NER are
-> in progress. See [Roadmap](#roadmap) below.
+> Status: early MVP. Text redaction (regex + custom term list),
+> image/screenshot OCR redaction, and PDF redaction are working; local
+> NER is in progress. See [Roadmap](#roadmap) below.
 
 ## Why
 
@@ -69,6 +69,31 @@ hidden layer to peel back. Known limitation: detection runs word-by-word,
 so a value OCR splits across multiple words (e.g. a phone number with
 spaces) may only be partially redacted — always review the result.
 
+**PDF redaction specifically:** each page is rendered to a `<canvas>`
+with pdf.js (this rasterizes any embedded images too, not just text).
+Every text run pdf.js reports for that page is run through the same
+detection pipeline, and any matched run's bounding box is filled with
+solid black pixels directly on that canvas — the same "overwrite real
+pixels" approach as the image panel. The redacted page canvases are then
+reassembled into a brand new PDF with pdf-lib, one embedded PNG per
+page. Because the output PDF is built from scratch out of flattened
+images, none of the original text objects, fonts, or document metadata
+are carried over into it — there is no hidden layer to peel back,
+exactly like the image path. The trade-off: the exported PDF is no
+longer selectable or searchable text, the same way a scanned document
+isn't. An optional checkbox also runs OCR over each rendered page (the
+same engine as the image panel) to catch sensitive data baked into an
+image rather than the PDF's text layer — useful for scanned PDFs, off
+by default since it's slower.
+
+To catch a sensitive value that pdf.js splits across more than one text
+run (e.g. at a font or color change), all of a page's text runs are
+joined into one string before detection runs, and any run that
+contributes a character to a match gets fully blacked out — stricter
+than the image panel's word-by-word OCR matching, though it can still
+miss a value split across runs with no space between them in the
+original PDF.
+
 *(Architecture diagrams generated during planning — add screenshots to
 `docs/images/` and reference them here once committed.)*
 
@@ -77,15 +102,18 @@ spaces) may only be partially redacted — always review the result.
 Vanilla JS/HTML only — no framework, to keep the single file auditable at
 a glance.
 
-- [pdf.js](https://mozilla.github.io/pdf.js/) — read PDF content
-  (planned)
-- [pdf-lib](https://pdf-lib.js.org/) — strip/rewrite PDF content streams,
-  or flatten to image for guaranteed non-recoverable text (planned)
-- [tesseract.js](https://tesseract.projectnaptha.com/) — OCR for
-  screenshots. **Vendored locally** under `/vendor/tesseract` and
-  `/vendor/tessdata` (English, Vietnamese, French, German trained data)
-  so OCR never makes a network request. See
+- [pdf.js](https://mozilla.github.io/pdf.js/) (v6.4.299) — renders each
+  PDF page to a canvas and extracts its text layer. **Vendored locally**
+  under `/vendor/pdf` so it never makes a network request. See
   [NOTICE.md](vendor/NOTICE.md) for license details.
+- [pdf-lib](https://pdf-lib.js.org/) (v1.17.1) — assembles the redacted
+  page images into the output PDF. **Vendored locally** under
+  `/vendor/pdf`. See [NOTICE.md](vendor/NOTICE.md).
+- [tesseract.js](https://tesseract.projectnaptha.com/) — OCR for
+  screenshots and (optionally) scanned PDF pages. **Vendored locally**
+  under `/vendor/tesseract` and `/vendor/tessdata` (English, Vietnamese,
+  French, German trained data) so OCR never makes a network request.
+  See [NOTICE.md](vendor/NOTICE.md) for license details.
 - [transformers.js](https://huggingface.co/docs/transformers.js) — local
   NER model, cached offline after first load (planned)
 
@@ -93,25 +121,27 @@ a glance.
 
 1. For text-only redaction: open `index.html` directly in any modern
    browser (Chrome, Firefox, Safari, Edge) — no install, no server.
-2. For image/screenshot redaction: see
-   [Running the image/OCR feature](#running-the-imageocr-feature) below
-   — it needs a local server due to a browser restriction on reading
-   local files.
-3. Paste text or drop/paste an image.
-4. Review the highlighted matches (text) or the blacked-out regions
-   (image).
+2. For image/screenshot or PDF redaction: see
+   [Running the image/OCR/PDF features](#running-the-imageocrpdf-features)
+   below — both need a local server due to a browser restriction on
+   reading local files.
+3. Paste text, drop/paste an image, or drop a PDF file.
+4. Review the highlighted matches (text), the blacked-out regions
+   (image), or the redacted page previews (PDF) — always look before
+   exporting.
 5. Download the cleaned file.
 
 The UI is available in **English, Français, Deutsch, and Tiếng Việt** —
 switch languages from the selector in the top bar.
 
-## Running the image/OCR feature
+## Running the image/OCR/PDF features
 
 Opening `index.html` by double-clicking it uses the `file://` protocol,
 under which browsers block a page from fetching other local files (the
-OCR engine's `.wasm` core and the language data) for security reasons.
-The text-only redaction panel is unaffected and works directly via
-`file://`. For the image panel:
+OCR engine's `.wasm` core, the language data, and the pdf.js/pdf-lib
+modules) for security reasons. The text-only redaction panel is
+unaffected and works directly via `file://`. For the image and PDF
+panels:
 
 ```sh
 # from the project folder
@@ -131,7 +161,8 @@ restriction.
 - [x] 4-language UI (EN/FR/DE/VI)
 - [x] User-defined custom list (UI + `localStorage` + JSON import/export)
 - [x] Image/screenshot handling (offline OCR + true pixel overwrite)
-- [ ] PDF handling (content-stream removal or flatten-to-image)
+- [x] PDF handling (flatten-to-image, with optional OCR fallback for
+      scanned pages)
 - [ ] Local NER integration
 - [ ] Review UI polish, test suite with synthetic data, demo GIF
 
@@ -148,6 +179,17 @@ restriction.
   partially blacked out.
 - OCR accuracy depends on image quality and the selected OCR language
   matching the text in the image.
+- Exported PDFs are flattened to images, so they lose selectable text
+  and get noticeably larger than the original — a deliberate trade-off
+  for a stronger "real redaction" guarantee (see
+  [Architecture](#architecture)).
+- A PDF value split across more than one pdf.js text run with no actual
+  space between them in the original file may not be joined into a
+  single match (the same class of limitation as image OCR, just at a
+  different layer).
+- The optional OCR pass on PDF pages (for scanned/image-only pages)
+  noticeably slows down multi-page files — enable it only when the PDF
+  doesn't have a real text layer.
 - Testing has used synthetic/fake data only — never real company secrets.
 
 ## Security notes
@@ -165,9 +207,14 @@ restriction.
   nothing is uploaded anywhere.
 - The custom keyword list is stored only in `localStorage` on the user's
   own machine.
-- The OCR engine and language data are vendored (bundled as files in
-  this repo) rather than fetched from a CDN at runtime, so no outbound
-  request is ever made to load them.
+- The OCR engine and language data, and the pdf.js/pdf-lib PDF
+  libraries, are all vendored (bundled as files in this repo) rather
+  than fetched from a CDN at runtime, so no outbound request is ever
+  made to load them.
+- The output PDF is assembled from scratch with pdf-lib rather than by
+  editing the uploaded file in place, so no original PDF object,
+  embedded font, or metadata field (e.g. author, producer, XMP data)
+  is ever copied into the exported file.
 
 ## License
 

@@ -221,6 +221,24 @@
     color: var(--muted);
     margin-top: 8px;
   }
+  .pdf-pages {
+    margin-top: 14px;
+    max-height: 600px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #0d0f13;
+    padding: 10px;
+  }
+  .pdf-page-item { margin-bottom: 14px; }
+  .pdf-page-item:last-child { margin-bottom: 0; }
+  .pdf-page-item canvas {
+    display: block;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .pdf-page-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
   button {
     background: var(--accent);
     color: white;
@@ -317,6 +335,32 @@
 </div>
 
 <div class="panel">
+  <h2 data-i18n="sectionPdf">1c. Hoặc tải file PDF</h2>
+  <div class="subtitle" data-i18n="pdfDesc" style="margin-bottom:10px;">Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).</div>
+  <div class="dropzone" id="pdfDropzone" data-i18n="pdfDropzoneText">Kéo-thả file PDF vào đây, hoặc bấm để chọn file</div>
+  <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" style="display:none;">
+  <div class="img-progress" id="pdfFileName"></div>
+  <label class="custom-options">
+    <input type="checkbox" id="pdfOcrCheckbox">
+    <span data-i18n="pdfOcrCheckboxLabel">Cũng chạy OCR trên từng trang — chỉ cần bật nếu PDF là file scan/ảnh (không có lớp chữ chọn được), sẽ chậm hơn</span>
+  </label>
+  <div class="img-row">
+    <label data-i18n="pdfOcrLangLabel" style="font-size:13px;color:var(--muted);">Ngôn ngữ OCR (nếu bật):</label>
+    <select id="pdfOcrLangSelect">
+      <option value="eng">English</option>
+      <option value="vie">Tiếng Việt</option>
+      <option value="fra">Français</option>
+      <option value="deu">Deutsch</option>
+    </select>
+    <button id="pdfScanBtn" data-i18n="pdfScanBtn" disabled>Quét &amp; làm đen PDF</button>
+    <button id="pdfDownloadBtn" class="secondary" data-i18n="pdfDownloadBtn" disabled>Tải PDF đã xử lý</button>
+    <button id="pdfClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
+  </div>
+  <div class="img-progress" id="pdfProgress"></div>
+  <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
+</div>
+
+<div class="panel">
   <h2 data-i18n="sectionCustom">2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)</h2>
   <div class="subtitle" data-i18n="customDesc" style="margin-bottom:10px;">Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn.</div>
   <div class="custom-row">
@@ -360,6 +404,14 @@
   outbound request — tesseract.js and tesseract.js-core are Apache-2.0.
 -->
 <script src="vendor/tesseract/tesseract.min.js"></script>
+<!--
+  Vendored locally (see /vendor and NOTICE.md) — pdf-lib (MIT) builds
+  the redacted output PDF from the flattened, already-redacted page
+  images. pdf.js (Apache-2.0, ships as an ES module in this version) is
+  loaded on demand via dynamic import() from inside the main script
+  instead of a <script> tag here, since it has no classic/UMD build.
+-->
+<script src="vendor/pdf/pdf-lib.min.js"></script>
 
 <script>
 // ============================================================
@@ -396,6 +448,22 @@ const I18N = {
     imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
     imgProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong ảnh.',
     imgProgressError: 'Lỗi khi xử lý ảnh — xem Ghi chú Bước 4 (cần chạy qua local server, không phải file://).',
+    sectionPdf: '1c. Hoặc tải file PDF',
+    pdfDesc: 'Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).',
+    pdfDropzoneText: 'Kéo-thả file PDF vào đây, hoặc bấm để chọn file',
+    pdfOcrCheckboxLabel: 'Cũng chạy OCR trên từng trang — chỉ cần bật nếu PDF là file scan/ảnh (không có lớp chữ chọn được), sẽ chậm hơn',
+    pdfOcrLangLabel: 'Ngôn ngữ OCR (nếu bật):',
+    pdfScanBtn: 'Quét & làm đen PDF',
+    pdfDownloadBtn: 'Tải PDF đã xử lý',
+    pdfProgressLoadingLib: 'Đang tải thư viện đọc PDF...',
+    pdfProgressLoadingOcr: 'Đang tải mô hình OCR (chỉ lần đầu)...',
+    pdfProgressParsingPage: (i, n) => `Đang xử lý trang ${i}/${n}...`,
+    pdfProgressOcrPage: (i, n) => `Đang chạy OCR trên trang ${i}/${n}...`,
+    pdfProgressAssembling: 'Đang ghép file PDF kết quả...',
+    pdfProgressDone: (n, p) => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trên ${p} trang.`,
+    pdfProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file PDF.',
+    pdfProgressError: 'Lỗi khi xử lý PDF.',
+    pdfPageLabel: (i, n) => `Trang ${i}/${n}`,
     scanBtn: 'Quét & đánh dấu',
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
@@ -459,6 +527,22 @@ const I18N = {
     imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
     imgProgressNone: 'No sensitive regions found in the image.',
     imgProgressError: 'Error processing the image — see the Step 4 note (must run via a local server, not file://).',
+    sectionPdf: '1c. Or upload a PDF file',
+    pdfDesc: 'Each page is re-rendered as an image, sensitive regions are blacked out directly on that image, and the pages are reassembled into a new PDF — no original text layer or metadata survives (the exported file is no longer selectable/copyable text, like a scanned document).',
+    pdfDropzoneText: 'Drag and drop a PDF file here, or click to choose a file',
+    pdfOcrCheckboxLabel: 'Also run OCR on each page — only needed if the PDF is a scan/image (no selectable text layer), slower',
+    pdfOcrLangLabel: 'OCR language (if enabled):',
+    pdfScanBtn: 'Scan & black out PDF',
+    pdfDownloadBtn: 'Download processed PDF',
+    pdfProgressLoadingLib: 'Loading PDF library...',
+    pdfProgressLoadingOcr: 'Loading OCR model (first time only)...',
+    pdfProgressParsingPage: (i, n) => `Processing page ${i}/${n}...`,
+    pdfProgressOcrPage: (i, n) => `Running OCR on page ${i}/${n}...`,
+    pdfProgressAssembling: 'Assembling the output PDF...',
+    pdfProgressDone: (n, p) => `Done — blacked out ${n} sensitive region(s) across ${p} page(s).`,
+    pdfProgressNone: 'No sensitive regions found in the PDF.',
+    pdfProgressError: 'Error processing the PDF.',
+    pdfPageLabel: (i, n) => `Page ${i}/${n}`,
     scanBtn: 'Scan & highlight',
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
@@ -522,6 +606,22 @@ const I18N = {
     imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
     imgProgressNone: 'Aucune zone sensible trouvée dans l\'image.',
     imgProgressError: 'Erreur lors du traitement de l\'image — voir la note de l\'étape 4 (doit passer par un serveur local, pas file://).',
+    sectionPdf: '1c. Ou importez un fichier PDF',
+    pdfDesc: 'Chaque page est redessinée en image, les zones sensibles sont noircies directement sur cette image, puis les pages sont réassemblées en un nouveau PDF — aucune couche de texte ni métadonnée d\'origine ne subsiste (le fichier exporté n\'est plus sélectionnable/copiable, comme un document scanné).',
+    pdfDropzoneText: 'Glissez-déposez un fichier PDF ici, ou cliquez pour choisir un fichier',
+    pdfOcrCheckboxLabel: 'Exécuter aussi l\'OCR sur chaque page — utile seulement si le PDF est un scan/image (pas de couche de texte sélectionnable), plus lent',
+    pdfOcrLangLabel: 'Langue OCR (si activé) :',
+    pdfScanBtn: 'Analyser et noircir le PDF',
+    pdfDownloadBtn: 'Télécharger le PDF traité',
+    pdfProgressLoadingLib: 'Chargement de la bibliothèque PDF...',
+    pdfProgressLoadingOcr: 'Chargement du modèle OCR (première fois seulement)...',
+    pdfProgressParsingPage: (i, n) => `Traitement de la page ${i}/${n}...`,
+    pdfProgressOcrPage: (i, n) => `Exécution de l'OCR sur la page ${i}/${n}...`,
+    pdfProgressAssembling: 'Assemblage du PDF final...',
+    pdfProgressDone: (n, p) => `Terminé — ${n} zone(s) sensible(s) noircie(s) sur ${p} page(s).`,
+    pdfProgressNone: 'Aucune zone sensible trouvée dans le PDF.',
+    pdfProgressError: 'Erreur lors du traitement du PDF.',
+    pdfPageLabel: (i, n) => `Page ${i}/${n}`,
     scanBtn: 'Analyser et surligner',
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
@@ -585,6 +685,22 @@ const I18N = {
     imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
     imgProgressNone: 'Keine sensiblen Bereiche im Bild gefunden.',
     imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Hinweis zu Schritt 4 (muss über einen lokalen Server laufen, nicht file://).',
+    sectionPdf: '1c. Oder eine PDF-Datei hochladen',
+    pdfDesc: 'Jede Seite wird neu als Bild gerendert, sensible Bereiche werden direkt auf diesem Bild geschwärzt, und die Seiten werden zu einem neuen PDF zusammengesetzt — es bleibt keine ursprüngliche Textebene oder Metadaten erhalten (die exportierte Datei ist nicht mehr auswählbar/kopierbar, wie ein gescanntes Dokument).',
+    pdfDropzoneText: 'PDF-Datei hierher ziehen oder klicken, um eine Datei auszuwählen',
+    pdfOcrCheckboxLabel: 'Auch OCR auf jeder Seite ausführen — nur nötig, wenn das PDF ein Scan/Bild ist (keine auswählbare Textebene), langsamer',
+    pdfOcrLangLabel: 'OCR-Sprache (falls aktiviert):',
+    pdfScanBtn: 'PDF scannen & schwärzen',
+    pdfDownloadBtn: 'Bearbeitetes PDF herunterladen',
+    pdfProgressLoadingLib: 'PDF-Bibliothek wird geladen...',
+    pdfProgressLoadingOcr: 'OCR-Modell wird geladen (nur beim ersten Mal)...',
+    pdfProgressParsingPage: (i, n) => `Seite ${i}/${n} wird verarbeitet...`,
+    pdfProgressOcrPage: (i, n) => `OCR auf Seite ${i}/${n} wird ausgeführt...`,
+    pdfProgressAssembling: 'Ausgabe-PDF wird zusammengesetzt...',
+    pdfProgressDone: (n, p) => `Fertig — ${n} sensible Bereich(e) auf ${p} Seite(n) geschwärzt.`,
+    pdfProgressNone: 'Keine sensiblen Bereiche im PDF gefunden.',
+    pdfProgressError: 'Fehler bei der PDF-Verarbeitung.',
+    pdfPageLabel: (i, n) => `Seite ${i}/${n}`,
     scanBtn: 'Scannen & markieren',
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
@@ -1065,6 +1181,39 @@ function collectWords(data) {
   return words;
 }
 
+// Creates a Tesseract worker pointed at the vendored (local-only) engine
+// and language files. Shared by the image panel and the PDF panel so
+// both run OCR through the exact same, already-debugged setup.
+async function createTesseractWorker(lang, onProgress) {
+  return Tesseract.createWorker(lang, 1, {
+    workerPath: 'vendor/tesseract/worker.min.js',
+    corePath: 'vendor/tesseract/',
+    langPath: 'vendor/tessdata',
+    gzip: true,
+    logger: onProgress
+  });
+}
+
+// Runs each OCR word through the shared detection pipeline and blacks
+// out the bounding box of any match directly on the given canvas
+// context. Returns how many words were redacted. Shared by the image
+// panel and the PDF panel (used there as an optional fallback pass for
+// scanned/image-only pages, on top of the text-layer detection).
+function redactWordsOnCanvas(ctx, words, activeRules, terms, caseSensitive) {
+  ctx.fillStyle = '#000000';
+  let redactedCount = 0;
+  words.forEach(word => {
+    const matches = findMatches(word.text, activeRules, terms, caseSensitive);
+    if (matches.length > 0) {
+      const { x0, y0, x1, y1 } = word.bbox;
+      const pad = 2;
+      ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+      redactedCount++;
+    }
+  });
+  return redactedCount;
+}
+
 imgScanBtn.addEventListener('click', async () => {
   const t = I18N[currentLang];
   if (!originalImageBitmap) return;
@@ -1079,17 +1228,11 @@ imgScanBtn.addEventListener('click', async () => {
   imgCtx.drawImage(originalImageBitmap, 0, 0);
 
   try {
-    const worker = await Tesseract.createWorker(ocrLangSelect.value, 1, {
-      workerPath: 'vendor/tesseract/worker.min.js',
-      corePath: 'vendor/tesseract/',
-      langPath: 'vendor/tessdata',
-      gzip: true,
-      logger: (m) => {
-        if (m.status === 'recognizing text') {
-          imgProgressEl.textContent = t.imgProgressRecognizing(Math.round((m.progress || 0) * 100));
-        } else {
-          imgProgressEl.textContent = t.imgProgressLoading;
-        }
+    const worker = await createTesseractWorker(ocrLangSelect.value, (m) => {
+      if (m.status === 'recognizing text') {
+        imgProgressEl.textContent = t.imgProgressRecognizing(Math.round((m.progress || 0) * 100));
+      } else {
+        imgProgressEl.textContent = t.imgProgressLoading;
       }
     });
 
@@ -1098,18 +1241,7 @@ imgScanBtn.addEventListener('click', async () => {
 
     const words = collectWords(data);
     const activeRules = getActiveRules();
-    let redactedCount = 0;
-
-    imgCtx.fillStyle = '#000000';
-    words.forEach(word => {
-      const matches = findMatches(word.text, activeRules, customTerms, customCaseSensitiveEl.checked);
-      if (matches.length > 0) {
-        const { x0, y0, x1, y1 } = word.bbox;
-        const pad = 2;
-        imgCtx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
-        redactedCount++;
-      }
-    });
+    const redactedCount = redactWordsOnCanvas(imgCtx, words, activeRules, customTerms, customCaseSensitiveEl.checked);
 
     imgProgressEl.textContent = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
     imgDownloadBtn.disabled = false;
@@ -1146,6 +1278,273 @@ imgClearBtn.addEventListener('click', () => {
   imgDownloadBtn.disabled = true;
   imgProgressEl.textContent = '';
   imageFileInput.value = '';
+});
+
+// ============================================================
+// PDF REDACTION — "flatten to image" strategy.
+//
+// Each page is rendered to a <canvas> with pdf.js (this also rasterizes
+// any embedded images on the page, not just text). Every text run
+// reported by pdf.js ("text item") is checked against the same
+// detection pipeline as the other panels; any matched run has its
+// bounding box filled with solid black pixels directly on that canvas.
+// Optionally, OCR (the same engine used by the image panel) also runs
+// over each rendered page, to catch sensitive data baked into an image
+// rather than the PDF's text layer (e.g. a scanned document).
+//
+// The redacted page canvases are then reassembled into a brand new PDF
+// with pdf-lib, one embedded PNG per page. Because the output PDF is
+// built from scratch out of flattened images, none of the original
+// text objects, fonts, or document metadata are carried over — there
+// is no hidden layer to peel back, at the cost of the output no longer
+// being selectable/searchable text (see README "Known limitations").
+//
+// Detecting matches that span multiple text runs: pdf.js often splits
+// a single visual word across more than one "item" (e.g. at a font or
+// color change). To catch that, all of a page's text items are joined
+// into one string (separated by a single space) before running
+// detection, and ANY item that contributes a character to a match gets
+// its whole bounding box blacked out — this is a strictly better
+// strategy than the image panel's word-by-word OCR matching, but can
+// still miss a value split across items with no space between them in
+// the original PDF.
+// ============================================================
+
+const pdfDropzone = document.getElementById('pdfDropzone');
+const pdfFileInput = document.getElementById('pdfFileInput');
+const pdfFileNameEl = document.getElementById('pdfFileName');
+const pdfOcrCheckbox = document.getElementById('pdfOcrCheckbox');
+const pdfOcrLangSelect = document.getElementById('pdfOcrLangSelect');
+const pdfScanBtn = document.getElementById('pdfScanBtn');
+const pdfDownloadBtn = document.getElementById('pdfDownloadBtn');
+const pdfClearBtn = document.getElementById('pdfClearBtn');
+const pdfProgressEl = document.getElementById('pdfProgress');
+const pdfPagesWrap = document.getElementById('pdfPagesWrap');
+
+let pdfOriginalBytes = null; // ArrayBuffer of the uploaded file, kept so re-scanning doesn't need a re-upload
+let pdfOutputBytes = null;   // Uint8Array of the redacted PDF, once built
+let pdfPageCanvases = [];
+
+function loadPdfFile(file) {
+  if (!file) return;
+  const looksLikePdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!looksLikePdf) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    pdfOriginalBytes = reader.result;
+    pdfFileNameEl.textContent = file.name;
+    pdfScanBtn.disabled = false;
+    pdfDownloadBtn.disabled = true;
+    pdfOutputBytes = null;
+    pdfPageCanvases = [];
+    pdfPagesWrap.innerHTML = '';
+    pdfPagesWrap.style.display = 'none';
+    pdfProgressEl.textContent = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+pdfDropzone.addEventListener('click', () => pdfFileInput.click());
+pdfFileInput.addEventListener('change', (e) => loadPdfFile(e.target.files[0]));
+pdfDropzone.addEventListener('dragover', (e) => { e.preventDefault(); pdfDropzone.classList.add('drag-over'); });
+pdfDropzone.addEventListener('dragleave', () => pdfDropzone.classList.remove('drag-over'));
+pdfDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  pdfDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadPdfFile(e.dataTransfer.files[0]);
+});
+
+// Computes an axis-aligned bounding box, in canvas pixel space, for one
+// pdf.js text item.
+//
+// item.transform is NOT simply "item space -> page space" with width/
+// height as extra units to re-scale through it: its (a,b)/(c,d) sub-
+// matrix already bakes in the font size (so it maps one em-unit to a
+// full glyph), while item.width/item.height are already expressed in
+// real page-point units (the same units as its own e/f translation).
+// Multiplying width/height through that sub-matrix again — the first,
+// buggy version of this function did exactly that — double-applies the
+// font-size scaling and produces a wildly oversized box (confirmed by
+// inspecting real pdf.js output: a 14pt title line came out ~14x too
+// wide and tall). The fix: only use the sub-matrix to get the item's
+// unit *direction* (normalized), walk that many page-points along it,
+// and let the viewport do the (one-time, correct) page->pixel mapping.
+function textItemBBox(viewport, item) {
+  const tm = item.transform; // [a, b, c, d, e, f], in page/point space
+  const a = tm[0], b = tm[1], c = tm[2], d = tm[3], e = tm[4], f = tm[5];
+  const dirLen = Math.hypot(a, b) || 1;
+  const upLen = Math.hypot(c, d) || dirLen;
+  const w = item.width || 0;
+  const h = item.height || dirLen; // fallback: about one font-size unit tall
+  const dirX = a / dirLen, dirY = b / dirLen; // unit vector along the baseline
+  const upX = c / upLen, upY = d / upLen;     // unit vector "up" from the baseline
+  const pagePoints = [
+    [e, f],
+    [e + dirX * w, f + dirY * w],
+    [e + upX * h, f + upY * h],
+    [e + dirX * w + upX * h, f + dirY * w + upY * h]
+  ];
+  const pixelPoints = pagePoints.map(([x, y]) => viewport.convertToViewportPoint(x, y));
+  const xs = pixelPoints.map(p => p[0]);
+  const ys = pixelPoints.map(p => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+// Renders one page to a canvas and blacks out any text-layer match
+// directly on it. Returns the canvas plus how many items were redacted.
+async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRules, terms, caseSensitive) {
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  const textContent = await page.getTextContent();
+  let fullText = '';
+  const spans = [];
+  textContent.items.forEach(item => {
+    const str = item.str || '';
+    if (!str) return;
+    const start = fullText.length;
+    fullText += str + ' ';
+    spans.push({ item, start, end: start + str.length });
+  });
+
+  const matches = findMatches(fullText, activeRules, terms, caseSensitive);
+  let redactedCount = 0;
+  ctx.fillStyle = '#000000';
+  spans.forEach(span => {
+    const overlaps = matches.some(m => m.start < span.end && m.end > span.start);
+    if (overlaps) {
+      const box = textItemBBox(viewport, span.item);
+      // textItemBBox's bottom edge sits at the glyph baseline, not below
+      // it — so without extra bottom padding, descenders (g, y, p, q, j)
+      // poke out below the black box. Confirmed visually while testing:
+      // a small uniform pad left slivers of "ggy"/"gy" visible under
+      // several redacted lines. The asymmetric padding below accounts
+      // for that (bottom needs much more room than top).
+      const h = box.y1 - box.y0;
+      const padX = 2;
+      const padTop = Math.max(2, h * 0.10);
+      const padBottom = Math.max(4, h * 0.35);
+      ctx.fillRect(box.x0 - padX, box.y0 - padTop, (box.x1 - box.x0) + padX * 2, (box.y1 - box.y0) + padTop + padBottom);
+      redactedCount++;
+    }
+  });
+
+  return { canvas, ctx, redactedCount };
+}
+
+pdfScanBtn.addEventListener('click', async () => {
+  const t = I18N[currentLang];
+  if (!pdfOriginalBytes) return;
+  pdfScanBtn.disabled = true;
+  pdfDownloadBtn.disabled = true;
+  pdfPageCanvases = [];
+  pdfPagesWrap.innerHTML = '';
+  pdfOutputBytes = null;
+  pdfProgressEl.textContent = t.pdfProgressLoadingLib;
+
+  try {
+    // pdf.js 6.x ships only as an ES module — dynamic import() works
+    // fine from inside this classic <script>, no need to make the
+    // whole file a module just for this one dependency.
+    const pdfjsLib = await import('./vendor/pdf/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf/pdf.worker.min.mjs';
+
+    const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfOriginalBytes) }).promise;
+    const numPages = pdfDoc.numPages;
+    const activeRules = getActiveRules();
+    const caseSensitive = customCaseSensitiveEl.checked;
+    const scale = 2; // render resolution: sharp enough to read, modest file size
+
+    let ocrWorker = null;
+    if (pdfOcrCheckbox.checked) {
+      pdfProgressEl.textContent = t.pdfProgressLoadingOcr;
+      ocrWorker = await createTesseractWorker(pdfOcrLangSelect.value, () => {});
+    }
+
+    let totalRedacted = 0;
+    for (let i = 1; i <= numPages; i++) {
+      pdfProgressEl.textContent = t.pdfProgressParsingPage(i, numPages);
+      const { canvas, ctx, redactedCount } = await renderAndRedactPdfPage(
+        pdfjsLib, pdfDoc, i, scale, activeRules, customTerms, caseSensitive
+      );
+      totalRedacted += redactedCount;
+
+      if (ocrWorker) {
+        pdfProgressEl.textContent = t.pdfProgressOcrPage(i, numPages);
+        const { data } = await ocrWorker.recognize(canvas, {}, { blocks: true });
+        const words = collectWords(data);
+        totalRedacted += redactWordsOnCanvas(ctx, words, activeRules, customTerms, caseSensitive);
+      }
+
+      pdfPageCanvases.push(canvas);
+      const pageItem = document.createElement('div');
+      pageItem.className = 'pdf-page-item';
+      const label = document.createElement('div');
+      label.className = 'pdf-page-label';
+      label.textContent = t.pdfPageLabel(i, numPages);
+      pageItem.appendChild(label);
+      pageItem.appendChild(canvas);
+      pdfPagesWrap.appendChild(pageItem);
+    }
+
+    if (ocrWorker) await ocrWorker.terminate();
+
+    pdfProgressEl.textContent = t.pdfProgressAssembling;
+    const outPdf = await PDFLib.PDFDocument.create();
+    for (let i = 0; i < pdfPageCanvases.length; i++) {
+      const canvas = pdfPageCanvases[i];
+      const page = await pdfDoc.getPage(i + 1);
+      const unscaled = page.getViewport({ scale: 1 }); // original point size, independent of our render scale
+      const pngBytes = await new Promise((resolve) => {
+        canvas.toBlob((blob) => { blob.arrayBuffer().then(buf => resolve(new Uint8Array(buf))); }, 'image/png');
+      });
+      const pngImage = await outPdf.embedPng(pngBytes);
+      const outPage = outPdf.addPage([unscaled.width, unscaled.height]);
+      outPage.drawImage(pngImage, { x: 0, y: 0, width: unscaled.width, height: unscaled.height });
+    }
+    pdfOutputBytes = await outPdf.save();
+
+    pdfProgressEl.textContent = totalRedacted > 0 ? t.pdfProgressDone(totalRedacted, numPages) : t.pdfProgressNone;
+    pdfDownloadBtn.disabled = false;
+    pdfPagesWrap.style.display = 'block';
+  } catch (err) {
+    console.error('PDF processing failed:', err);
+    const detail = (err && (err.message || err.toString())) || 'unknown error';
+    pdfProgressEl.textContent = t.pdfProgressError + ' [' + detail + ']';
+  } finally {
+    pdfScanBtn.disabled = false;
+  }
+});
+
+pdfDownloadBtn.addEventListener('click', () => {
+  if (!pdfOutputBytes) return;
+  const blob = new Blob([pdfOutputBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'redacted-document.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+pdfClearBtn.addEventListener('click', () => {
+  pdfOriginalBytes = null;
+  pdfOutputBytes = null;
+  pdfPageCanvases = [];
+  pdfPagesWrap.innerHTML = '';
+  pdfPagesWrap.style.display = 'none';
+  pdfScanBtn.disabled = true;
+  pdfDownloadBtn.disabled = true;
+  pdfProgressEl.textContent = '';
+  pdfFileNameEl.textContent = '';
+  pdfFileInput.value = '';
 });
 
 // Initialization
