@@ -1,0 +1,27 @@
+# ===== Operating system =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Editor / IDE =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ===== Sensitive data — never commit =====
+# If a build step (npm) or local config files are added later,
+# these patterns prevent secrets from accidentally reaching GitHub.
+.env
+.env.*
+*.key
+*.pem
+secrets.json
+
+# ===== Personal test files (synthetic data used for self-testing) =====
+# Keep the test files in /test-data/ and ignore it, so nobody
+# mistakes it for the project's official sample data.
+/test-data/
+
+# ===== Dependencies (if a build step is added later) =====
+node_modules/
+dist/
