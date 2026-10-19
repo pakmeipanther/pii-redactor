@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none';">
+<title>PII Redactor</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2e38;
+    --text: #e6e8ec;
+    --muted: #8b8f99;
+    --accent: #4f8cff;
+    --danger: #ff5c5c;
+    --danger-bg: rgba(255, 92, 92, 0.18);
+    --ok: #3ddc84;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    max-width: 900px;
+    margin-inline: auto;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  select#langSelect {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(61, 220, 132, 0.12);
+    color: var(--ok);
+    border: 1px solid rgba(61, 220, 132, 0.3);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: #0d0f13;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .rule-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 10px;
+    background: #0d0f13;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .rule-item input[type="checkbox"] { accent-color: var(--accent); }
+  .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  button:hover { filter: brightness(1.1); }
+  .result-stats {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .result-stats strong { color: var(--danger); }
+  mark {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+  #highlighted {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    background: #0d0f13;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 60px;
+  }
+  footer {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1 data-i18n="title">PII Redactor</h1>
+    <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
+  </div>
+  <select id="langSelect" aria-label="Language">
+    <option value="vi">Tiếng Việt</option>
+    <option value="en">English</option>
+    <option value="fr">Français</option>
+    <option value="de">Deutsch</option>
+  </select>
+</div>
+
+<div class="badge" data-i18n="badge">● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn</div>
+
+<div class="panel">
+  <h2 data-i18n="section1">1. Dán văn bản cần xử lý</h2>
+  <textarea id="input" data-i18n-placeholder="placeholder"></textarea>
+</div>
+
+<div class="panel">
+  <h2 data-i18n="section2">2. Loại dữ liệu cần nhận diện</h2>
+  <div class="rules" id="ruleList"></div>
+</div>
+
+<div class="actions">
+  <button id="scanBtn" data-i18n="scanBtn">Quét &amp; đánh dấu</button>
+  <button id="downloadBtn" class="secondary" data-i18n="downloadBtn">Tải văn bản đã làm sạch (.txt)</button>
+  <button id="clearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
+</div>
+
+<div class="panel" style="margin-top:16px;">
+  <h2 data-i18n="section3">3. Kết quả</h2>
+  <div class="result-stats" id="stats" data-i18n="statsEmpty">Chưa quét.</div>
+  <div id="highlighted">—</div>
+</div>
+
+<footer data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài · xem mã nguồn để tự kiểm chứng</footer>
+
+<script>
+// ============================================================
+// I18N — 4 ngôn ngữ: vi, en, fr, de
+// ============================================================
+const I18N = {
+  vi: {
+    title: 'PII Redactor',
+    subtitle: 'Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.',
+    badge: '● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn',
+    section1: '1. Dán văn bản cần xử lý',
+    placeholder: 'Dán văn bản có chứa email, IP, số điện thoại, connection string database... vào đây',
+    section2: '2. Loại dữ liệu cần nhận diện',
+    section3: '3. Kết quả',
+    scanBtn: 'Quét & đánh dấu',
+    downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
+    clearBtn: 'Xóa tất cả',
+    statsEmpty: 'Chưa quét.',
+    statsNoText: 'Chưa có văn bản để quét.',
+    statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
+    statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
+    footer: 'Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài · xem mã nguồn để tự kiểm chứng',
+    downloadName: 'van-ban-da-lam-sach.txt',
+    rules: {
+      email: 'Email',
+      ipv4: 'Địa chỉ IPv4',
+      ipv6: 'Địa chỉ IPv6',
+      phone: 'Số điện thoại',
+      apikey: 'API key / token',
+      creditcard: 'Số thẻ ngân hàng',
+      dburi: 'Connection string database (URI: postgres/mysql/mongodb/redis/jdbc...)',
+      dbkv: 'Connection string kiểu Server=...;Database=...;Password=...;',
+      dbport: 'Cổng kết nối database (port)'
+    },
+    masks: {
+      email: '[EMAIL ĐÃ ẨN]',
+      ipv4: '[IP ĐÃ ẨN]',
+      ipv6: '[IPv6 ĐÃ ẨN]',
+      phone: '[SỐ ĐT ĐÃ ẨN]',
+      apikey: '[KEY ĐÃ ẨN]',
+      creditcard: '[SỐ THẺ ĐÃ ẨN]',
+      dburi: '[CHUỖI KẾT NỐI DATABASE ĐÃ ẨN]',
+      dbkv: '[THÔNG TIN KẾT NỐI DATABASE ĐÃ ẨN]',
+      dbport: '[CỔNG ĐÃ ẨN]'
+    }
+  },
+  en: {
+    title: 'PII Redactor',
+    subtitle: 'Remove sensitive information from text before handing it to AI.',
+    badge: '● No network connection is made — all processing happens in your browser',
+    section1: '1. Paste the text to process',
+    placeholder: 'Paste text containing emails, IPs, phone numbers, database connection strings...',
+    section2: '2. Data types to detect',
+    section3: '3. Result',
+    scanBtn: 'Scan & highlight',
+    downloadBtn: 'Download cleaned text (.txt)',
+    clearBtn: 'Clear all',
+    statsEmpty: 'Not scanned yet.',
+    statsNoText: 'No text to scan yet.',
+    statsNoMatch: 'No matches found for the selected types.',
+    statsFound: n => `Found ${n} sensitive region(s) —`,
+    footer: 'Runs entirely locally · no data leaves your machine · review the source to verify',
+    downloadName: 'redacted-text.txt',
+    rules: {
+      email: 'Email',
+      ipv4: 'IPv4 address',
+      ipv6: 'IPv6 address',
+      phone: 'Phone number',
+      apikey: 'API key / token',
+      creditcard: 'Credit/bank card number',
+      dburi: 'Database connection string (URI: postgres/mysql/mongodb/redis/jdbc...)',
+      dbkv: 'Connection string in Server=...;Database=...;Password=...; form',
+      dbport: 'Database connection port'
+    },
+    masks: {
+      email: '[EMAIL REDACTED]',
+      ipv4: '[IP REDACTED]',
+      ipv6: '[IPv6 REDACTED]',
+      phone: '[PHONE REDACTED]',
+      apikey: '[KEY REDACTED]',
+      creditcard: '[CARD NUMBER REDACTED]',
+      dburi: '[DATABASE CONNECTION STRING REDACTED]',
+      dbkv: '[DATABASE CONNECTION INFO REDACTED]',
+      dbport: '[PORT REDACTED]'
+    }
+  },
+  fr: {
+    title: 'PII Redactor',
+    subtitle: "Supprimez les informations sensibles d'un texte avant de le transmettre à une IA.",
+    badge: "● Aucune connexion réseau n'est établie — tout le traitement se fait dans votre navigateur",
+    section1: '1. Collez le texte à traiter',
+    placeholder: 'Collez un texte contenant des emails, IP, numéros de téléphone, chaînes de connexion à une base de données...',
+    section2: '2. Types de données à détecter',
+    section3: '3. Résultat',
+    scanBtn: 'Analyser et surligner',
+    downloadBtn: 'Télécharger le texte nettoyé (.txt)',
+    clearBtn: 'Tout effacer',
+    statsEmpty: 'Pas encore analysé.',
+    statsNoText: 'Aucun texte à analyser.',
+    statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
+    statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
+    footer: "S'exécute entièrement en local · aucune donnée ne quitte votre machine · consultez le code source pour vérifier",
+    downloadName: 'texte-nettoye.txt',
+    rules: {
+      email: 'Email',
+      ipv4: 'Adresse IPv4',
+      ipv6: 'Adresse IPv6',
+      phone: 'Numéro de téléphone',
+      apikey: 'Clé API / jeton',
+      creditcard: 'Numéro de carte bancaire',
+      dburi: 'Chaîne de connexion base de données (URI : postgres/mysql/mongodb/redis/jdbc...)',
+      dbkv: 'Chaîne de connexion type Server=...;Database=...;Password=...;',
+      dbport: 'Port de connexion à la base de données'
+    },
+    masks: {
+      email: '[EMAIL MASQUÉ]',
+      ipv4: '[IP MASQUÉE]',
+      ipv6: '[IPv6 MASQUÉE]',
+      phone: '[TÉLÉPHONE MASQUÉ]',
+      apikey: '[CLÉ MASQUÉE]',
+      creditcard: '[NUMÉRO DE CARTE MASQUÉ]',
+      dburi: '[CHAÎNE DE CONNEXION BDD MASQUÉE]',
+      dbkv: '[INFOS DE CONNEXION BDD MASQUÉES]',
+      dbport: '[PORT MASQUÉ]'
+    }
+  },
+  de: {
+    title: 'PII Redactor',
+    subtitle: 'Entfernen Sie sensible Informationen aus Text, bevor er an eine KI übergeben wird.',
+    badge: '● Es wird keine Netzwerkverbindung hergestellt — die gesamte Verarbeitung erfolgt in Ihrem Browser',
+    section1: '1. Zu bearbeitenden Text einfügen',
+    placeholder: 'Text mit E-Mails, IPs, Telefonnummern, Datenbank-Connection-Strings einfügen...',
+    section2: '2. Zu erkennende Datentypen',
+    section3: '3. Ergebnis',
+    scanBtn: 'Scannen & markieren',
+    downloadBtn: 'Bereinigten Text herunterladen (.txt)',
+    clearBtn: 'Alles löschen',
+    statsEmpty: 'Noch nicht gescannt.',
+    statsNoText: 'Noch kein Text zum Scannen.',
+    statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
+    statsFound: n => `${n} sensible Bereich(e) gefunden —`,
+    footer: 'Läuft vollständig lokal · keine Daten verlassen Ihr Gerät · Quellcode zur Überprüfung einsehbar',
+    downloadName: 'bereinigter-text.txt',
+    rules: {
+      email: 'E-Mail',
+      ipv4: 'IPv4-Adresse',
+      ipv6: 'IPv6-Adresse',
+      phone: 'Telefonnummer',
+      apikey: 'API-Schlüssel / Token',
+      creditcard: 'Bankkartennummer',
+      dburi: 'Datenbank-Connection-String (URI: postgres/mysql/mongodb/redis/jdbc...)',
+      dbkv: 'Connection-String im Format Server=...;Database=...;Password=...;',
+      dbport: 'Datenbank-Verbindungsport'
+    },
+    masks: {
+      email: '[E-MAIL ENTFERNT]',
+      ipv4: '[IP ENTFERNT]',
+      ipv6: '[IPv6 ENTFERNT]',
+      phone: '[TELEFON ENTFERNT]',
+      apikey: '[SCHLÜSSEL ENTFERNT]',
+      creditcard: '[KARTENNUMMER ENTFERNT]',
+      dburi: '[DATENBANK-CONNECTION-STRING ENTFERNT]',
+      dbkv: '[DATENBANK-VERBINDUNGSDATEN ENTFERNT]',
+      dbport: '[PORT ENTFERNT]'
+    }
+  }
+};
+
+let currentLang = 'vi';
+
+// ============================================================
+// RULES — regex có cấu trúc cố định (độc lập ngôn ngữ).
+// label/mask được tra theo ngôn ngữ hiện tại tại thời điểm quét.
+// ============================================================
+const RULES = [
+  {
+    id: 'email',
+    regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+  },
+  {
+    id: 'ipv4',
+    regex: /\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b/g
+  },
+  {
+    id: 'ipv6',
+    regex: /\b(?:[A-Fa-f0-9]{1,4}:){2,7}[A-Fa-f0-9]{1,4}\b/g
+  },
+  {
+    id: 'phone',
+    regex: /\b(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}\b/g
+  },
+  {
+    id: 'apikey',
+    // chuỗi liên tục >= 24 ký tự gồm chữ+số, thường gặp ở token/secret
+    regex: /\b(?=[A-Za-z0-9_\-]{24,})(?=[A-Za-z0-9_\-]*\d)[A-Za-z0-9_\-]{24,}\b/g
+  },
+  {
+    id: 'creditcard',
+    regex: /\b(?:\d[ -]?){13,19}\b/g
+  },
+  {
+    id: 'dburi',
+    // Bắt trọn chuỗi kết nối dạng URI: postgres://, postgresql://, mysql://,
+    // mongodb:// / mongodb+srv://, redis(s)://, mssql://, jdbc:xxx://
+    // Vì host, port, tên database đều nằm trong cùng 1 chuỗi, khớp cả URI
+    // sẽ tự động ẩn luôn host/port/dbname mà không cần biết trước giá trị —
+    // áp dụng được cho cả dạng "Direct connection" lẫn "Pooler connection".
+    regex: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|mssql|oracle|jdbc:[a-zA-Z0-9]+):\/\/[^\s'"<>)]+/gi
+  },
+  {
+    id: 'dbkv',
+    // Connection string kiểu ADO.NET/ODBC: Server=...;Database=...;Password=...;
+    regex: /\b(?:Server|Data Source|Host|Endpoint)\s*=\s*[^;\n]+;(?:\s*(?:Database|Initial Catalog|Port|User ID|Uid|User|Password|Pwd)\s*=\s*[^;\n]*;?)+/gi
+  },
+  {
+    id: 'dbport',
+    // Các cổng database phổ biến (Postgres, Postgres pooler, MySQL, MSSQL,
+    // MongoDB, Redis, Oracle, Redshift, Cassandra...) khi đứng độc lập,
+    // không nằm trong URI đã bắt ở trên.
+    regex: /:\b(5432|6543|3306|1433|1434|27017|6379|5439|1521|9042|5433|25060|3307|8086)\b/g
+  }
+];
+
+const ruleListEl = document.getElementById('ruleList');
+
+function applyI18n() {
+  const t = I18N[currentLang];
+  document.documentElement.lang = currentLang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (t[key] !== undefined) el.placeholder = t[key];
+  });
+  // Nhãn các rule checkbox
+  document.querySelectorAll('[data-rule]').forEach(cb => {
+    const labelSpan = cb.nextSibling;
+    if (labelSpan) labelSpan.textContent = ' ' + t.rules[cb.dataset.rule];
+  });
+  // Trạng thái "chưa quét" mặc định khi đổi ngôn ngữ mà chưa quét lại
+  if (!document.getElementById('input').value.trim()) {
+    document.getElementById('stats').textContent = t.statsEmpty;
+  }
+}
+
+function buildRuleCheckboxes() {
+  ruleListEl.innerHTML = '';
+  RULES.forEach(rule => {
+    const wrap = document.createElement('label');
+    wrap.className = 'rule-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.dataset.rule = rule.id;
+    const span = document.createTextNode(' ' + I18N[currentLang].rules[rule.id]);
+    wrap.appendChild(cb);
+    wrap.appendChild(span);
+    ruleListEl.appendChild(wrap);
+  });
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getActiveRules() {
+  const checked = new Set(
+    Array.from(document.querySelectorAll('[data-rule]'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.dataset.rule)
+  );
+  return RULES.filter(r => checked.has(r.id));
+}
+
+function findMatches(text, activeRules) {
+  const matches = [];
+  activeRules.forEach(rule => {
+    rule.regex.lastIndex = 0;
+    let m;
+    while ((m = rule.regex.exec(text)) !== null) {
+      if (m[0].length === 0) { rule.regex.lastIndex++; continue; }
+      matches.push({ start: m.index, end: m.index + m[0].length, ruleId: rule.id });
+    }
+  });
+  matches.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+  const merged = [];
+  for (const m of matches) {
+    const last = merged[merged.length - 1];
+    if (last && m.start < last.end) continue; // bỏ qua vùng chồng lấn
+    merged.push(m);
+  }
+  return merged;
+}
+
+let lastCleanedText = '';
+
+function runScan() {
+  const t = I18N[currentLang];
+  const text = document.getElementById('input').value;
+  const activeRules = getActiveRules();
+  const matches = findMatches(text, activeRules);
+
+  let htmlOut = '';
+  let cleanOut = '';
+  let cursor = 0;
+  const counts = {};
+
+  matches.forEach(m => {
+    htmlOut += escapeHtml(text.slice(cursor, m.start));
+    cleanOut += text.slice(cursor, m.start);
+    htmlOut += `<mark title="${t.rules[m.ruleId]}">${escapeHtml(text.slice(m.start, m.end))}</mark>`;
+    cleanOut += t.masks[m.ruleId];
+    counts[m.ruleId] = (counts[m.ruleId] || 0) + 1;
+    cursor = m.end;
+  });
+  htmlOut += escapeHtml(text.slice(cursor));
+  cleanOut += text.slice(cursor);
+
+  lastCleanedText = cleanOut;
+  document.getElementById('highlighted').innerHTML = htmlOut || '<span style="color:var(--muted)">—</span>';
+
+  const statsEl = document.getElementById('stats');
+  if (matches.length === 0) {
+    statsEl.textContent = text.trim() ? t.statsNoMatch : t.statsNoText;
+  } else {
+    const parts = Object.entries(counts).map(([id, n]) => `${t.rules[id]}: ${n}`);
+    statsEl.innerHTML = `${t.statsFound(matches.length)} ${parts.join(' · ')}`;
+  }
+}
+
+document.getElementById('scanBtn').addEventListener('click', runScan);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('input').value = '';
+  document.getElementById('highlighted').innerHTML = '—';
+  document.getElementById('stats').textContent = I18N[currentLang].statsEmpty;
+  lastCleanedText = '';
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!lastCleanedText) runScan();
+  const blob = new Blob([lastCleanedText], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = I18N[currentLang].downloadName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('langSelect').addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  applyI18n();
+  buildRuleCheckboxes();
+});
+
+// Khởi tạo
+document.getElementById('langSelect').value = currentLang;
+buildRuleCheckboxes();
+applyI18n();
+</script>
+
+</body>
+</html>
