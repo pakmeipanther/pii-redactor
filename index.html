@@ -102,6 +102,59 @@
     border-radius: 6px;
   }
   .rule-item input[type="checkbox"] { accent-color: var(--accent); }
+  .custom-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .custom-row input[type="text"] {
+    flex: 1;
+    background: #0d0f13;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  .custom-options {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .custom-options input[type="checkbox"] { accent-color: var(--accent); }
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(79, 140, 255, 0.12);
+    color: #9db8ff;
+    border: 1px solid rgba(79, 140, 255, 0.3);
+    padding: 4px 6px 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .chip button {
+    all: unset;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    color: #9db8ff;
+    font-size: 13px;
+  }
+  .chip button:hover { color: var(--danger); }
+  .custom-empty { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .custom-io { display: flex; gap: 8px; }
+  .custom-io button { padding: 7px 12px; font-size: 12px; }
   .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   button {
     background: var(--accent);
@@ -174,7 +227,27 @@
 </div>
 
 <div class="panel">
-  <h2 data-i18n="section2">2. Loại dữ liệu cần nhận diện</h2>
+  <h2 data-i18n="sectionCustom">2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)</h2>
+  <div class="subtitle" data-i18n="customDesc" style="margin-bottom:10px;">Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn.</div>
+  <div class="custom-row">
+    <input type="text" id="customInput" data-i18n-placeholder="customPlaceholder">
+    <button id="customAddBtn" data-i18n="addBtn">Thêm</button>
+  </div>
+  <label class="custom-options">
+    <input type="checkbox" id="customCaseSensitive">
+    <span data-i18n="caseSensitiveLabel">Phân biệt chữ hoa/thường</span>
+  </label>
+  <div class="chip-list" id="customChipList"></div>
+  <div class="custom-empty" id="customEmptyMsg" data-i18n="customEmpty">Chưa có từ khóa nào.</div>
+  <div class="custom-io">
+    <button id="customExportBtn" class="secondary" data-i18n="exportBtn">Xuất danh sách (.json)</button>
+    <button id="customImportBtn" class="secondary" data-i18n="importBtn">Nhập danh sách (.json)</button>
+    <input type="file" id="customImportFile" accept="application/json" style="display:none;">
+  </div>
+</div>
+
+<div class="panel">
+  <h2 data-i18n="section2">3. Loại dữ liệu cần nhận diện</h2>
   <div class="rules" id="ruleList"></div>
 </div>
 
@@ -185,7 +258,7 @@
 </div>
 
 <div class="panel" style="margin-top:16px;">
-  <h2 data-i18n="section3">3. Kết quả</h2>
+  <h2 data-i18n="section3">4. Kết quả</h2>
   <div class="result-stats" id="stats" data-i18n="statsEmpty">Chưa quét.</div>
   <div id="highlighted">—</div>
 </div>
@@ -194,7 +267,7 @@
 
 <script>
 // ============================================================
-// I18N — 4 ngôn ngữ: vi, en, fr, de
+// I18N — 4 languages: vi, en, fr, de
 // ============================================================
 const I18N = {
   vi: {
@@ -203,8 +276,18 @@ const I18N = {
     badge: '● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn',
     section1: '1. Dán văn bản cần xử lý',
     placeholder: 'Dán văn bản có chứa email, IP, số điện thoại, connection string database... vào đây',
-    section2: '2. Loại dữ liệu cần nhận diện',
-    section3: '3. Kết quả',
+    sectionCustom: '2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)',
+    customDesc: 'Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn, không cần xác nhận lại.',
+    customPlaceholder: 'Ví dụ: ten-cong-ty-noi-bo, srv-db-prod-02...',
+    addBtn: 'Thêm',
+    caseSensitiveLabel: 'Phân biệt chữ hoa/thường',
+    customEmpty: 'Chưa có từ khóa nào.',
+    exportBtn: 'Xuất danh sách (.json)',
+    importBtn: 'Nhập danh sách (.json)',
+    removeTitle: 'Xóa',
+    customMatchLabel: 'Từ khóa tùy chỉnh',
+    section2: '3. Loại dữ liệu cần nhận diện',
+    section3: '4. Kết quả',
     scanBtn: 'Quét & đánh dấu',
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
@@ -234,7 +317,8 @@ const I18N = {
       creditcard: '[SỐ THẺ ĐÃ ẨN]',
       dburi: '[CHUỖI KẾT NỐI DATABASE ĐÃ ẨN]',
       dbkv: '[THÔNG TIN KẾT NỐI DATABASE ĐÃ ẨN]',
-      dbport: '[CỔNG ĐÃ ẨN]'
+      dbport: '[CỔNG ĐÃ ẨN]',
+      custom: '[TỪ KHÓA NỘI BỘ ĐÃ ẨN]'
     }
   },
   en: {
@@ -243,8 +327,18 @@ const I18N = {
     badge: '● No network connection is made — all processing happens in your browser',
     section1: '1. Paste the text to process',
     placeholder: 'Paste text containing emails, IPs, phone numbers, database connection strings...',
-    section2: '2. Data types to detect',
-    section3: '3. Result',
+    sectionCustom: '2. Custom internal terms (company name, server name...)',
+    customDesc: 'The tool cannot know these on its own — declare them once and they will always be redacted, with no re-confirmation needed.',
+    customPlaceholder: 'e.g. internal-company-name, srv-db-prod-02...',
+    addBtn: 'Add',
+    caseSensitiveLabel: 'Case-sensitive',
+    customEmpty: 'No custom terms yet.',
+    exportBtn: 'Export list (.json)',
+    importBtn: 'Import list (.json)',
+    removeTitle: 'Remove',
+    customMatchLabel: 'Custom term',
+    section2: '3. Data types to detect',
+    section3: '4. Result',
     scanBtn: 'Scan & highlight',
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
@@ -274,7 +368,8 @@ const I18N = {
       creditcard: '[CARD NUMBER REDACTED]',
       dburi: '[DATABASE CONNECTION STRING REDACTED]',
       dbkv: '[DATABASE CONNECTION INFO REDACTED]',
-      dbport: '[PORT REDACTED]'
+      dbport: '[PORT REDACTED]',
+      custom: '[INTERNAL TERM REDACTED]'
     }
   },
   fr: {
@@ -283,8 +378,18 @@ const I18N = {
     badge: "● Aucune connexion réseau n'est établie — tout le traitement se fait dans votre navigateur",
     section1: '1. Collez le texte à traiter',
     placeholder: 'Collez un texte contenant des emails, IP, numéros de téléphone, chaînes de connexion à une base de données...',
-    section2: '2. Types de données à détecter',
-    section3: '3. Résultat',
+    sectionCustom: '2. Termes internes personnalisés (nom d\'entreprise, nom de serveur...)',
+    customDesc: 'L\'outil ne peut pas le deviner seul — déclarez-le une fois, il sera toujours masqué, sans confirmation supplémentaire.',
+    customPlaceholder: 'ex : nom-entreprise-interne, srv-db-prod-02...',
+    addBtn: 'Ajouter',
+    caseSensitiveLabel: 'Sensible à la casse',
+    customEmpty: 'Aucun terme personnalisé pour le moment.',
+    exportBtn: 'Exporter la liste (.json)',
+    importBtn: 'Importer une liste (.json)',
+    removeTitle: 'Supprimer',
+    customMatchLabel: 'Terme personnalisé',
+    section2: '3. Types de données à détecter',
+    section3: '4. Résultat',
     scanBtn: 'Analyser et surligner',
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
@@ -314,7 +419,8 @@ const I18N = {
       creditcard: '[NUMÉRO DE CARTE MASQUÉ]',
       dburi: '[CHAÎNE DE CONNEXION BDD MASQUÉE]',
       dbkv: '[INFOS DE CONNEXION BDD MASQUÉES]',
-      dbport: '[PORT MASQUÉ]'
+      dbport: '[PORT MASQUÉ]',
+      custom: '[TERME INTERNE MASQUÉ]'
     }
   },
   de: {
@@ -323,8 +429,18 @@ const I18N = {
     badge: '● Es wird keine Netzwerkverbindung hergestellt — die gesamte Verarbeitung erfolgt in Ihrem Browser',
     section1: '1. Zu bearbeitenden Text einfügen',
     placeholder: 'Text mit E-Mails, IPs, Telefonnummern, Datenbank-Connection-Strings einfügen...',
-    section2: '2. Zu erkennende Datentypen',
-    section3: '3. Ergebnis',
+    sectionCustom: '2. Benutzerdefinierte interne Begriffe (Firmenname, Servername...)',
+    customDesc: 'Das Tool kann dies nicht selbst wissen — einmal angeben, und es wird immer entfernt, ohne erneute Bestätigung.',
+    customPlaceholder: 'z. B. interner-firmenname, srv-db-prod-02...',
+    addBtn: 'Hinzufügen',
+    caseSensitiveLabel: 'Groß-/Kleinschreibung beachten',
+    customEmpty: 'Noch keine benutzerdefinierten Begriffe.',
+    exportBtn: 'Liste exportieren (.json)',
+    importBtn: 'Liste importieren (.json)',
+    removeTitle: 'Entfernen',
+    customMatchLabel: 'Benutzerdefinierter Begriff',
+    section2: '3. Zu erkennende Datentypen',
+    section3: '4. Ergebnis',
     scanBtn: 'Scannen & markieren',
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
@@ -354,7 +470,8 @@ const I18N = {
       creditcard: '[KARTENNUMMER ENTFERNT]',
       dburi: '[DATENBANK-CONNECTION-STRING ENTFERNT]',
       dbkv: '[DATENBANK-VERBINDUNGSDATEN ENTFERNT]',
-      dbport: '[PORT ENTFERNT]'
+      dbport: '[PORT ENTFERNT]',
+      custom: '[INTERNER BEGRIFF ENTFERNT]'
     }
   }
 };
@@ -362,8 +479,8 @@ const I18N = {
 let currentLang = 'vi';
 
 // ============================================================
-// RULES — regex có cấu trúc cố định (độc lập ngôn ngữ).
-// label/mask được tra theo ngôn ngữ hiện tại tại thời điểm quét.
+// RULES — structured, language-independent regex patterns.
+// Labels/masks are looked up from the active language at scan time.
 // ============================================================
 const RULES = [
   {
@@ -384,7 +501,8 @@ const RULES = [
   },
   {
     id: 'apikey',
-    // chuỗi liên tục >= 24 ký tự gồm chữ+số, thường gặp ở token/secret
+    // Continuous string of 24+ alphanumeric characters — a common
+    // shape for tokens and secrets.
     regex: /\b(?=[A-Za-z0-9_\-]{24,})(?=[A-Za-z0-9_\-]*\d)[A-Za-z0-9_\-]{24,}\b/g
   },
   {
@@ -393,28 +511,162 @@ const RULES = [
   },
   {
     id: 'dburi',
-    // Bắt trọn chuỗi kết nối dạng URI: postgres://, postgresql://, mysql://,
-    // mongodb:// / mongodb+srv://, redis(s)://, mssql://, jdbc:xxx://
-    // Vì host, port, tên database đều nằm trong cùng 1 chuỗi, khớp cả URI
-    // sẽ tự động ẩn luôn host/port/dbname mà không cần biết trước giá trị —
-    // áp dụng được cho cả dạng "Direct connection" lẫn "Pooler connection".
+    // Matches the whole URI-style connection string: postgres://,
+    // postgresql://, mysql://, mongodb:// / mongodb+srv://, redis(s)://,
+    // mssql://, jdbc:xxx://. Since the host, port, and database name
+    // all live inside the same string, matching the entire URI redacts
+    // host/port/dbname at once without needing to know their values in
+    // advance — this covers both "Direct connection" and "Pooler
+    // connection" forms with one pattern.
     regex: /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|mssql|oracle|jdbc:[a-zA-Z0-9]+):\/\/[^\s'"<>)]+/gi
   },
   {
     id: 'dbkv',
-    // Connection string kiểu ADO.NET/ODBC: Server=...;Database=...;Password=...;
+    // ADO.NET/ODBC-style connection string: Server=...;Database=...;Password=...;
     regex: /\b(?:Server|Data Source|Host|Endpoint)\s*=\s*[^;\n]+;(?:\s*(?:Database|Initial Catalog|Port|User ID|Uid|User|Password|Pwd)\s*=\s*[^;\n]*;?)+/gi
   },
   {
     id: 'dbport',
-    // Các cổng database phổ biến (Postgres, Postgres pooler, MySQL, MSSQL,
-    // MongoDB, Redis, Oracle, Redshift, Cassandra...) khi đứng độc lập,
-    // không nằm trong URI đã bắt ở trên.
+    // Common database ports (Postgres, Postgres pooler, MySQL, MSSQL,
+    // MongoDB, Redis, Oracle, Redshift, Cassandra...) when they appear
+    // standalone, outside the URI pattern matched above.
     regex: /:\b(5432|6543|3306|1433|1434|27017|6379|5439|1521|9042|5433|25060|3307|8086)\b/g
   }
 ];
 
 const ruleListEl = document.getElementById('ruleList');
+
+// ============================================================
+// CUSTOM TERMS — the user's own list (company name, internal server
+// name...). Stored in localStorage, kept only on this machine.
+// Highest priority during scanning, and skips the "review" step's
+// re-confirmation because this is information the user is 100%
+// certain about.
+// ============================================================
+const CUSTOM_TERMS_KEY = 'piiRedactorCustomTerms';
+const CUSTOM_CASE_KEY = 'piiRedactorCustomCaseSensitive';
+
+function loadCustomTerms() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TERMS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(t => typeof t === 'string' && t.trim()) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCustomTerms(terms) {
+  try { localStorage.setItem(CUSTOM_TERMS_KEY, JSON.stringify(terms)); } catch (e) { /* localStorage unavailable */ }
+}
+
+function loadCustomCaseSensitive() {
+  try { return localStorage.getItem(CUSTOM_CASE_KEY) === '1'; } catch (e) { return false; }
+}
+
+function saveCustomCaseSensitive(val) {
+  try { localStorage.setItem(CUSTOM_CASE_KEY, val ? '1' : '0'); } catch (e) { /* localStorage unavailable */ }
+}
+
+let customTerms = loadCustomTerms();
+
+const customInputEl = document.getElementById('customInput');
+const customChipListEl = document.getElementById('customChipList');
+const customEmptyMsgEl = document.getElementById('customEmptyMsg');
+const customCaseSensitiveEl = document.getElementById('customCaseSensitive');
+customCaseSensitiveEl.checked = loadCustomCaseSensitive();
+
+function renderCustomChips() {
+  const t = I18N[currentLang];
+  customChipListEl.innerHTML = '';
+  customEmptyMsgEl.style.display = customTerms.length === 0 ? 'block' : 'none';
+  customTerms.forEach(term => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    const label = document.createElement('span');
+    label.textContent = term;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.title = t.removeTitle;
+    removeBtn.setAttribute('aria-label', t.removeTitle + ': ' + term);
+    removeBtn.addEventListener('click', () => removeCustomTerm(term));
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    customChipListEl.appendChild(chip);
+  });
+}
+
+function addCustomTerm() {
+  const val = customInputEl.value.trim();
+  if (!val) return;
+  if (!customTerms.includes(val)) {
+    customTerms.push(val);
+    saveCustomTerms(customTerms);
+    renderCustomChips();
+  }
+  customInputEl.value = '';
+  customInputEl.focus();
+}
+
+function removeCustomTerm(term) {
+  customTerms = customTerms.filter(x => x !== term);
+  saveCustomTerms(customTerms);
+  renderCustomChips();
+}
+
+document.getElementById('customAddBtn').addEventListener('click', addCustomTerm);
+customInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addCustomTerm(); }
+});
+customCaseSensitiveEl.addEventListener('change', () => {
+  saveCustomCaseSensitive(customCaseSensitiveEl.checked);
+});
+
+document.getElementById('customExportBtn').addEventListener('click', () => {
+  const payload = { terms: customTerms, caseSensitive: customCaseSensitiveEl.checked };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pii-redactor-custom-terms.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('customImportBtn').addEventListener('click', () => {
+  document.getElementById('customImportFile').click();
+});
+
+document.getElementById('customImportFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const incoming = Array.isArray(data) ? data : (Array.isArray(data.terms) ? data.terms : []);
+      const clean = incoming.filter(t => typeof t === 'string' && t.trim());
+      // Merge with the existing list and de-duplicate, instead of
+      // overwriting — avoids data loss if the user imports the
+      // wrong file by mistake.
+      const merged = Array.from(new Set([...customTerms, ...clean]));
+      customTerms = merged;
+      saveCustomTerms(customTerms);
+      if (typeof data === 'object' && !Array.isArray(data) && typeof data.caseSensitive === 'boolean') {
+        customCaseSensitiveEl.checked = data.caseSensitive;
+        saveCustomCaseSensitive(data.caseSensitive);
+      }
+      renderCustomChips();
+    } catch (err) {
+      // Invalid file — ignore it, leave the existing list untouched.
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
 
 function applyI18n() {
   const t = I18N[currentLang];
@@ -427,15 +679,16 @@ function applyI18n() {
     const key = el.dataset.i18nPlaceholder;
     if (t[key] !== undefined) el.placeholder = t[key];
   });
-  // Nhãn các rule checkbox
+  // Rule checkbox labels
   document.querySelectorAll('[data-rule]').forEach(cb => {
     const labelSpan = cb.nextSibling;
     if (labelSpan) labelSpan.textContent = ' ' + t.rules[cb.dataset.rule];
   });
-  // Trạng thái "chưa quét" mặc định khi đổi ngôn ngữ mà chưa quét lại
+  // Default "not scanned yet" state when switching language before rescanning
   if (!document.getElementById('input').value.trim()) {
     document.getElementById('stats').textContent = t.statsEmpty;
   }
+  renderCustomChips();
 }
 
 function buildRuleCheckboxes() {
@@ -470,22 +723,47 @@ function getActiveRules() {
   return RULES.filter(r => checked.has(r.id));
 }
 
-function findMatches(text, activeRules) {
+// Finds matches against the custom term list (plain substring
+// matching, no regex, so we never have to worry about escaping
+// special characters in a company/server name).
+function findCustomMatches(text, terms, caseSensitive) {
   const matches = [];
+  const hay = caseSensitive ? text : text.toLowerCase();
+  terms.forEach(term => {
+    const needle = caseSensitive ? term : term.toLowerCase();
+    if (!needle) return;
+    let idx = 0;
+    while (true) {
+      const found = hay.indexOf(needle, idx);
+      if (found === -1) break;
+      matches.push({ start: found, end: found + needle.length, ruleId: 'custom', priority: 0 });
+      idx = found + needle.length;
+    }
+  });
+  return matches;
+}
+
+function findMatches(text, activeRules, terms, caseSensitive) {
+  const matches = findCustomMatches(text, terms, caseSensitive);
+
   activeRules.forEach(rule => {
     rule.regex.lastIndex = 0;
     let m;
     while ((m = rule.regex.exec(text)) !== null) {
       if (m[0].length === 0) { rule.regex.lastIndex++; continue; }
-      matches.push({ start: m.index, end: m.index + m[0].length, ruleId: rule.id });
+      matches.push({ start: m.index, end: m.index + m[0].length, ruleId: rule.id, priority: 1 });
     }
   });
-  matches.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+  // Sort by start position; on a tie, prefer custom matches (lower
+  // priority number) and then the longer match — this guarantees the
+  // custom list always wins over regex when both match the same span.
+  matches.sort((a, b) => a.start - b.start || a.priority - b.priority || (b.end - b.start) - (a.end - a.start));
 
   const merged = [];
   for (const m of matches) {
     const last = merged[merged.length - 1];
-    if (last && m.start < last.end) continue; // bỏ qua vùng chồng lấn
+    if (last && m.start < last.end) continue; // skip overlapping regions
     merged.push(m);
   }
   return merged;
@@ -497,7 +775,9 @@ function runScan() {
   const t = I18N[currentLang];
   const text = document.getElementById('input').value;
   const activeRules = getActiveRules();
-  const matches = findMatches(text, activeRules);
+  const matches = findMatches(text, activeRules, customTerms, customCaseSensitiveEl.checked);
+
+  const labelFor = id => id === 'custom' ? t.customMatchLabel : t.rules[id];
 
   let htmlOut = '';
   let cleanOut = '';
@@ -507,7 +787,7 @@ function runScan() {
   matches.forEach(m => {
     htmlOut += escapeHtml(text.slice(cursor, m.start));
     cleanOut += text.slice(cursor, m.start);
-    htmlOut += `<mark title="${t.rules[m.ruleId]}">${escapeHtml(text.slice(m.start, m.end))}</mark>`;
+    htmlOut += `<mark title="${labelFor(m.ruleId)}">${escapeHtml(text.slice(m.start, m.end))}</mark>`;
     cleanOut += t.masks[m.ruleId];
     counts[m.ruleId] = (counts[m.ruleId] || 0) + 1;
     cursor = m.end;
@@ -522,7 +802,7 @@ function runScan() {
   if (matches.length === 0) {
     statsEl.textContent = text.trim() ? t.statsNoMatch : t.statsNoText;
   } else {
-    const parts = Object.entries(counts).map(([id, n]) => `${t.rules[id]}: ${n}`);
+    const parts = Object.entries(counts).map(([id, n]) => `${labelFor(id)}: ${n}`);
     statsEl.innerHTML = `${t.statsFound(matches.length)} ${parts.join(' · ')}`;
   }
 }
@@ -555,7 +835,7 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   buildRuleCheckboxes();
 });
 
-// Khởi tạo
+// Initialization
 document.getElementById('langSelect').value = currentLang;
 buildRuleCheckboxes();
 applyI18n();
