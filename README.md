@@ -5,9 +5,16 @@ infrastructure secrets out of text, PDFs, and screenshots **before** that
 content is pasted into any AI tool — so sensitive information never leaves
 your machine in the first place.
 
-> Status: early MVP. Text redaction (regex + custom term list),
-> image/screenshot OCR redaction, and PDF redaction are working; local
-> NER is in progress. See [Roadmap](#roadmap) below.
+> Status: text redaction (regex + custom term list), image/screenshot
+> OCR redaction, and PDF redaction are working, with a synthetic-data
+> test suite and a demo GIF above. Local NER was investigated and
+> deferred for now — see [Known limitations](#known-limitations) for
+> why. See [Roadmap](#roadmap) below.
+
+![Demo: pasting text with fake PII, scanning, adding a custom internal term, and switching the UI to German](docs/images/demo.gif)
+
+*(All data shown is synthetic/fake, invented for this recording —
+never a real person, company, or secret.)*
 
 ## Why
 
@@ -23,9 +30,9 @@ the cleaned version.
 ## Core guarantee
 
 - **Single `.html` file, plus a `vendor/` folder for offline OCR** — no
-  build step. Text redaction needs nothing but the browser; image/OCR
-  redaction needs the vendored files beside it (see
-  [Running the image/OCR feature](#running-the-imageocr-feature)).
+  build step. Text redaction needs nothing but the browser; image/OCR/
+  PDF redaction need the vendored files beside them (see
+  [Running the image/OCR/PDF features](#running-the-imageocrpdf-features)).
 - **No network calls** — enforced with a `Content-Security-Policy` meta
   tag. `connect-src` is scoped to `'self'` only (not a wildcard or a CDN
   domain) so the page can read the vendored OCR engine and language
@@ -52,8 +59,11 @@ the cleaned version.
    form like `postgres://user:pass@host:port/dbname` and key-value form
    like `Server=...;Database=...;Password=...;` — covering both direct
    and pooler connections in one pattern).
-3. **Local NER model** (planned, via `transformers.js`, WebAssembly/WebGPU)
-   — catches person and organization names that regex can't.
+3. **Local NER model** (deferred — see
+   [Known limitations](#known-limitations)) — would catch person and
+   organization names that regex can't, by running a small pretrained
+   transformer model (via `transformers.js`, WebAssembly/WebGPU) entirely
+   in the browser.
 
 **Pipeline:** Input (text / image / PDF) → Detection (3 sources above) →
 Review & confirm (flagged regions highlighted) → Real redaction (format-
@@ -94,8 +104,8 @@ than the image panel's word-by-word OCR matching, though it can still
 miss a value split across runs with no space between them in the
 original PDF.
 
-*(Architecture diagrams generated during planning — add screenshots to
-`docs/images/` and reference them here once committed.)*
+See the demo GIF near the top of this README for the full flow in
+action (text → scan → custom term → multilingual UI).
 
 ## Tech stack
 
@@ -114,8 +124,9 @@ a glance.
   under `/vendor/tesseract` and `/vendor/tessdata` (English, Vietnamese,
   French, German trained data) so OCR never makes a network request.
   See [NOTICE.md](vendor/NOTICE.md) for license details.
-- [transformers.js](https://huggingface.co/docs/transformers.js) — local
-  NER model, cached offline after first load (planned)
+- [transformers.js](https://huggingface.co/docs/transformers.js) — would
+  run a local NER model fully offline; evaluated but not integrated yet,
+  see [Known limitations](#known-limitations)
 
 ## Usage
 
@@ -153,6 +164,20 @@ This still runs 100% on your machine — `localhost` never leaves your
 computer — it is only a workaround for the browser's local-file
 restriction.
 
+## Testing
+
+`test/run-tests.mjs` is a small, dependency-free regression suite for
+the detection pipeline (the regex rules, the custom-term list, and how
+they merge by priority). It doesn't duplicate that logic into a second
+file — it extracts the real `RULES`/`findMatches`/`findCustomMatches`
+code straight out of `index.html` and runs it as-is, so a test failure
+always means the shipped file actually changed behavior. All fixtures
+are synthetic/fake data invented for the test, never real secrets.
+
+```sh
+node test/run-tests.mjs
+```
+
 ## Roadmap
 
 - [x] Project scaffolding, CSP, GitHub repo
@@ -163,8 +188,12 @@ restriction.
 - [x] Image/screenshot handling (offline OCR + true pixel overwrite)
 - [x] PDF handling (flatten-to-image, with optional OCR fallback for
       scanned pages)
-- [ ] Local NER integration
-- [ ] Review UI polish, test suite with synthetic data, demo GIF
+- [ ] Local NER integration — investigated and deferred, see
+      [Known limitations](#known-limitations)
+- [x] UI polish (default language for international readers, keyboard-
+      accessible drop zones, GitHub link in the footer)
+- [x] Test suite with synthetic data (see [Testing](#testing))
+- [x] Demo GIF
 
 ## Known limitations
 
@@ -172,8 +201,19 @@ restriction.
   over-match (false positives) — always review highlighted matches before
   exporting. This is by design: the tool assists, it does not replace
   human judgment.
-- NER is not yet implemented; until it is, names not caught by regex or
-  the custom list will not be redacted.
+- **Local NER was evaluated and deferred, not implemented.** Several
+  pretrained NER models with clean open-source licenses were checked
+  (multilingual and English-only), and every one of them, even after
+  int8 quantization for browser inference, came out at **100–280MB** —
+  over GitHub's 100MB-per-file push limit. Most of that size is the
+  model's vocabulary/embedding table (needed to support multiple
+  languages or large vocabularies), which quantization alone doesn't
+  shrink much. Shipping one as-is would mean adding Git LFS to the
+  project for a single file, which didn't seem worth it for an early
+  MVP. Until this is revisited (most likely with Git LFS, or a smaller
+  task-specific model), names and organizations not caught by the
+  custom term list or regex are **not** redacted — always review the
+  highlighted matches before exporting.
 - Image OCR runs word-by-word, so a sensitive value split across
   multiple OCR words (e.g. a phone number with spaces) may only be
   partially blacked out.
@@ -190,6 +230,11 @@ restriction.
 - The optional OCR pass on PDF pages (for scanned/image-only pages)
   noticeably slows down multi-page files — enable it only when the PDF
   doesn't have a real text layer.
+- The IPv6 regex does not special-case `::` zero-compression, so a
+  compressed address (e.g. `2001:db8::ff00:42:8329`) is only partially
+  matched (the part after `::`) rather than the whole address. Found
+  and pinned down by [test/run-tests.mjs](test/run-tests.mjs) — see
+  that file's IPv6 test for the exact behavior.
 - Testing has used synthetic/fake data only — never real company secrets.
 
 ## Security notes
@@ -203,8 +248,10 @@ restriction.
   engine is WASM). This keyword only permits compiling WASM bytecode —
   it grants no extra network or eval access, and does not loosen the
   `connect-src 'self'` guarantee above.
-- All processing (regex matching, OCR, NER inference) happens in-browser;
-  nothing is uploaded anywhere.
+- All processing (regex matching, OCR) happens in-browser; nothing is
+  uploaded anywhere. Local NER, if added later, would run fully
+  in-browser too — see [Known limitations](#known-limitations) for why
+  it isn't included yet.
 - The custom keyword list is stored only in `localStorage` on the user's
   own machine.
 - The OCR engine and language data, and the pdf.js/pdf-lib PDF
@@ -218,4 +265,6 @@ restriction.
 
 ## License
 
-TBD — add a license (e.g. MIT) before making the repository public.
+[MIT](LICENSE) — this project's own code. Vendored third-party assets
+under `vendor/` keep their own licenses (Apache-2.0 for tesseract.js/
+pdf.js, MIT for pdf-lib) — see [vendor/NOTICE.md](vendor/NOTICE.md).

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -295,10 +295,10 @@
     <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
   </div>
   <select id="langSelect" aria-label="Language">
-    <option value="vi">Tiếng Việt</option>
     <option value="en">English</option>
     <option value="fr">Français</option>
     <option value="de">Deutsch</option>
+    <option value="vi">Tiếng Việt</option>
   </select>
 </div>
 
@@ -316,7 +316,7 @@
 <div class="panel">
   <h2 data-i18n="sectionImage">1b. Hoặc tải ảnh / ảnh chụp màn hình</h2>
   <div class="subtitle" data-i18n="imageDesc" style="margin-bottom:10px;">OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.</div>
-  <div class="dropzone" id="dropzone" data-i18n="dropzoneText">Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file</div>
+  <div class="dropzone" id="dropzone" role="button" tabindex="0" data-i18n="dropzoneText">Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file</div>
   <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
   <div class="img-row">
     <label data-i18n="ocrLangLabel" style="font-size:13px;color:var(--muted);">Ngôn ngữ OCR:</label>
@@ -337,7 +337,7 @@
 <div class="panel">
   <h2 data-i18n="sectionPdf">1c. Hoặc tải file PDF</h2>
   <div class="subtitle" data-i18n="pdfDesc" style="margin-bottom:10px;">Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).</div>
-  <div class="dropzone" id="pdfDropzone" data-i18n="pdfDropzoneText">Kéo-thả file PDF vào đây, hoặc bấm để chọn file</div>
+  <div class="dropzone" id="pdfDropzone" role="button" tabindex="0" data-i18n="pdfDropzoneText">Kéo-thả file PDF vào đây, hoặc bấm để chọn file</div>
   <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" style="display:none;">
   <div class="img-progress" id="pdfFileName"></div>
   <label class="custom-options">
@@ -397,7 +397,10 @@
   <div id="highlighted">—</div>
 </div>
 
-<footer data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài · xem mã nguồn để tự kiểm chứng</footer>
+<footer>
+  <span data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·</span>
+  <a href="https://github.com/pakmeipanther/pii-redactor" target="_blank" rel="noopener noreferrer" data-i18n="footerLink" style="color:var(--muted);">xem mã nguồn trên GitHub</a>
+</footer>
 
 <!--
   Vendored locally (see /vendor and NOTICE.md) so OCR never needs an
@@ -471,7 +474,8 @@ const I18N = {
     statsNoText: 'Chưa có văn bản để quét.',
     statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
     statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
-    footer: 'Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài · xem mã nguồn để tự kiểm chứng',
+    footer: 'Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·',
+    footerLink: 'xem mã nguồn trên GitHub',
     downloadName: 'van-ban-da-lam-sach.txt',
     rules: {
       email: 'Email',
@@ -550,7 +554,8 @@ const I18N = {
     statsNoText: 'No text to scan yet.',
     statsNoMatch: 'No matches found for the selected types.',
     statsFound: n => `Found ${n} sensitive region(s) —`,
-    footer: 'Runs entirely locally · no data leaves your machine · review the source to verify',
+    footer: 'Runs entirely locally · no data leaves your machine ·',
+    footerLink: 'view the source on GitHub',
     downloadName: 'redacted-text.txt',
     rules: {
       email: 'Email',
@@ -629,7 +634,8 @@ const I18N = {
     statsNoText: 'Aucun texte à analyser.',
     statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
     statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
-    footer: "S'exécute entièrement en local · aucune donnée ne quitte votre machine · consultez le code source pour vérifier",
+    footer: "S'exécute entièrement en local · aucune donnée ne quitte votre machine ·",
+    footerLink: 'voir le code source sur GitHub',
     downloadName: 'texte-nettoye.txt',
     rules: {
       email: 'Email',
@@ -708,7 +714,8 @@ const I18N = {
     statsNoText: 'Noch kein Text zum Scannen.',
     statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
     statsFound: n => `${n} sensible Bereich(e) gefunden —`,
-    footer: 'Läuft vollständig lokal · keine Daten verlassen Ihr Gerät · Quellcode zur Überprüfung einsehbar',
+    footer: 'Läuft vollständig lokal · keine Daten verlassen Ihr Gerät ·',
+    footerLink: 'Quellcode auf GitHub ansehen',
     downloadName: 'bereinigter-text.txt',
     rules: {
       email: 'E-Mail',
@@ -736,7 +743,11 @@ const I18N = {
   }
 };
 
-let currentLang = 'vi';
+// Defaults to English: this project targets international recruiters,
+// so the first thing anyone sees (including on GitHub, before touching
+// the language selector) should be readable to them. Every other
+// language is still one click away in the selector above.
+let currentLang = 'en';
 
 // ============================================================
 // RULES — structured, language-independent regex patterns.
@@ -1145,6 +1156,12 @@ function loadImageFile(file) {
 }
 
 dropzone.addEventListener('click', () => imageFileInput.click());
+// role="button" on the dropzone makes it reachable by Tab, but a div
+// doesn't activate on Enter/Space the way a real <button> would — wire
+// that up manually so keyboard-only users can open the file picker too.
+dropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); imageFileInput.click(); }
+});
 imageFileInput.addEventListener('change', (e) => loadImageFile(e.target.files[0]));
 
 dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
@@ -1345,6 +1362,9 @@ function loadPdfFile(file) {
 }
 
 pdfDropzone.addEventListener('click', () => pdfFileInput.click());
+pdfDropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pdfFileInput.click(); }
+});
 pdfFileInput.addEventListener('change', (e) => loadPdfFile(e.target.files[0]));
 pdfDropzone.addEventListener('dragover', (e) => { e.preventDefault(); pdfDropzone.classList.add('drag-over'); });
 pdfDropzone.addEventListener('dragleave', () => pdfDropzone.classList.remove('drag-over'));
