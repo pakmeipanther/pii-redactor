@@ -271,6 +271,37 @@ node test/run-tests.mjs
   and pinned down by [test/run-tests.mjs](test/run-tests.mjs) — see
   that file's IPv6 test for the exact behavior.
 - Testing has used synthetic/fake data only — never real company secrets.
+- **(Fixed)** PDF redaction used to black out a matched text item's
+  *entire* bounding box — which could mean a whole line — whenever a
+  match touched any part of it. It now computes the matched value's own
+  character range within the item and blacks out only that sub-range.
+  Because pdf.js doesn't expose per-character positions, the sub-range
+  is estimated by treating characters as evenly spaced across the
+  item's width, so on a proportional (non-monospace) font the edges can
+  be off by a few pixels — a small, padded margin of error, not the
+  "redacts the whole line" bug this replaced. See
+  [test/run-tests.mjs](test/run-tests.mjs)'s `textItemBBox` tests.
+- **(Fixed)** Re-scanning a PDF a second time (e.g. after adding a
+  custom term and clicking "Scan & black out PDF" again) could fail
+  with "Cannot perform Construct on a detached ArrayBuffer". pdf.js
+  transfers (not copies) the ArrayBuffer it's given to its worker
+  thread, which detaches that buffer in this thread — the first scan
+  was detaching the single cached `pdfOriginalBytes` buffer itself. It
+  now slices a disposable copy for pdf.js on every scan, so the cached
+  original survives any number of re-scans. See
+  [test/run-tests.mjs](test/run-tests.mjs)'s re-scan tests.
+- **(Fixed)** Even after the sub-range fix above, a redacted box could
+  still leave one edge character peeking out (e.g. blacking out "16"
+  inside "164" but leaving the "4" visible). The sub-range box's edges
+  are an *estimate* (uniform character width), and the fixed 3px margin
+  meant to absorb that estimate's error was too small whenever real
+  character widths vary a lot on a proportional font (a narrow "1" next
+  to a wider "6"/"4"). The horizontal margin is now a dedicated
+  `redactionPadX()` that scales with the text item's own average
+  character width (with a safe minimum), instead of a flat 3px. A
+  full-item box, whose edges are exact rather than estimated, keeps the
+  old small cosmetic padding. See
+  [test/run-tests.mjs](test/run-tests.mjs)'s `redactionPadX` tests.
 
 ## Security notes
 

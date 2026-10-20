@@ -1389,25 +1389,57 @@ pdfDropzone.addEventListener('drop', (e) => {
 // wide and tall). The fix: only use the sub-matrix to get the item's
 // unit *direction* (normalized), walk that many page-points along it,
 // and let the viewport do the (one-time, correct) page->pixel mapping.
-function textItemBBox(viewport, item) {
+// fracStart/fracEnd (default 0..1, i.e. the whole item) let the caller
+// black out only a horizontal sub-range of the item's own width — e.g.
+// fracStart=0.4, fracEnd=0.6 covers only the middle fifth of the run.
+// pdf.js doesn't expose per-character boxes, so the sub-range is found
+// by treating the item's characters as evenly spaced along its full
+// width (char offset / string length). That's an approximation for
+// proportional (non-monospace) fonts — a long run of narrow letters
+// (e.g. "iiii") vs wide ones ("WWWW") of the same character count won't
+// get pixel-perfect edges — which is why a few px of horizontal padding
+// is still added where this is used below. It is still vastly tighter
+// than blacking the item's entire width, which is what happened before
+// this fix whenever a match touched only part of a multi-word item
+// (e.g. pdf.js merging a whole line into a single text item).
+function textItemBBox(viewport, item, fracStart = 0, fracEnd = 1) {
   const tm = item.transform; // [a, b, c, d, e, f], in page/point space
   const a = tm[0], b = tm[1], c = tm[2], d = tm[3], e = tm[4], f = tm[5];
   const dirLen = Math.hypot(a, b) || 1;
   const upLen = Math.hypot(c, d) || dirLen;
-  const w = item.width || 0;
+  const fullW = item.width || 0;
+  const clampedStart = Math.max(0, Math.min(1, fracStart));
+  const clampedEnd = Math.max(clampedStart, Math.min(1, fracEnd));
+  const w = fullW * (clampedEnd - clampedStart);
   const h = item.height || dirLen; // fallback: about one font-size unit tall
   const dirX = a / dirLen, dirY = b / dirLen; // unit vector along the baseline
   const upX = c / upLen, upY = d / upLen;     // unit vector "up" from the baseline
+  // Walk the start point forward along the baseline by fracStart's share
+  // of the full width before building the (now narrower) box from there.
+  const ox = e + dirX * fullW * clampedStart;
+  const oy = f + dirY * fullW * clampedStart;
   const pagePoints = [
-    [e, f],
-    [e + dirX * w, f + dirY * w],
-    [e + upX * h, f + upY * h],
-    [e + dirX * w + upX * h, f + dirY * w + upY * h]
+    [ox, oy],
+    [ox + dirX * w, oy + dirY * w],
+    [ox + upX * h, oy + upY * h],
+    [ox + dirX * w + upX * h, oy + dirY * w + upY * h]
   ];
   const pixelPoints = pagePoints.map(([x, y]) => viewport.convertToViewportPoint(x, y));
   const xs = pixelPoints.map(p => p[0]);
   const ys = pixelPoints.map(p => p[1]);
   return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+// How much horizontal margin to add around a redacted box. textItemBBox
+// estimates a sub-range's edges by assuming every character in the item
+// is the same width — real fonts don't guarantee that (e.g. a narrow
+// "1" next to a wider "6" or "4"), so a sub-range box's true edge is
+// only an estimate and gets a full average-character-width of slack to
+// absorb that. A box that already covers the item's whole width has no
+// such uncertainty (textItemBBox used the item's real total width
+// directly, not an estimate), so it keeps a small fixed cosmetic pad.
+function redactionPadX(avgCharWidthPx, isSubRange) {
+  return isSubRange ? Math.max(4, avgCharWidthPx) : 2;
 }
 
 // Renders one page to a canvas and blacks out any text-layer match
@@ -1436,9 +1468,27 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
   let redactedCount = 0;
   ctx.fillStyle = '#000000';
   spans.forEach(span => {
-    const overlaps = matches.some(m => m.start < span.end && m.end > span.start);
-    if (overlaps) {
-      const box = textItemBBox(viewport, span.item);
+    const str = span.item.str || '';
+    const len = str.length;
+    if (!len) return;
+    // A pdf.js "text item" can be much bigger than one matched value —
+    // sometimes it's a whole line. Blacking the item's full bounding box
+    // for every match that merely touches it (the previous behavior)
+    // redacted entire lines around a single sensitive value. Instead,
+    // find each match's own character range *inside this item* and
+    // black out only that narrower sub-box — one rect per match, not
+    // one rect per item.
+    const overlapping = matches.filter(m => m.start < span.end && m.end > span.start);
+    if (!overlapping.length) return;
+    // Needed to size the horizontal padding below: how wide this item's
+    // characters are *on average*, in actual output pixels.
+    const fullItemBox = textItemBBox(viewport, span.item);
+    const avgCharWidthPx = (fullItemBox.x1 - fullItemBox.x0) / len;
+    overlapping.forEach(m => {
+      const charStart = Math.max(0, m.start - span.start);
+      const charEnd = Math.min(len, m.end - span.start);
+      if (charEnd <= charStart) return; // match only touches the inter-item separator space
+      const box = textItemBBox(viewport, span.item, charStart / len, charEnd / len);
       // textItemBBox's bottom edge sits at the glyph baseline, not below
       // it — so without extra bottom padding, descenders (g, y, p, q, j)
       // poke out below the black box. Confirmed visually while testing:
@@ -1446,12 +1496,18 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
       // several redacted lines. The asymmetric padding below accounts
       // for that (bottom needs much more room than top).
       const h = box.y1 - box.y0;
-      const padX = 2;
+      // Confirmed in testing: with only a small fixed pad, a match
+      // ending in a narrow-then-wide digit run (e.g. "164", where "1"
+      // is noticeably narrower than "6" or "4" in most fonts) left the
+      // last character peeking out past the black box — see
+      // redactionPadX's comment for why.
+      const isSubRange = charStart > 0 || charEnd < len;
+      const padX = redactionPadX(avgCharWidthPx, isSubRange);
       const padTop = Math.max(2, h * 0.10);
       const padBottom = Math.max(4, h * 0.35);
       ctx.fillRect(box.x0 - padX, box.y0 - padTop, (box.x1 - box.x0) + padX * 2, (box.y1 - box.y0) + padTop + padBottom);
       redactedCount++;
-    }
+    });
   });
 
   return { canvas, ctx, redactedCount };
@@ -1474,7 +1530,17 @@ pdfScanBtn.addEventListener('click', async () => {
     const pdfjsLib = await import('./vendor/pdf/pdf.min.mjs');
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf/pdf.worker.min.mjs';
 
-    const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfOriginalBytes) }).promise;
+    // pdf.js hands `data` off to its worker thread via a zero-copy
+    // structured-clone *transfer* (not a copy) when it's given a typed
+    // array backed by a plain ArrayBuffer. That transfer detaches the
+    // underlying ArrayBuffer in this thread — so a second scan (e.g.
+    // after adding a custom term and clicking "Scan & black out PDF"
+    // again) tried to build a Uint8Array over the now-detached
+    // `pdfOriginalBytes` buffer and failed with "Cannot perform
+    // Construct on a detached ArrayBuffer". Slicing it first hands
+    // pdf.js a disposable copy each time and keeps the master
+    // `pdfOriginalBytes` buffer intact for every re-scan.
+    const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(pdfOriginalBytes.slice(0)) }).promise;
     const numPages = pdfDoc.numPages;
     const activeRules = getActiveRules();
     const caseSensitive = customCaseSensitiveEl.checked;

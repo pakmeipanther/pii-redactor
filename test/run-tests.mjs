@@ -59,9 +59,14 @@ const findMatchesCode = extractBetween(
   '\nlet lastCleanedText',
   'findMatches'
 );
+const textItemBBoxAndPadCode = extractBetween(
+  'function textItemBBox(viewport, item, fracStart = 0, fracEnd = 1) {',
+  '\n\n// Renders one page',
+  'textItemBBox + redactionPadX'
+);
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\nreturn { RULES, findCustomMatches, findMatches };`;
-const { RULES, findMatches } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX };`;
+const { RULES, findMatches, textItemBBox, redactionPadX } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -172,6 +177,152 @@ check('custom term: case-insensitive by default', () => {
 check('custom term: case-sensitive mode respects case exactly', () => {
   const matches = findMatches('Server SRV-DB-PROD-02 rebooted', [], ['srv-db-prod-02'], true);
   if (matches.length !== 0) throw new Error(`expected 0 matches in case-sensitive mode (different case), got ${matches.length}`);
+});
+
+// --- PDF redaction: textItemBBox must redact only the matched
+// sub-range of a text item, not the item's entire width -------------
+
+// A minimal fake viewport: page-space coordinates pass through
+// unchanged, same as a scale=1, unrotated pdf.js viewport would for a
+// plain axis-aligned transform.
+const identityViewport = { convertToViewportPoint: (x, y) => [x, y] };
+
+check('textItemBBox: full range (0..1) matches the item\'s whole width', () => {
+  const item = { transform: [12, 0, 0, 12, 100, 500], width: 120, height: 12 };
+  const box = textItemBBox(identityViewport, item, 0, 1);
+  if (box.x0 !== 100 || box.x1 !== 220) {
+    throw new Error(`expected x0=100, x1=220 for the full item, got x0=${box.x0}, x1=${box.x1}`);
+  }
+});
+
+check('textItemBBox: a sub-range redacts a narrower box than the full item, not the whole line', () => {
+  // Regression test for the bug where ANY match touching a pdf.js text
+  // item blacked out that item's entire bounding box — so a line like
+  // "Email: leaked@example.com end" got fully redacted just because the
+  // email address inside it matched. The fix: pass the match's own
+  // character range (as a 0..1 fraction of the item's string length) so
+  // only that sub-range gets boxed.
+  const str = 'Email: leaked@example.com end';
+  const needle = 'leaked@example.com';
+  const charStart = str.indexOf(needle);
+  const charEnd = charStart + needle.length;
+  const item = { transform: [12, 0, 0, 12, 100, 500], width: 12 * str.length, height: 12 };
+
+  const fullBox = textItemBBox(identityViewport, item, 0, 1);
+  const matchBox = textItemBBox(identityViewport, item, charStart / str.length, charEnd / str.length);
+  const fullWidth = fullBox.x1 - fullBox.x0;
+  const matchWidth = matchBox.x1 - matchBox.x0;
+
+  if (matchBox.x0 <= fullBox.x0) {
+    throw new Error(`expected the match box to start after the item's own start (leaving "Email: " unredacted), got x0=${matchBox.x0} vs item x0=${fullBox.x0}`);
+  }
+  if (matchBox.x1 >= fullBox.x1) {
+    throw new Error(`expected the match box to end before the item's own end (leaving " end" unredacted), got x1=${matchBox.x1} vs item x1=${fullBox.x1}`);
+  }
+  if (matchWidth >= fullWidth) {
+    throw new Error(`expected the redacted sub-box (${matchWidth}) to be narrower than the whole line's box (${fullWidth}) — this is the exact bug: a partial match blacking out the entire line`);
+  }
+});
+
+// --- PDF redaction: a sub-range box's horizontal padding must be
+// generous enough to survive real per-character width variance, not
+// a tiny fixed amount ----------------------------------------------
+
+check('redactionPadX: a sub-range gets a full average-character-width of padding, not a tiny fixed amount', () => {
+  // Regression test for the follow-up bug: once the whole-line-redacted
+  // bug above was fixed, a sub-range box's *edges* were still only an
+  // estimate (textItemBBox assumes every character is the same width).
+  // On real text this estimate can be off by much more than a couple
+  // of pixels — e.g. a narrow "1" next to wider digits like "6" or "4"
+  // made the box for a match like "164" end before the last "4" was
+  // fully covered, leaving it visibly exposed. The old fixed 3px pad
+  // was nowhere near enough slack to absorb that; the fix scales the
+  // padding with the item's own average character width instead.
+  const typicalAvgCharWidthPx = 9; // a normal body-text font at normal zoom
+  const subRangePad = redactionPadX(typicalAvgCharWidthPx, true);
+  const oldFixedPad = 3;
+  if (subRangePad <= oldFixedPad) {
+    throw new Error(`expected a sub-range's padding (${subRangePad}px) to be noticeably more generous than the old fixed ${oldFixedPad}px pad it replaced`);
+  }
+  if (subRangePad < typicalAvgCharWidthPx) {
+    throw new Error(`expected the padding to be at least one full average character width (${typicalAvgCharWidthPx}px), got ${subRangePad}px — not enough slack to absorb a narrow-vs-wide character like "1" vs "6"`);
+  }
+});
+
+check('redactionPadX: a full-item box keeps the old small cosmetic padding (its edges are exact, not estimated)', () => {
+  // When the match covers the item's entire width, textItemBBox used
+  // the item's real total width directly — there's nothing to
+  // estimate, so no extra slack is needed beyond a small cosmetic pad.
+  const pad = redactionPadX(/* avgCharWidthPx */ 9, /* isSubRange */ false);
+  if (pad !== 2) {
+    throw new Error(`expected a full-item box to keep the old 2px cosmetic pad, got ${pad}px`);
+  }
+});
+
+check('redactionPadX: even a tiny-font item still gets a safe minimum pad, never near-zero', () => {
+  const pad = redactionPadX(/* avgCharWidthPx */ 0.4, /* isSubRange */ true);
+  if (pad < 4) {
+    throw new Error(`expected a sensible floor (>=4px) even when the estimated average character width is tiny, got ${pad}px`);
+  }
+});
+
+// --- PDF re-scan: the cached upload bytes must survive being handed
+// to pdf.js more than once (e.g. scan, add a custom term, scan again) -
+
+// pdf.js hands the `data` option to its worker via postMessage with a
+// *transfer* list (a zero-copy optimization), which detaches the
+// ArrayBuffer backing it in this thread — any later attempt to build a
+// view over that same buffer throws "Cannot perform Construct on a
+// detached ArrayBuffer". structuredClone's own transfer option uses
+// the exact same detachment mechanism as postMessage, so it reproduces
+// pdf.js's real effect on a buffer without needing an actual worker.
+function simulateWorkerTransfer(buf) {
+  return structuredClone(buf, { transfer: [buf] });
+}
+
+check('PDF re-scan bug, reproduced: handing the master buffer itself to the "worker" breaks the next scan', () => {
+  // This is the ORIGINAL bug: `getDocument({ data: new Uint8Array(pdfOriginalBytes) })`
+  // let pdf.js's worker transfer (detach) `pdfOriginalBytes` itself —
+  // so clicking "Scan & black out PDF" a second time threw exactly
+  // this error when it tried to build a fresh Uint8Array over it.
+  const pdfOriginalBytes = new ArrayBuffer(8);
+  simulateWorkerTransfer(pdfOriginalBytes); // what the first scan did to it
+  let threw = null;
+  try {
+    new Uint8Array(pdfOriginalBytes); // what the second scan then tried
+  } catch (e) {
+    threw = e;
+  }
+  if (!threw || !/detached ArrayBuffer/.test(threw.message)) {
+    throw new Error(`expected the second scan to throw "...detached ArrayBuffer...", got ${threw ? threw.message : 'no error'}`);
+  }
+});
+
+check('PDF re-scan, fixed: slicing a disposable copy keeps the master buffer scannable any number of times', () => {
+  // This is the FIXED call-site pattern: `new Uint8Array(pdfOriginalBytes.slice(0))`.
+  // Only the disposable slice ever gets handed to the "worker" and
+  // transferred away — the master buffer itself is never touched, so
+  // it can be sliced again for every subsequent scan.
+  const pdfOriginalBytes = new ArrayBuffer(8);
+  new Uint8Array(pdfOriginalBytes).set([1, 2, 3, 4, 5, 6, 7, 8]);
+
+  function scanOnce() {
+    const view = new Uint8Array(pdfOriginalBytes.slice(0));
+    const sizeSeenByThisScan = view.length; // read BEFORE the transfer — detaching a
+    // buffer doesn't throw on an existing view's already-read .length, it just
+    // zeroes it out going forward, so this must be captured first.
+    simulateWorkerTransfer(view.buffer); // only the copy gets transferred away
+    return sizeSeenByThisScan;
+  }
+
+  const firstScan = scanOnce();
+  const secondScan = scanOnce(); // the exact "scan again after adding a custom term" case
+  if (firstScan !== 8 || secondScan !== 8) {
+    throw new Error(`expected both scans to see all 8 bytes, got ${firstScan} then ${secondScan}`);
+  }
+  if (pdfOriginalBytes.byteLength !== 8) {
+    throw new Error(`expected the master buffer to stay intact (byteLength 8) after two scans, got ${pdfOriginalBytes.byteLength} — it got detached`);
+  }
 });
 
 // --- report ------------------------------------------------------------
