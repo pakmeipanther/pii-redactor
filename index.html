@@ -364,6 +364,20 @@
 </div>
 
 <div class="panel">
+  <h2 data-i18n="sectionDocx">1d. Hoặc tải file Word (.docx)</h2>
+  <div class="subtitle" data-i18n="docxDesc" style="margin-bottom:10px;">Trích nội dung văn bản từ file Word, che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, bảng hay ảnh gốc của file Word; bình luận (comment) và nội dung đã bị xóa khi bật Track Changes cũng không được đưa vào, vì đó không phải nội dung đang hiển thị.</div>
+  <div class="dropzone" id="docxDropzone" role="button" tabindex="0" data-i18n="docxDropzoneText">Kéo-thả file .docx vào đây, hoặc bấm để chọn file</div>
+  <input type="file" id="docxFileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;">
+  <div class="img-progress" id="docxFileName"></div>
+  <div class="img-row">
+    <button id="docxScanBtn" data-i18n="docxScanBtn" disabled>Chuyển &amp; che thông tin nhạy cảm → PDF</button>
+    <button id="docxDownloadBtn" class="secondary" data-i18n="docxDownloadBtn" disabled>Tải PDF đã xử lý</button>
+    <button id="docxClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
+  </div>
+  <div class="img-progress" id="docxProgress"></div>
+</div>
+
+<div class="panel">
   <h2 data-i18n="sectionCustom">2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)</h2>
   <div class="subtitle" data-i18n="customDesc" style="margin-bottom:10px;">Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn.</div>
   <div class="custom-row">
@@ -418,6 +432,14 @@
   instead of a <script> tag here, since it has no classic/UMD build.
 -->
 <script src="vendor/pdf/pdf-lib.min.js"></script>
+<!--
+  Vendored locally (see /vendor and NOTICE.md) — fontkit (MIT) lets
+  pdf-lib embed a custom TrueType font, and JSZip (MIT) unzips an
+  uploaded .docx (itself a zip archive of XML) so its text can be
+  extracted and redacted, for the Word → simple redacted PDF feature.
+-->
+<script src="vendor/pdf/fontkit.umd.min.js"></script>
+<script src="vendor/jszip/jszip.min.js"></script>
 
 <script>
 // ============================================================
@@ -472,6 +494,18 @@ const I18N = {
     pdfProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file PDF.',
     pdfProgressError: 'Lỗi khi xử lý PDF.',
     pdfPageLabel: (i, n) => `Trang ${i}/${n}`,
+    sectionDocx: '1d. Hoặc tải file Word (.docx)',
+    docxDesc: 'Trích nội dung văn bản từ file Word, che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, bảng hay ảnh gốc của file Word; bình luận (comment) và nội dung đã bị xóa khi bật Track Changes cũng không được đưa vào, vì đó không phải nội dung đang hiển thị.',
+    docxDropzoneText: 'Kéo-thả file .docx vào đây, hoặc bấm để chọn file',
+    docxScanBtn: 'Chuyển & che thông tin nhạy cảm → PDF',
+    docxDownloadBtn: 'Tải PDF đã xử lý',
+    docxProgressLoadingLib: 'Đang tải thư viện xử lý file Word...',
+    docxProgressExtracting: 'Đang trích xuất nội dung văn bản...',
+    docxProgressBuildingPdf: 'Đang tạo file PDF...',
+    docxProgressDone: n => `Hoàn tất — đã che ${n} vùng nhạy cảm và tạo file PDF mới.`,
+    docxProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file Word — vẫn tạo file PDF từ nội dung gốc.',
+    docxProgressError: 'Lỗi khi xử lý file Word — file có thể bị hỏng hoặc không đúng định dạng .docx.',
+    docxDownloadName: 'van-ban-da-che-thong-tin.pdf',
     scanBtn: 'Quét & đánh dấu',
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
@@ -554,6 +588,18 @@ const I18N = {
     pdfProgressNone: 'No sensitive regions found in the PDF.',
     pdfProgressError: 'Error processing the PDF.',
     pdfPageLabel: (i, n) => `Page ${i}/${n}`,
+    sectionDocx: '1d. Or upload a Word file (.docx)',
+    docxDesc: 'Extracts the visible text from a Word file, redacts sensitive information, then outputs a simple PDF — good enough to paste to an AI. This PDF does NOT preserve the original layout, tables, or images of the Word file; comments and text deleted under Track Changes are not included either, since that is not currently-visible content.',
+    docxDropzoneText: 'Drag and drop a .docx file here, or click to choose a file',
+    docxScanBtn: 'Convert & redact → PDF',
+    docxDownloadBtn: 'Download processed PDF',
+    docxProgressLoadingLib: 'Loading Word-processing library...',
+    docxProgressExtracting: 'Extracting text content...',
+    docxProgressBuildingPdf: 'Building PDF file...',
+    docxProgressDone: n => `Done — redacted ${n} sensitive region(s) and created a new PDF.`,
+    docxProgressNone: 'No sensitive data found in the Word file — a PDF was still created from the original content.',
+    docxProgressError: 'Error processing the Word file — it may be corrupted or not a valid .docx.',
+    docxDownloadName: 'redacted-text.pdf',
     scanBtn: 'Scan & highlight',
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
@@ -636,6 +682,18 @@ const I18N = {
     pdfProgressNone: 'Aucune zone sensible trouvée dans le PDF.',
     pdfProgressError: 'Erreur lors du traitement du PDF.',
     pdfPageLabel: (i, n) => `Page ${i}/${n}`,
+    sectionDocx: '1d. Ou importez un fichier Word (.docx)',
+    docxDesc: 'Extrait le texte visible d\'un fichier Word, masque les informations sensibles, puis génère un PDF simple — suffisant à transmettre à une IA. Ce PDF ne conserve PAS la mise en page, les tableaux ni les images d\'origine ; les commentaires et le texte supprimé via le suivi des modifications ne sont pas non plus inclus, car ce n\'est pas le contenu actuellement visible.',
+    docxDropzoneText: 'Glissez-déposez un fichier .docx ici, ou cliquez pour choisir un fichier',
+    docxScanBtn: 'Convertir et caviarder → PDF',
+    docxDownloadBtn: 'Télécharger le PDF traité',
+    docxProgressLoadingLib: 'Chargement de la bibliothèque de traitement Word...',
+    docxProgressExtracting: 'Extraction du contenu textuel...',
+    docxProgressBuildingPdf: 'Création du fichier PDF...',
+    docxProgressDone: n => `Terminé — ${n} zone(s) sensible(s) masquée(s) et nouveau PDF créé.`,
+    docxProgressNone: 'Aucune information sensible trouvée dans le fichier Word — un PDF a tout de même été créé à partir du contenu original.',
+    docxProgressError: 'Erreur lors du traitement du fichier Word — il est peut-être corrompu ou n\'est pas un .docx valide.',
+    docxDownloadName: 'texte-cavarde.pdf',
     scanBtn: 'Analyser et surligner',
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
@@ -718,6 +776,18 @@ const I18N = {
     pdfProgressNone: 'Keine sensiblen Bereiche im PDF gefunden.',
     pdfProgressError: 'Fehler bei der PDF-Verarbeitung.',
     pdfPageLabel: (i, n) => `Seite ${i}/${n}`,
+    sectionDocx: '1d. Oder eine Word-Datei (.docx) hochladen',
+    docxDesc: 'Extrahiert den sichtbaren Text einer Word-Datei, schwärzt sensible Informationen und erzeugt daraus ein einfaches PDF — ausreichend, um es einer KI zu übergeben. Dieses PDF behält NICHT das ursprüngliche Layout, Tabellen oder Bilder der Word-Datei bei; Kommentare und per Änderungsverfolgung gelöschter Text werden ebenfalls nicht übernommen, da dies kein aktuell sichtbarer Inhalt ist.',
+    docxDropzoneText: 'Word-Datei (.docx) hierher ziehen oder klicken, um eine Datei auszuwählen',
+    docxScanBtn: 'Umwandeln & schwärzen → PDF',
+    docxDownloadBtn: 'Bearbeitetes PDF herunterladen',
+    docxProgressLoadingLib: 'Word-Verarbeitungsbibliothek wird geladen...',
+    docxProgressExtracting: 'Textinhalt wird extrahiert...',
+    docxProgressBuildingPdf: 'PDF-Datei wird erstellt...',
+    docxProgressDone: n => `Fertig — ${n} sensible Bereich(e) geschwärzt und neues PDF erstellt.`,
+    docxProgressNone: 'Keine sensiblen Daten in der Word-Datei gefunden — es wurde trotzdem ein PDF aus dem Originalinhalt erstellt.',
+    docxProgressError: 'Fehler bei der Verarbeitung der Word-Datei — sie ist möglicherweise beschädigt oder keine gültige .docx-Datei.',
+    docxDownloadName: 'geschwaerzter-text.pdf',
     scanBtn: 'Scannen & markieren',
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
@@ -1693,6 +1763,268 @@ pdfClearBtn.addEventListener('click', () => {
   pdfProgressEl.textContent = '';
   pdfFileNameEl.textContent = '';
   pdfFileInput.value = '';
+});
+
+// ============================================================
+// WORD (.docx) → simple redacted PDF.
+//
+// A .docx file is itself a ZIP archive of XML parts. This feature reads
+// only the parts that hold the document's CURRENTLY VISIBLE text —
+// word/document.xml plus any word/header*.xml, word/footer*.xml,
+// word/footnotes.xml and word/endnotes.xml that exist — and only the
+// <w:t> run text inside them. It deliberately skips <w:delText> (text
+// removed under Track Changes — already deleted, not visible) and
+// comments.xml (a comment sits beside the document, not inside it).
+//
+// The extracted text is redacted through the exact same
+// findMatches/customTerms pipeline used by every other panel, with the
+// same localized mask labels (t.masks). The redacted text is then
+// rendered into a brand-new, simple PDF built from scratch with
+// pdf-lib — none of the original file's XML, styles, or metadata is
+// ever copied over, so there is no hidden layer left to recover later.
+//
+// By explicit project scope, this feature only produces a PDF (never a
+// redacted .docx): the output is meant to be read by an AI tool, not
+// re-edited as a Word document, and a from-scratch PDF sidesteps the
+// classic "Word redaction leaves hidden metadata/comments/tracked
+// changes behind" failure mode entirely. The trade-off: this PDF does
+// not preserve the original's layout, tables, or images — plain
+// word-wrapped text only (see README "Known limitations").
+// ============================================================
+
+function decodeXmlText(raw) {
+  return raw.replace(/&(amp|lt|gt|quot|apos|#x[0-9a-fA-F]+|#[0-9]+);/g, (m, body) => {
+    if (body === 'amp') return '&';
+    if (body === 'lt') return '<';
+    if (body === 'gt') return '>';
+    if (body === 'quot') return '"';
+    if (body === 'apos') return "'";
+    if (body[0] === '#') {
+      const code = body[1] === 'x' ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+      try { return String.fromCodePoint(code); } catch (e) { return ''; }
+    }
+    return m;
+  });
+}
+
+// Pulls the visible text out of one OOXML part (document.xml, a header,
+// a footer, footnotes.xml, endnotes.xml...), one string per <w:p>
+// paragraph, in document order. Only <w:t> run text counts as visible;
+// <w:delText> (text deleted under Track Changes) is intentionally
+// ignored. A plain regex walk rather than DOMParser, so this stays a
+// pure, Node-testable string function like the rest of this file's
+// detection logic.
+function extractDocxParagraphs(xml) {
+  const paragraphs = [];
+  const pRe = /<w:p\b[^>]*>([\s\S]*?)<\/w:p>/g;
+  const tRe = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+  let pm;
+  while ((pm = pRe.exec(xml)) !== null) {
+    const body = pm[1];
+    let text = '';
+    let tm;
+    tRe.lastIndex = 0;
+    while ((tm = tRe.exec(body)) !== null) {
+      text += decodeXmlText(tm[1]);
+    }
+    paragraphs.push(text);
+  }
+  return paragraphs;
+}
+
+// Joins paragraphs with newlines and runs the shared detection pipeline
+// over the WHOLE joined text, so a custom term Word happens to split
+// across separate <w:t> runs within one paragraph is still one
+// contiguous string by the time it's checked. Replaces every match with
+// the same localized mask label used everywhere else in the app.
+function redactParagraphs(paragraphs, activeRules, terms, caseSensitive, masks) {
+  const fullText = paragraphs.join('\n');
+  const matches = findMatches(fullText, activeRules, terms, caseSensitive);
+  let out = '';
+  let cursor = 0;
+  matches.forEach(m => {
+    out += fullText.slice(cursor, m.start);
+    out += (masks && masks[m.ruleId]) || '[REDACTED]';
+    cursor = m.end;
+  });
+  out += fullText.slice(cursor);
+  return { text: out, redactedCount: matches.length };
+}
+
+// Pulls visible text from every relevant part inside the .docx zip, in
+// a stable reading order (headers, then the main body, then footnotes/
+// endnotes, then footers). Parts that don't exist in a given file (e.g.
+// no footnotes) are simply skipped.
+async function extractDocxVisibleText(zip) {
+  const partNames = Object.keys(zip.files).filter(n =>
+    /^word\/(header\d+|document|footnotes|endnotes|footer\d+)\.xml$/.test(n)
+  );
+  const order = name => {
+    if (/^word\/header/.test(name)) return 0;
+    if (name === 'word/document.xml') return 1;
+    if (name === 'word/footnotes.xml' || name === 'word/endnotes.xml') return 2;
+    if (/^word\/footer/.test(name)) return 3;
+    return 4;
+  };
+  partNames.sort((a, b) => order(a) - order(b) || a.localeCompare(b));
+  const allParagraphs = [];
+  for (const name of partNames) {
+    const xml = await zip.file(name).async('string');
+    allParagraphs.push(...extractDocxParagraphs(xml));
+  }
+  return allParagraphs;
+}
+
+let docxFontBytesPromise = null;
+function loadDocxFontBytes() {
+  if (!docxFontBytesPromise) {
+    docxFontBytesPromise = fetch('vendor/fonts/DejaVuSans.ttf').then(r => {
+      if (!r.ok) throw new Error('font fetch failed: ' + r.status);
+      return r.arrayBuffer();
+    });
+  }
+  return docxFontBytesPromise;
+}
+
+// Builds a brand-new, simple PDF out of plain text: word-wrapped and
+// paginated, with one embedded TrueType font (DejaVu Sans, via
+// fontkit) so Vietnamese/French/German accented characters render
+// correctly — the 14 standard PDF fonts can't. No layout, tables, or
+// images from the source document are carried over.
+async function buildSimplePdfFromText(text, fontBytes) {
+  const outPdf = await PDFLib.PDFDocument.create();
+  outPdf.registerFontkit(fontkit);
+  const font = await outPdf.embedFont(fontBytes);
+  const fontSize = 11;
+  const lineHeight = fontSize * 1.4;
+  const pageWidth = 595.28, pageHeight = 841.89, margin = 50; // A4, in points
+  const maxWidth = pageWidth - margin * 2;
+  let page = outPdf.addPage([pageWidth, pageHeight]);
+  let y = pageHeight - margin;
+  function newPage() { page = outPdf.addPage([pageWidth, pageHeight]); y = pageHeight - margin; }
+  function drawLine(line) {
+    page.drawText(line, { x: margin, y, size: fontSize, font });
+    y -= lineHeight;
+    if (y < margin) newPage();
+  }
+  text.split('\n').forEach(paragraph => {
+    if (paragraph === '') { y -= lineHeight; if (y < margin) newPage(); return; }
+    const words = paragraph.split(' ');
+    let line = '';
+    words.forEach(word => {
+      const candidate = line ? line + ' ' + word : word;
+      const w = font.widthOfTextAtSize(candidate, fontSize);
+      if (w > maxWidth && line) {
+        drawLine(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    });
+    if (line) drawLine(line);
+  });
+  return outPdf.save();
+}
+
+const docxDropzone = document.getElementById('docxDropzone');
+const docxFileInput = document.getElementById('docxFileInput');
+const docxFileNameEl = document.getElementById('docxFileName');
+const docxScanBtn = document.getElementById('docxScanBtn');
+const docxDownloadBtn = document.getElementById('docxDownloadBtn');
+const docxClearBtn = document.getElementById('docxClearBtn');
+const docxProgressEl = document.getElementById('docxProgress');
+
+let docxOriginalBytes = null; // ArrayBuffer of the uploaded file, kept so re-scanning doesn't need a re-upload
+let docxOutputBytes = null;   // Uint8Array of the generated PDF, once built
+
+function loadDocxFile(file) {
+  if (!file) return;
+  const looksLikeDocx = file.name.toLowerCase().endsWith('.docx');
+  if (!looksLikeDocx) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    docxOriginalBytes = reader.result;
+    docxFileNameEl.textContent = file.name;
+    docxScanBtn.disabled = false;
+    docxDownloadBtn.disabled = true;
+    docxOutputBytes = null;
+    docxProgressEl.textContent = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+docxDropzone.addEventListener('click', () => docxFileInput.click());
+docxDropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); docxFileInput.click(); }
+});
+docxFileInput.addEventListener('change', (e) => loadDocxFile(e.target.files[0]));
+docxDropzone.addEventListener('dragover', (e) => { e.preventDefault(); docxDropzone.classList.add('drag-over'); });
+docxDropzone.addEventListener('dragleave', () => docxDropzone.classList.remove('drag-over'));
+docxDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  docxDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadDocxFile(e.dataTransfer.files[0]);
+});
+
+docxScanBtn.addEventListener('click', async () => {
+  const t = I18N[currentLang];
+  if (!docxOriginalBytes) return;
+  docxScanBtn.disabled = true;
+  docxDownloadBtn.disabled = true;
+  docxOutputBytes = null;
+  docxProgressEl.textContent = t.docxProgressLoadingLib;
+
+  try {
+    // Mirrors the PDF panel's .slice(0) precaution: JSZip can end up
+    // holding onto / transferring the buffer it's given, so a second
+    // scan after editing custom terms shouldn't risk operating on an
+    // already-consumed ArrayBuffer. Slicing hands it a disposable copy
+    // each time and keeps docxOriginalBytes intact for every re-scan.
+    const zip = await JSZip.loadAsync(docxOriginalBytes.slice(0));
+
+    docxProgressEl.textContent = t.docxProgressExtracting;
+    const paragraphs = await extractDocxVisibleText(zip);
+    const activeRules = getActiveRules();
+    const caseSensitive = customCaseSensitiveEl.checked;
+    const { text, redactedCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks);
+
+    docxProgressEl.textContent = t.docxProgressBuildingPdf;
+    const fontBytes = await loadDocxFontBytes();
+    docxOutputBytes = await buildSimplePdfFromText(text, fontBytes);
+
+    docxProgressEl.textContent = redactedCount > 0 ? t.docxProgressDone(redactedCount) : t.docxProgressNone;
+    docxDownloadBtn.disabled = false;
+  } catch (err) {
+    console.error('Word processing failed:', err);
+    const detail = (err && (err.message || err.toString())) || 'unknown error';
+    docxProgressEl.textContent = t.docxProgressError + ' [' + detail + ']';
+  } finally {
+    docxScanBtn.disabled = false;
+  }
+});
+
+docxDownloadBtn.addEventListener('click', () => {
+  if (!docxOutputBytes) return;
+  const t = I18N[currentLang];
+  const blob = new Blob([docxOutputBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = t.docxDownloadName || 'redacted-text.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+docxClearBtn.addEventListener('click', () => {
+  docxOriginalBytes = null;
+  docxOutputBytes = null;
+  docxScanBtn.disabled = true;
+  docxDownloadBtn.disabled = true;
+  docxProgressEl.textContent = '';
+  docxFileNameEl.textContent = '';
+  docxFileInput.value = '';
 });
 
 // Initialization

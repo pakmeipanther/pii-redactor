@@ -1,15 +1,16 @@
 # PII Redactor
 
 A single-file, client-side tool that strips personal data and internal
-infrastructure secrets out of text, PDFs, and screenshots **before** that
-content is pasted into any AI tool — so sensitive information never leaves
-your machine in the first place.
+infrastructure secrets out of text, Word documents, PDFs, and screenshots
+**before** that content is pasted into any AI tool — so sensitive
+information never leaves your machine in the first place.
 
 > Status: text redaction (regex + custom term list), image/screenshot
-> OCR redaction, and PDF redaction are working, with a synthetic-data
-> test suite and a demo GIF above. Local NER was investigated and
-> deferred for now — see [Known limitations](#known-limitations) for
-> why. See [Roadmap](#roadmap) below.
+> OCR redaction, PDF redaction, and Word (.docx) → redacted-PDF
+> conversion are working, with a synthetic-data test suite and a demo
+> GIF above. Local NER was investigated and deferred for now — see
+> [Known limitations](#known-limitations) for why. See
+> [Roadmap](#roadmap) below.
 
 ![Demo: pasting text with fake PII, scanning, adding a custom internal term, and switching the UI to German](docs/images/demo.gif)
 
@@ -51,6 +52,10 @@ PII Redactor additionally redacts:
 - **PDFs** — each page is rendered to canvas, matched regions' actual
   pixels are overwritten, and the file is reassembled from scratch with
   `pdf-lib` — so there's no hidden text layer left to recover.
+- **Word documents (.docx)** — the visible text is extracted, redacted,
+  and rendered into a brand-new, simple PDF — built from scratch, never
+  by editing the original file, so none of its hidden XML, styles, or
+  metadata ever reach the output.
 
 All of this runs **100% locally**, with no backend and no outbound network
 calls at all (enforced at the browser level by the page's own
@@ -63,7 +68,7 @@ text only, or need a server/cloud component to touch images and PDFs.
 - **Single `.html` file, plus a `vendor/` folder for offline OCR** — no
   build step. Text redaction needs nothing but the browser; image/OCR/
   PDF redaction need the vendored files beside them (see
-  [Running the image/OCR/PDF features](#running-the-imageocrpdf-features)).
+  [Running the image/OCR/PDF/Word features](#running-the-imageocrpdfword-features)).
 - **No network calls** — enforced with a `Content-Security-Policy` meta
   tag. `connect-src` is scoped to `'self'` only (not a wildcard or a CDN
   domain) so the page can read the vendored OCR engine and language
@@ -135,6 +140,27 @@ than the image panel's word-by-word OCR matching, though it can still
 miss a value split across runs with no space between them in the
 original PDF.
 
+**Word (.docx) → PDF redaction specifically:** a `.docx` file is itself
+a ZIP archive of XML parts. The uploaded file is unzipped in-browser
+with JSZip, and only the parts holding the document's *currently
+visible* text are read (`word/document.xml`, plus any headers,
+footers, footnotes, and endnotes that exist) — specifically only the
+`<w:t>` run text inside them. Text deleted under Track Changes
+(`<w:delText>`) and comments (`comments.xml`) are deliberately excluded,
+since neither is currently-visible document content. The extracted
+text is run through the exact same detection pipeline as every other
+panel and redacted with the same localized mask labels, then rendered
+into a brand-new, simple PDF built from scratch with `pdf-lib` plus an
+embedded DejaVu Sans font (via `fontkit`, so Vietnamese/French/German
+accented characters render correctly — the 14 standard PDF fonts
+can't). Because the output PDF is built purely from the redacted
+text, none of the original file's XML, styles, comments, tracked
+changes, or metadata are ever copied over — unlike redacting a Word
+file in place, there is no hidden layer to leave behind. The
+trade-off: this feature only ever outputs a PDF (never a redacted
+`.docx`), and that PDF does not preserve the original's layout,
+tables, or images — see [Known limitations](#known-limitations).
+
 See the demo GIF near the top of this README for the full flow in
 action (text → scan → custom term → multilingual UI).
 
@@ -150,6 +176,18 @@ a glance.
 - [pdf-lib](https://pdf-lib.js.org/) (v1.17.1) — assembles the redacted
   page images into the output PDF. **Vendored locally** under
   `/vendor/pdf`. See [NOTICE.md](vendor/NOTICE.md).
+- [@pdf-lib/fontkit](https://github.com/Hopding/fontkit) (v1.1.1) — lets
+  pdf-lib embed a custom TrueType font, needed for the Word→PDF
+  feature (see below). **Vendored locally** under `/vendor/pdf`. See
+  [NOTICE.md](vendor/NOTICE.md).
+- [DejaVu Sans](https://dejavu-fonts.github.io/) — the embedded font
+  for generated PDFs; chosen for its full Vietnamese/French/German
+  diacritic coverage, which the 14 standard PDF fonts lack. **Vendored
+  locally** under `/vendor/fonts`. See [NOTICE.md](vendor/NOTICE.md).
+- [JSZip](https://stuk.github.io/jszip/) (v3.10.1) — unzips an uploaded
+  `.docx` file (itself a ZIP archive of XML) so its visible text can be
+  extracted and redacted. **Vendored locally** under `/vendor/jszip`.
+  See [NOTICE.md](vendor/NOTICE.md).
 - [tesseract.js](https://tesseract.projectnaptha.com/) — OCR for
   screenshots and (optionally) scanned PDF pages. **Vendored locally**
   under `/vendor/tesseract` and `/vendor/tessdata` (English, Vietnamese,
@@ -164,13 +202,16 @@ a glance.
 1. For text-only redaction: open `index.html` directly in any modern
    browser (Chrome, Firefox, Safari, Edge) — no install, no server.
 2. For image/screenshot or PDF redaction: see
-   [Running the image/OCR/PDF features](#running-the-imageocrpdf-features)
+   [Running the image/OCR/PDF/Word features](#running-the-imageocrpdfword-features)
    below — both need a local server due to a browser restriction on
    reading local files.
-3. Paste text, drop/paste an image, or drop a PDF file.
+3. Paste text, drop/paste an image, drop a PDF file, or drop a Word
+   (.docx) file.
 4. Review the highlighted matches (text), the blacked-out regions
    (image), or the redacted page previews (PDF) — always look before
-   exporting.
+   exporting. For a Word file, the output is a new PDF built from the
+   redacted text (see [Known limitations](#known-limitations)) rather
+   than a previewable page.
 5. Download the cleaned file.
 
 The UI is available in **English, Français, Deutsch, and Tiếng Việt** —
@@ -179,14 +220,15 @@ beginner-friendly walkthrough with screenshots-free step-by-step
 instructions in each of those languages, see the
 [full user guide](#pii-redactor) linked at the top of this README.
 
-## Running the image/OCR/PDF features
+## Running the image/OCR/PDF/Word features
 
 Opening `index.html` by double-clicking it uses the `file://` protocol,
 under which browsers block a page from fetching other local files (the
-OCR engine's `.wasm` core, the language data, and the pdf.js/pdf-lib
-modules) for security reasons. The text-only redaction panel is
-unaffected and works directly via `file://`. For the image and PDF
-panels:
+OCR engine's `.wasm` core, the language data, the pdf.js/pdf-lib
+modules, and — for the Word→PDF feature — the embedded font and
+JSZip) for security reasons. The text-only redaction panel is
+unaffected and works directly via `file://`. For the image, PDF, and
+Word panels:
 
 ```sh
 # from the project folder
@@ -222,6 +264,9 @@ node test/run-tests.mjs
 - [x] Image/screenshot handling (offline OCR + true pixel overwrite)
 - [x] PDF handling (flatten-to-image, with optional OCR fallback for
       scanned pages)
+- [x] Word (.docx) input → extract, redact, and render as a simple PDF
+      (no redacted-.docx output — by design, see
+      [Known limitations](#known-limitations))
 - [ ] Local NER integration — investigated and deferred, see
       [Known limitations](#known-limitations)
 - [x] UI polish (default language for international readers, keyboard-
@@ -270,6 +315,23 @@ node test/run-tests.mjs
   matched (the part after `::`) rather than the whole address. Found
   and pinned down by [test/run-tests.mjs](test/run-tests.mjs) — see
   that file's IPv6 test for the exact behavior.
+- **Word (.docx) → PDF is text-only and does not preserve the
+  original's layout, tables, or images** — the output is a simple,
+  word-wrapped rendering of the redacted text, built for an AI tool to
+  read, not a visual copy of the source document. This is intentional
+  project scope, not a bug.
+- **Word comments and text deleted under Track Changes are never
+  included** in the extracted/redacted text — only the document's
+  currently-visible content is read. If a sensitive value exists only
+  inside a comment or a tracked deletion, it was never in the output
+  to begin with (there's nothing to redact, since it's never shown).
+- **There is no redacted-.docx output** — by explicit design, this
+  feature only ever produces a PDF. Rebuilding a `.docx` in place
+  risks the classic Word-redaction failure mode (hidden metadata,
+  comments, or tracked changes surviving underneath); building a
+  brand-new PDF from only the extracted, redacted text sidesteps that
+  risk entirely. If you need to send the document to someone else,
+  send the generated PDF.
 - Testing has used synthetic/fake data only — never real company secrets.
 - **(Fixed)** PDF redaction used to black out a matched text item's
   *entire* bounding box — which could mean a whole line — whenever a
@@ -346,4 +408,6 @@ node test/run-tests.mjs
 
 [MIT](LICENSE) — this project's own code. Vendored third-party assets
 under `vendor/` keep their own licenses (Apache-2.0 for tesseract.js/
-pdf.js, MIT for pdf-lib) — see [vendor/NOTICE.md](vendor/NOTICE.md).
+pdf.js; MIT for pdf-lib, fontkit, and JSZip; a Bitstream Vera-derived,
+redistribution-permissive license for DejaVu Sans) — see
+[vendor/NOTICE.md](vendor/NOTICE.md).

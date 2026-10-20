@@ -64,3 +64,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## @pdf-lib/fontkit
+
+- Project: https://github.com/Hopding/fontkit
+- License: MIT License
+- Files: `pdf/fontkit.umd.min.js`
+- Obtained from the official npm package `@pdf-lib/fontkit` (v1.1.1),
+  unmodified. Lets pdf-lib embed a custom TrueType font so generated PDFs
+  can render Vietnamese, German, and French accented characters correctly
+  (the 14 built-in PDF fonts can't).
+
+## DejaVu Sans
+
+- Project: https://dejavu-fonts.github.io/
+- License: Bitstream Vera-derived license (free redistribution permitted)
+- Files: `fonts/DejaVuSans.ttf`
+- A single TrueType font with broad Unicode coverage, including the
+  precomposed Vietnamese characters (Latin Extended Additional block)
+  and German/French accented Latin letters. Unmodified.
+
+## JSZip
+
+- Project: https://github.com/Stuk/jszip
+- License: MIT License (JSZip is dual MIT/GPLv3; this project uses it
+  under the MIT license)
+- Files: `jszip/jszip.min.js`
+- Obtained from the official npm package `jszip` (v3.10.1), unmodified.
+  Used to read the internal XML of an uploaded .docx file (a .docx is
+  itself a zip archive) so its text can be redacted before conversion
+  to PDF.

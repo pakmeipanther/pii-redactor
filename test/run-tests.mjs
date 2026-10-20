@@ -69,9 +69,14 @@ const wordsToRedactCode = extractBetween(
   '\n\n// Creates a Tesseract worker',
   'wordsToRedact'
 );
+const docxPureFunctionsCode = extractBetween(
+  'function decodeXmlText(raw) {',
+  '\n\n// Pulls visible text from every relevant part inside the .docx zip',
+  'decodeXmlText + extractDocxParagraphs + redactParagraphs'
+);
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX, wordsToRedact };`;
-const { RULES, findMatches, textItemBBox, redactionPadX, wordsToRedact } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs };`;
+const { RULES, findMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -386,6 +391,112 @@ check('wordsToRedact: a genuine multi-word custom term still matches across sepa
   if (flagged.size !== 2 || !flagged.has(1) || !flagged.has(2)) {
     throw new Error(`expected the two words making up "quang bao" flagged, got [${[...flagged].join(',')}]`);
   }
+});
+
+// --- Word (.docx) → PDF: XML-entity decoding, visible-text extraction,
+// and redaction over the extracted text -------------------------------
+
+check('decodeXmlText: the five standard XML entities', () => {
+  const got = decodeXmlText('Fees &amp; expenses &lt;draft&gt; &quot;final&quot; &apos;v2&apos;');
+  const expected = 'Fees & expenses <draft> "final" \'v2\'';
+  if (got !== expected) throw new Error(`expected "${expected}", got "${got}"`);
+});
+
+check('decodeXmlText: numeric character references (decimal and hex)', () => {
+  // &#272; is "Đ" (U+0110, Vietnamese đ/Đ); &#x1EA1; is "ạ" (U+1EA1,
+  // a precomposed Vietnamese diacritic) — Word escapes characters like
+  // this in document.xml, so both forms must decode correctly.
+  const got = decodeXmlText('&#272;&#x1EA1;');
+  const expected = 'Đạ';
+  if (got !== expected) throw new Error(`expected "${expected}", got "${got}" (codepoints: ${[...got].map(c => c.codePointAt(0))})`);
+});
+
+check('decodeXmlText: plain text with no entities passes through unchanged', () => {
+  const got = decodeXmlText('No entities here, just plain text.');
+  if (got !== 'No entities here, just plain text.') throw new Error(`unexpectedly altered: "${got}"`);
+});
+
+check('extractDocxParagraphs: a value Word split across several <w:t> runs in one paragraph reads as one contiguous string', () => {
+  // Word commonly splits a single visible word across multiple <w:r>
+  // runs (spell-check markers, a mid-word formatting change, revision
+  // bookkeeping) with no space between the runs in the XML — e.g. a
+  // company name typed as one word can come back as "Acme" + "Corp" in
+  // two separate <w:t> elements. extractDocxParagraphs must concatenate
+  // run text within a paragraph with no inserted separator, or a custom
+  // term spanning the split would never match as a contiguous string.
+  const xml = '<w:p><w:r><w:t>Contact </w:t></w:r><w:r><w:t>Acme</w:t></w:r><w:r><w:t>Corp</w:t></w:r><w:r><w:t> for details.</w:t></w:r></w:p>';
+  const paragraphs = extractDocxParagraphs(xml);
+  if (paragraphs.length !== 1 || paragraphs[0] !== 'Contact AcmeCorp for details.') {
+    throw new Error(`expected ["Contact AcmeCorp for details."], got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('extractDocxParagraphs: text deleted under Track Changes (<w:delText>) is excluded', () => {
+  // <w:delText> holds text the author deleted with Track Changes on —
+  // it is not part of the document's currently-visible content, so it
+  // must never leak into the extracted/redacted output.
+  const xml = '<w:p><w:r><w:delText>OLD CONFIDENTIAL TERM</w:delText></w:r><w:r><w:t>new text</w:t></w:r></w:p>';
+  const paragraphs = extractDocxParagraphs(xml);
+  if (paragraphs.length !== 1 || paragraphs[0] !== 'new text') {
+    throw new Error(`expected ["new text"] with the deleted run excluded, got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('extractDocxParagraphs: XML-entity-escaped text inside a run is decoded', () => {
+  const xml = '<w:p><w:r><w:t>Company: Smith &amp; Sons</w:t></w:r></w:p>';
+  const paragraphs = extractDocxParagraphs(xml);
+  if (paragraphs.length !== 1 || paragraphs[0] !== 'Company: Smith & Sons') {
+    throw new Error(`expected ["Company: Smith & Sons"], got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('extractDocxParagraphs: multiple paragraphs are returned in document order', () => {
+  const xml = '<w:p><w:r><w:t>First.</w:t></w:r></w:p><w:p><w:r><w:t>Second.</w:t></w:r></w:p>';
+  const paragraphs = extractDocxParagraphs(xml);
+  if (paragraphs.length !== 2 || paragraphs[0] !== 'First.' || paragraphs[1] !== 'Second.') {
+    throw new Error(`expected ["First.", "Second."], got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('redactParagraphs: matches are replaced with the caller-supplied mask label and counted', () => {
+  const { text, redactedCount } = redactParagraphs(
+    ['Contact jane@example.com today.'],
+    activeRules(['email']),
+    [],
+    false,
+    { email: '[EMAIL REDACTED]' }
+  );
+  if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
+  if (text !== 'Contact [EMAIL REDACTED] today.') throw new Error(`unexpected output: "${text}"`);
+});
+
+check('redactParagraphs: falls back to a generic label when no mask is supplied for the matched rule', () => {
+  const { text } = redactParagraphs(['internal codename Project Phoenix is confidential'], [], ['Project Phoenix'], false, {});
+  if (!text.includes('[REDACTED]')) throw new Error(`expected a [REDACTED] fallback label, got "${text}"`);
+});
+
+check('redactParagraphs: paragraphs are joined with newlines and a match in one paragraph does not affect another', () => {
+  const { text, redactedCount } = redactParagraphs(
+    ['First paragraph with secret term here.', 'Second paragraph, no match.'],
+    [],
+    ['secret term'],
+    false,
+    { custom: '[TERM]' }
+  );
+  if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
+  const expected = 'First paragraph with [TERM] here.\nSecond paragraph, no match.';
+  if (text !== expected) throw new Error(`expected "${expected}", got "${text}"`);
+});
+
+check('full pipeline: a custom term Word split across runs is still caught after extraction + redaction', () => {
+  // Combines the two fixes above end to end: the run-split XML from the
+  // first extractDocxParagraphs test, fed straight into redactParagraphs
+  // with a custom term that only exists as the rejoined whole word.
+  const xml = '<w:p><w:r><w:t>Contact </w:t></w:r><w:r><w:t>Acme</w:t></w:r><w:r><w:t>Corp</w:t></w:r><w:r><w:t> for details.</w:t></w:r></w:p>';
+  const paragraphs = extractDocxParagraphs(xml);
+  const { text, redactedCount } = redactParagraphs(paragraphs, [], ['acmecorp'], false, { custom: '[INTERNAL TERM]' });
+  if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
+  if (text !== 'Contact [INTERNAL TERM] for details.') throw new Error(`unexpected output: "${text}"`);
 });
 
 // --- report ------------------------------------------------------------
