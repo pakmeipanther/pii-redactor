@@ -16,6 +16,9 @@ your machine in the first place.
 *(All data shown is synthetic/fake, invented for this recording —
 never a real person, company, or secret.)*
 
+**Full user guide (step-by-step, for non-technical users):**
+[English](docs/guide.en.md) · [Tiếng Việt](docs/guide.vi.md) · [Deutsch](docs/guide.de.md) · [Français](docs/guide.fr.md)
+
 ## Why
 
 AI assistants are extremely useful for analyzing logs, documents, and
@@ -26,6 +29,34 @@ strings, and API keys can all end up stored somewhere outside your control.
 This tool runs entirely in the browser with no backend and no outbound
 network calls, so you can sanitize a document locally and only ever share
 the cleaned version.
+
+## How this compares to other tools
+
+A number of browser extensions and web tools already offer "redact before
+you paste into AI" functionality — e.g. Private Data Redactor, Velum Lite,
+PromptShield, Rescriber, and PasteSecure for browsers; enterprise DLP
+platforms like Nightfall AI or Shadow AI; and open-source detection
+libraries like Microsoft Presidio. Most of them, though, only operate on
+**plain text**. Enterprise DLP platforms cover more ground but route your
+data through a vendor's own servers — the opposite of "nothing leaves your
+machine." Open-source libraries like Presidio give you strong detection
+primitives, but no ready-to-use interface; you still have to build the
+app around them.
+
+PII Redactor additionally redacts:
+
+- **Screenshots** — real OCR (`tesseract.js`) finds the sensitive text,
+  and the matched regions are overwritten as solid black pixels directly
+  on an HTML `<canvas>`, not a transparent box layered on top.
+- **PDFs** — each page is rendered to canvas, matched regions' actual
+  pixels are overwritten, and the file is reassembled from scratch with
+  `pdf-lib` — so there's no hidden text layer left to recover.
+
+All of this runs **100% locally**, with no backend and no outbound network
+calls at all (enforced at the browser level by the page's own
+Content-Security-Policy) — a combination that's uncommon among free and
+open-source tools in this space, where most alternatives either handle
+text only, or need a server/cloud component to touch images and PDFs.
 
 ## Core guarantee
 
@@ -143,7 +174,10 @@ a glance.
 5. Download the cleaned file.
 
 The UI is available in **English, Français, Deutsch, and Tiếng Việt** —
-switch languages from the selector in the top bar.
+switch languages from the selector in the top bar. For a full,
+beginner-friendly walkthrough with screenshots-free step-by-step
+instructions in each of those languages, see the
+[full user guide](#pii-redactor) linked at the top of this README.
 
 ## Running the image/OCR/PDF features
 
@@ -194,6 +228,7 @@ node test/run-tests.mjs
       accessible drop zones, GitHub link in the footer)
 - [x] Test suite with synthetic data (see [Testing](#testing))
 - [x] Demo GIF
+- [x] Multi-language user guide (EN/VI/DE/FR) in [docs/](docs/)
 
 ## Known limitations
 

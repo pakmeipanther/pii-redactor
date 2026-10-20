@@ -1,0 +1,144 @@
+**Lire en :** [English](guide.en.md) · [Tiếng Việt](guide.vi.md) · [Deutsch](guide.de.md) · [Français](guide.fr.md)
+
+---
+
+# PII Redactor — Guide d'utilisation pour débutants
+
+## À quoi sert cet outil ?
+
+Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous prendriez sûrement un stylo pour masquer votre nom, votre numéro de téléphone, votre adresse avant de la lui donner, n'est-ce pas ? PII Redactor fait exactement cela, mais avec du texte, des captures d'écran et des fichiers PDF — il trouve et masque automatiquement les informations sensibles (emails, numéros de téléphone, adresses IP, mots de passe, chaînes de connexion à une base de données...) avant que vous ne colliez ce contenu dans ChatGPT, Claude ou tout autre outil d'IA.
+
+> **Le plus important :** ce logiciel n'établit aucune connexion Internet et n'envoie aucune donnée nulle part — tout le traitement se fait directement sur votre ordinateur. Vous pouvez complètement désactiver le Wi-Fi en l'utilisant, il continuera de fonctionner normalement — c'est aussi un moyen de le vérifier par vous-même.
+
+## Étape 1 — Téléchargez le logiciel
+
+1. Ouvrez votre navigateur (Firefox ou Brave sont recommandés — deux navigateurs réputés pour la sécurité et la confidentialité ; Chrome, Safari et Edge fonctionnent aussi), et rendez-vous à l'adresse :
+
+   ```
+   https://github.com/pakmeipanther/pii-redactor
+   ```
+1. Trouvez le bouton vert "Code", cliquez dessus, puis choisissez "Download ZIP".
+1. Le fichier sera téléchargé dans le dossier que votre navigateur utilise par défaut — ici, Downloads n'est qu'un exemple, car c'est souvent l'emplacement par défaut, mais vous pouvez choisir n'importe quel dossier.
+
+### Décompresser le fichier (transformer le .zip en un dossier utilisable)
+
+#### macOS
+
+1. Ouvrez le dossier où vous venez d'enregistrer le fichier zip (par exemple Downloads si vous avez utilisé le dossier par défaut).
+1. Double-cliquez sur le fichier téléchargé (nommé quelque chose comme pii-redactor-main.zip).
+1. macOS créera automatiquement un dossier du même nom juste à côté — terminé !
+
+#### Windows
+
+1. Ouvrez le dossier où vous venez d'enregistrer le fichier zip (par exemple Downloads si vous avez utilisé le dossier par défaut).
+1. Faites un clic droit sur le fichier zip, choisissez "Extract All..." (Extraire tout...).
+1. Une fenêtre s'ouvre pour demander où l'enregistrer — laissez la valeur par défaut et cliquez sur "Extract" (Extraire).
+1. Un nouveau dossier du même nom apparaîtra.
+
+## Étape 2 — Utilisez la fonction de suppression d'informations dans le texte
+
+*La méthode la plus simple — rien à installer*
+
+1. Ouvrez le dossier décompressé à l'étape 1.
+1. Trouvez le fichier nommé index.html.
+1. Double-cliquez dessus — il s'ouvrira automatiquement dans votre navigateur.
+1. En haut à droite de l'écran se trouve un sélecteur de langue — cliquez dessus et choisissez "Français" si besoin pour afficher toute l'interface dans cette langue.
+1. Collez le texte à vérifier (par exemple un email contenant un numéro de téléphone, une adresse...) dans la grande zone en haut.
+1. Cliquez sur le bouton "Analyser et surligner".
+1. Regardez la section "Résultat" ci-dessous — les parties surlignées en rouge sont les informations sensibles trouvées par le logiciel.
+1. Si cela vous convient, cliquez sur "Télécharger le texte nettoyé (.txt)" pour enregistrer la version où les informations ont été masquées — c'est cette version que vous pouvez coller en toute confiance dans une IA.
+
+> **Remarque :** le logiciel n'est pas parfait à 100 % — vérifiez toujours les parties surlignées avant de leur faire entièrement confiance, ne vous contentez pas de cliquer sur télécharger sans regarder.
+
+## Étape 3 (avancée, facultative) — Utilisez les fonctions pour les images et les PDF
+
+Les fonctions de traitement des captures d'écran et des fichiers PDF nécessitent une petite étape technique supplémentaire, en raison des règles de sécurité du navigateur. Le terme "lancer un serveur local" peut sembler effrayant, mais il s'agit simplement de taper une seule ligne de commande. Si vous n'avez besoin que de la suppression d'informations dans le texte, vous pouvez ignorer cette section.
+
+#### macOS — lancer un serveur local
+
+1. Ouvrez l'application Terminal (appuyez sur Cmd + Espace, tapez "Terminal", appuyez sur Entrée).
+1. Tapez cd (avec un espace après "cd"), puis glissez-déposez le dossier décompressé à l'étape 1 directement dans la fenêtre du Terminal — le chemin se remplira automatiquement. Appuyez sur Entrée.
+1. Tapez la ligne suivante puis appuyez sur Entrée :
+
+   ```
+   python3 -m http.server 8000
+   ```
+
+   > Si un message d'erreur rouge "command not found: python3" apparaît, cela signifie que Python n'est pas installé sur votre machine. Consultez le guide d'installation détaillé de Python ci-dessous, ou utilisez simplement la fonction texte de l'étape 2, qui suffit largement.
+1. Ouvrez votre navigateur et tapez dans la barre d'adresse :
+
+   ```
+   http://localhost:8000
+   ```
+1. Désormais, toutes les fonctions (texte, image, PDF) sont utilisables, de la même manière qu'à l'étape 2.
+1. Une fois terminé, retournez à la fenêtre du Terminal, appuyez sur Ctrl + C, puis fermez la fenêtre.
+
+#### Windows — lancer un serveur local
+
+1. Appuyez sur la touche Windows, tapez "cmd" ou "PowerShell", appuyez sur Entrée pour ouvrir une fenêtre de ligne de commande.
+1. Tapez cd (avec un espace), puis glissez-déposez le dossier décompressé dans la fenêtre — le chemin se remplira automatiquement. Appuyez sur Entrée.
+1. Tapez la ligne suivante puis appuyez sur Entrée (sous Windows, c'est généralement "python", pas "python3") :
+
+   ```
+   python -m http.server 8000
+   ```
+
+   > Si une erreur de commande introuvable apparaît, Python n'est pas installé. Consultez le guide d'installation détaillé ci-dessous — n'oubliez pas de cocher "Add Python to PATH" lors de l'installation.
+1. Ouvrez votre navigateur et tapez :
+
+   ```
+   http://localhost:8000
+   ```
+1. Utilisez-le de la même manière qu'à l'étape 2.
+1. Une fois terminé, retournez à la fenêtre de ligne de commande, appuyez sur Ctrl + C pour l'arrêter, puis fermez la fenêtre.
+
+### Installation détaillée de Python (si votre machine indique "commande python introuvable")
+
+#### macOS
+
+1. Ouvrez votre navigateur et rendez-vous sur :
+
+   ```
+   https://www.python.org/downloads/
+   ```
+1. La page détectera automatiquement que vous utilisez un Mac et affichera un bouton jaune "Download Python 3.x.x" — cliquez dessus.
+1. Le fichier d'installation (.pkg) sera téléchargé dans le dossier Downloads.
+1. Double-cliquez dessus pour démarrer l'installation.
+1. Une fenêtre d'installation s'ouvre — cliquez sur "Continue" (Continuer) à chaque étape jusqu'à voir le bouton "Install" (Installer), puis cliquez dessus.
+1. Votre Mac peut vous demander votre mot de passe de connexion (celui qui déverrouille votre machine) — saisissez-le puis cliquez sur OK.
+1. Attendez quelques minutes jusqu'à voir le message "The installation was successful" (Installation réussie).
+1. Fermez la fenêtre d'installation, puis fermez toute fenêtre Terminal ouverte et ouvrez-en une nouvelle pour que le Python installé soit reconnu.
+1. Essayez à nouveau de taper la ligne suivante — cela devrait maintenant fonctionner sans erreur :
+
+   ```
+   python3 -m http.server 8000
+   ```
+
+#### Windows
+
+1. Ouvrez votre navigateur et rendez-vous sur :
+
+   ```
+   https://www.python.org/downloads/
+   ```
+1. La page détectera automatiquement que vous utilisez Windows et affichera un bouton jaune "Download Python 3.x.x" — cliquez dessus.
+1. Le fichier d'installation (.exe) sera téléchargé dans le dossier Downloads.
+1. Double-cliquez dessus pour démarrer l'installation.
+1. Très important : sur le premier écran de l'installateur, il y a une petite case à cocher en bas intitulée "Add python.exe to PATH" (ou "Add Python to PATH") — vous devez absolument la cocher avant de continuer, sinon votre machine ne reconnaîtra pas la commande python par la suite.
+1. Après avoir coché la case, cliquez sur "Install Now" (Installer maintenant).
+1. Attendez quelques minutes jusqu'à voir "Setup was successful" (Installation réussie), puis cliquez sur "Close" (Fermer).
+1. Fermez l'ancienne fenêtre de ligne de commande et ouvrez-en une nouvelle pour que le Python installé soit reconnu.
+1. Essayez à nouveau de taper la ligne suivante — cela devrait maintenant fonctionner sans erreur :
+
+   ```
+   python -m http.server 8000
+   ```
+
+> Si vous avez bien suivi toutes les étapes et qu'une erreur persiste, il est possible que votre ordinateur doive redémarrer pour prendre en compte les changements.
+
+## Quelques remarques supplémentaires
+
+- Le logiciel est une aide, il ne remplace pas votre propre vigilance — vérifiez toujours les parties surlignées avant de leur faire entièrement confiance, car aucun outil automatique ne détecte 100 % des cas.
+- Vous voulez vérifier par vous-même qu'"aucune donnée n'est envoyée nulle part" ? Désactivez complètement le Wi-Fi/réseau de votre machine avant d'ouvrir le logiciel — vous constaterez qu'il fonctionne toujours normalement, preuve qu'aucune connexion Internet n'est utilisée.
+- Vous rencontrez une erreur que vous ne comprenez pas ? Faites une capture d'écran du message d'erreur et demandez de l'aide à une personne à l'aise avec la technique (un ami, un proche) plutôt que d'essayer de deviner.
+- Toutes les données téléchargées et les "termes personnalisés" (par exemple le nom d'une entreprise à masquer) sont stockés uniquement sur votre propre machine — personne d'autre ne peut les voir.
