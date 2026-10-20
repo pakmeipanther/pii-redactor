@@ -302,6 +302,19 @@ node test/run-tests.mjs
   full-item box, whose edges are exact rather than estimated, keeps the
   old small cosmetic padding. See
   [test/run-tests.mjs](test/run-tests.mjs)'s `redactionPadX` tests.
+- **(Fixed)** A custom term typed in lowercase (e.g. `quangcao`) could
+  fail to redact a mixed-case occurrence of it in an image or scanned
+  PDF (e.g. a logo/brand rendering like "QuangCao"), even though
+  matching is case-insensitive by default. The real cause: the OCR
+  engine can segment one glued-together word into two separate word
+  boxes (e.g. "Quang" + "Cao"), and each box was only ever checked on
+  its own — neither fragment contains the full term. Detection now
+  also rejoins each OCR line's words (gluing two words back together
+  with no gap when the space between their boxes is small relative to
+  their height, since that's almost always one word OCR cut in two)
+  and checks that joined line text too, so a value split this way is
+  still found. See [test/run-tests.mjs](test/run-tests.mjs)'s
+  `wordsToRedact` tests.
 
 ## Security notes
 

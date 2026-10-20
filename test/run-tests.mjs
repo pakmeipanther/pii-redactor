@@ -64,9 +64,14 @@ const textItemBBoxAndPadCode = extractBetween(
   '\n\n// Renders one page',
   'textItemBBox + redactionPadX'
 );
+const wordsToRedactCode = extractBetween(
+  'function wordsToRedact(lineWords, activeRules, terms, caseSensitive) {',
+  '\n\n// Creates a Tesseract worker',
+  'wordsToRedact'
+);
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX };`;
-const { RULES, findMatches, textItemBBox, redactionPadX } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX, wordsToRedact };`;
+const { RULES, findMatches, textItemBBox, redactionPadX, wordsToRedact } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -322,6 +327,64 @@ check('PDF re-scan, fixed: slicing a disposable copy keeps the master buffer sca
   }
   if (pdfOriginalBytes.byteLength !== 8) {
     throw new Error(`expected the master buffer to stay intact (byteLength 8) after two scans, got ${pdfOriginalBytes.byteLength} — it got detached`);
+  }
+});
+
+// --- OCR redaction: a value the OCR engine splits across two word
+// boxes must still be caught by rejoining the line, not just checked
+// word-by-word -------------------------------------------------------
+
+// Builds a fake tesseract.js "word" with a bounding box. x0/x1 are the
+// only coordinates wordsToRedact actually looks at (plus y0/y1 for the
+// height estimate), so y0/y1 are fixed at a plausible line height.
+function fakeWord(text, x0, x1, y0 = 100, y1 = 130) {
+  return { text, bbox: { x0, y0, x1, y1 } };
+}
+
+check('wordsToRedact: a custom term the OCR engine split into two word boxes is still caught', () => {
+  // Reproduces the reported bug: typing the custom term "quangcao" (all
+  // lowercase) correctly redacts an image where OCR reads the text as
+  // one word ("QuangCao"), but a real-world OCR pass can instead
+  // segment a mixed-case run like this into two separate word boxes —
+  // "Quang" and "Cao" — with almost no gap between them (it's the same
+  // glued-together word, not two words). Checking each word on its own
+  // (the old behavior) never finds "quangcao" in either fragment.
+  const line = [fakeWord('Quang', 100, 150), fakeWord('Cao', 151, 190)]; // 1px gap: clearly the same word
+  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  if (flagged.size !== 2) {
+    throw new Error(`expected both OCR word fragments to be flagged, got indices [${[...flagged].join(',')}] (size ${flagged.size})`);
+  }
+});
+
+check('wordsToRedact: an ordinary single-word match still works (no regression)', () => {
+  const line = [fakeWord('Invoice', 20, 120), fakeWord('QuangCao', 130, 260), fakeWord('total', 270, 340)];
+  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  if (flagged.size !== 1 || !flagged.has(1)) {
+    throw new Error(`expected only index 1 ("QuangCao") flagged, got [${[...flagged].join(',')}]`);
+  }
+});
+
+check('wordsToRedact: two genuinely separate words are not wrongly glued together', () => {
+  // A normal inter-word gap (wide relative to line height) must NOT be
+  // treated as one split word — otherwise unrelated neighboring words
+  // could combine into an accidental false-positive match.
+  const line = [fakeWord('Quang', 100, 150), fakeWord('Bao', 220, 270)]; // 70px gap vs 30px height
+  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  if (flagged.size !== 0) {
+    throw new Error(`expected no match across a real word gap, got indices [${[...flagged].join(',')}]`);
+  }
+});
+
+check('wordsToRedact: a genuine multi-word custom term still matches across separate OCR words', () => {
+  // Bonus of the same fix: the line-rejoin uses a single space for a
+  // normal gap, so a custom term that is itself two words (e.g. a
+  // server name with a space in it) now matches even when OCR reports
+  // it as two separate word boxes — previously impossible, since each
+  // word was only ever checked on its own.
+  const line = [fakeWord('Project', 20, 110), fakeWord('Quang', 220, 270), fakeWord('Bao', 300, 340)];
+  const flagged = wordsToRedact(line, [], ['quang bao'], false);
+  if (flagged.size !== 2 || !flagged.has(1) || !flagged.has(2)) {
+    throw new Error(`expected the two words making up "quang bao" flagged, got [${[...flagged].join(',')}]`);
   }
 });
 

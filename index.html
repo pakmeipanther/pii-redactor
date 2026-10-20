@@ -310,6 +310,7 @@
 
 <div class="panel">
   <h2 data-i18n="section1">1. Dán văn bản cần xử lý</h2>
+  <div class="subtitle" data-i18n="textPanelImageHint" style="margin-bottom:10px;">Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được phần xử lý ảnh bên dưới (mục 1b) nhận và quét OCR, chứ không dán vào khung văn bản này.</div>
   <textarea id="input" data-i18n-placeholder="placeholder"></textarea>
 </div>
 
@@ -330,6 +331,7 @@
     <button id="imgDownloadBtn" class="secondary" data-i18n="imgDownloadBtn" disabled>Tải ảnh đã xử lý (.png)</button>
     <button id="imgClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
+  <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="imgProgress"></div>
   <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
 </div>
@@ -356,6 +358,7 @@
     <button id="pdfDownloadBtn" class="secondary" data-i18n="pdfDownloadBtn" disabled>Tải PDF đã xử lý</button>
     <button id="pdfClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
+  <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="pdfProgress"></div>
   <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
 </div>
@@ -427,6 +430,8 @@ const I18N = {
     badge: '● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn',
     section1: '1. Dán văn bản cần xử lý',
     placeholder: 'Dán văn bản có chứa email, IP, số điện thoại, connection string database... vào đây',
+    textPanelImageHint: 'Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được phần xử lý ảnh bên dưới (mục 1b) nhận và quét OCR, chứ không dán vào khung văn bản này.',
+    ocrLangAccuracyHint: 'Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.',
     sectionCustom: '2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)',
     customDesc: 'Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn, không cần xác nhận lại.',
     customPlaceholder: 'Ví dụ: ten-cong-ty-noi-bo, srv-db-prod-02...',
@@ -507,6 +512,8 @@ const I18N = {
     badge: '● No network connection is made — all processing happens in your browser',
     section1: '1. Paste the text to process',
     placeholder: 'Paste text containing emails, IPs, phone numbers, database connection strings...',
+    textPanelImageHint: "Tip: pasting (Ctrl/Cmd+V) an image here also works — it's automatically picked up by the image panel below (1b) for OCR, not inserted into this text box.",
+    ocrLangAccuracyHint: 'Pick the language the image is actually written in — the wrong language lowers OCR accuracy and can let sensitive text slip through unredacted.',
     sectionCustom: '2. Custom internal terms (company name, server name...)',
     customDesc: 'The tool cannot know these on its own — declare them once and they will always be redacted, with no re-confirmation needed.',
     customPlaceholder: 'e.g. internal-company-name, srv-db-prod-02...',
@@ -587,6 +594,8 @@ const I18N = {
     badge: "● Aucune connexion réseau n'est établie — tout le traitement se fait dans votre navigateur",
     section1: '1. Collez le texte à traiter',
     placeholder: 'Collez un texte contenant des emails, IP, numéros de téléphone, chaînes de connexion à une base de données...',
+    textPanelImageHint: "Astuce : coller (Ctrl/Cmd+V) une image ici fonctionne aussi — elle est automatiquement récupérée par le panneau image ci-dessous (1b) pour l'OCR, et non insérée dans ce champ de texte.",
+    ocrLangAccuracyHint: "Choisissez la langue réelle de l'image — une langue incorrecte réduit la précision de l'OCR et peut laisser passer des informations sensibles non caviardées.",
     sectionCustom: '2. Termes internes personnalisés (nom d\'entreprise, nom de serveur...)',
     customDesc: 'L\'outil ne peut pas le deviner seul — déclarez-le une fois, il sera toujours masqué, sans confirmation supplémentaire.',
     customPlaceholder: 'ex : nom-entreprise-interne, srv-db-prod-02...',
@@ -667,6 +676,8 @@ const I18N = {
     badge: '● Es wird keine Netzwerkverbindung hergestellt — die gesamte Verarbeitung erfolgt in Ihrem Browser',
     section1: '1. Zu bearbeitenden Text einfügen',
     placeholder: 'Text mit E-Mails, IPs, Telefonnummern, Datenbank-Connection-Strings einfügen...',
+    textPanelImageHint: 'Tipp: Ein Bild hier einzufügen (Strg/Cmd+V) funktioniert auch — es wird automatisch vom Bildbereich weiter unten (1b) für die OCR übernommen, nicht in dieses Textfeld eingefügt.',
+    ocrLangAccuracyHint: 'Wählen Sie die tatsächliche Sprache des Bildes — eine falsche Sprache verringert die OCR-Genauigkeit und kann dazu führen, dass sensible Daten nicht geschwärzt werden.',
     sectionCustom: '2. Benutzerdefinierte interne Begriffe (Firmenname, Servername...)',
     customDesc: 'Das Tool kann dies nicht selbst wissen — einmal angeben, und es wird immer entfernt, ohne erneute Bestätigung.',
     customPlaceholder: 'z. B. interner-firmenname, srv-db-prod-02...',
@@ -1182,20 +1193,70 @@ document.addEventListener('paste', (e) => {
   }
 });
 
-// Collects every word (with its bounding box) out of tesseract.js's
-// nested blocks → paragraphs → lines → words structure.
-function collectWords(data) {
-  const words = [];
+// Walks tesseract.js's nested blocks → paragraphs → lines → words
+// structure and returns each OCR line as its own array of words (with
+// bounding boxes), rather than one flat list. Keeping the line
+// grouping matters: a sensitive value the OCR engine segments into
+// two adjacent word boxes (e.g. a mixed-case brand name like
+// "QuangCao" split into "Quang" + "Cao") can still be matched by
+// rejoining a line's words before checking — see wordsToRedact().
+function collectLines(data) {
+  const lines = [];
   (data.blocks || []).forEach(block => {
     (block.paragraphs || []).forEach(para => {
       (para.lines || []).forEach(line => {
-        (line.words || []).forEach(word => {
-          if (word.text && word.text.trim()) words.push(word);
-        });
+        const words = (line.words || []).filter(w => w.text && w.text.trim());
+        if (words.length) lines.push(words);
       });
     });
   });
-  return words;
+  return lines;
+}
+
+// Decides which words in one OCR line to redact. Checks two things,
+// not just one:
+//  1. each word on its own — catches an ordinary single-word match.
+//  2. the line's words rejoined into one string — catches a value
+//     the OCR engine segmented across two or more word boxes. The
+//     rejoin uses no separator when the gap between two words is
+//     small relative to their height, because that kind of gap is
+//     almost always the OCR engine cutting one glued word in two,
+//     not a real space between two separate words; a wider gap gets
+//     a single space, so a genuine multi-word custom term (e.g. a
+//     server name with a space in it) still matches too.
+// Pure/DOM-free on purpose, so it can be exercised directly by a
+// plain test as well as by the browser.
+function wordsToRedact(lineWords, activeRules, terms, caseSensitive) {
+  const flagged = new Set();
+
+  lineWords.forEach((word, i) => {
+    if (findMatches(word.text, activeRules, terms, caseSensitive).length > 0) {
+      flagged.add(i);
+    }
+  });
+
+  let joined = '';
+  const spans = [];
+  lineWords.forEach((word, i) => {
+    if (i > 0) {
+      const prev = lineWords[i - 1];
+      const gap = word.bbox.x0 - prev.bbox.x1;
+      const avgHeight = Math.max(1, ((prev.bbox.y1 - prev.bbox.y0) + (word.bbox.y1 - word.bbox.y0)) / 2);
+      const looksLikeOneWordSplitInTwo = gap < avgHeight * 0.25;
+      joined += looksLikeOneWordSplitInTwo ? '' : ' ';
+    }
+    const start = joined.length;
+    joined += word.text;
+    spans.push({ start, end: joined.length });
+  });
+
+  findMatches(joined, activeRules, terms, caseSensitive).forEach(m => {
+    spans.forEach((span, i) => {
+      if (span.start < m.end && span.end > m.start) flagged.add(i);
+    });
+  });
+
+  return flagged;
 }
 
 // Creates a Tesseract worker pointed at the vendored (local-only) engine
@@ -1211,22 +1272,23 @@ async function createTesseractWorker(lang, onProgress) {
   });
 }
 
-// Runs each OCR word through the shared detection pipeline and blacks
-// out the bounding box of any match directly on the given canvas
-// context. Returns how many words were redacted. Shared by the image
-// panel and the PDF panel (used there as an optional fallback pass for
-// scanned/image-only pages, on top of the text-layer detection).
-function redactWordsOnCanvas(ctx, words, activeRules, terms, caseSensitive) {
+// Runs each OCR line through the shared detection pipeline (see
+// wordsToRedact) and blacks out the bounding box of every flagged
+// word directly on the given canvas context. Returns how many words
+// were redacted. Shared by the image panel and the PDF panel (used
+// there as an optional fallback pass for scanned/image-only pages, on
+// top of the text-layer detection).
+function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive) {
   ctx.fillStyle = '#000000';
   let redactedCount = 0;
-  words.forEach(word => {
-    const matches = findMatches(word.text, activeRules, terms, caseSensitive);
-    if (matches.length > 0) {
-      const { x0, y0, x1, y1 } = word.bbox;
+  lines.forEach(lineWords => {
+    const flagged = wordsToRedact(lineWords, activeRules, terms, caseSensitive);
+    flagged.forEach(i => {
+      const { x0, y0, x1, y1 } = lineWords[i].bbox;
       const pad = 2;
       ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
       redactedCount++;
-    }
+    });
   });
   return redactedCount;
 }
@@ -1256,9 +1318,9 @@ imgScanBtn.addEventListener('click', async () => {
     const { data } = await worker.recognize(imgCanvas, {}, { blocks: true });
     await worker.terminate();
 
-    const words = collectWords(data);
+    const lines = collectLines(data);
     const activeRules = getActiveRules();
-    const redactedCount = redactWordsOnCanvas(imgCtx, words, activeRules, customTerms, customCaseSensitiveEl.checked);
+    const redactedCount = redactWordsOnCanvas(imgCtx, lines, activeRules, customTerms, customCaseSensitiveEl.checked);
 
     imgProgressEl.textContent = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
     imgDownloadBtn.disabled = false;
@@ -1563,8 +1625,8 @@ pdfScanBtn.addEventListener('click', async () => {
       if (ocrWorker) {
         pdfProgressEl.textContent = t.pdfProgressOcrPage(i, numPages);
         const { data } = await ocrWorker.recognize(canvas, {}, { blocks: true });
-        const words = collectWords(data);
-        totalRedacted += redactWordsOnCanvas(ctx, words, activeRules, customTerms, caseSensitive);
+        const lines = collectLines(data);
+        totalRedacted += redactWordsOnCanvas(ctx, lines, activeRules, customTerms, caseSensitive);
       }
 
       pdfPageCanvases.push(canvas);
