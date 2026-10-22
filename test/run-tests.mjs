@@ -70,7 +70,7 @@ const textItemBBoxAndPadCode = extractBetween(
   'textItemBBox + redactionPadX'
 );
 const wordsToRedactCode = extractBetween(
-  'function wordsToRedact(lineWords, activeRules, terms, caseSensitive) {',
+  'function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled) {',
   '\n\n// Creates a Tesseract worker',
   'wordsToRedact'
 );
@@ -351,6 +351,11 @@ function fakeWord(text, x0, x1, y0 = 100, y1 = 130) {
   return { text, bbox: { x0, y0, x1, y1 } };
 }
 
+// wordsToRedact's 5th argument (entropyEnabled) and its {flagged, suspects}
+// return shape are exercised separately further below — these four tests
+// predate entropy and only care about certain (custom/regex) matches, so
+// they pass entropyEnabled=false and read .flagged.
+
 check('wordsToRedact: a custom term the OCR engine split into two word boxes is still caught', () => {
   // Reproduces the reported bug: typing the custom term "quangcao" (all
   // lowercase) correctly redacts an image where OCR reads the text as
@@ -360,7 +365,7 @@ check('wordsToRedact: a custom term the OCR engine split into two word boxes is 
   // glued-together word, not two words). Checking each word on its own
   // (the old behavior) never finds "quangcao" in either fragment.
   const line = [fakeWord('Quang', 100, 150), fakeWord('Cao', 151, 190)]; // 1px gap: clearly the same word
-  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  const { flagged } = wordsToRedact(line, [], ['quangcao'], false, false);
   if (flagged.size !== 2) {
     throw new Error(`expected both OCR word fragments to be flagged, got indices [${[...flagged].join(',')}] (size ${flagged.size})`);
   }
@@ -368,7 +373,7 @@ check('wordsToRedact: a custom term the OCR engine split into two word boxes is 
 
 check('wordsToRedact: an ordinary single-word match still works (no regression)', () => {
   const line = [fakeWord('Invoice', 20, 120), fakeWord('QuangCao', 130, 260), fakeWord('total', 270, 340)];
-  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  const { flagged } = wordsToRedact(line, [], ['quangcao'], false, false);
   if (flagged.size !== 1 || !flagged.has(1)) {
     throw new Error(`expected only index 1 ("QuangCao") flagged, got [${[...flagged].join(',')}]`);
   }
@@ -379,7 +384,7 @@ check('wordsToRedact: two genuinely separate words are not wrongly glued togethe
   // treated as one split word — otherwise unrelated neighboring words
   // could combine into an accidental false-positive match.
   const line = [fakeWord('Quang', 100, 150), fakeWord('Bao', 220, 270)]; // 70px gap vs 30px height
-  const flagged = wordsToRedact(line, [], ['quangcao'], false);
+  const { flagged } = wordsToRedact(line, [], ['quangcao'], false, false);
   if (flagged.size !== 0) {
     throw new Error(`expected no match across a real word gap, got indices [${[...flagged].join(',')}]`);
   }
@@ -392,10 +397,33 @@ check('wordsToRedact: a genuine multi-word custom term still matches across sepa
   // it as two separate word boxes — previously impossible, since each
   // word was only ever checked on its own.
   const line = [fakeWord('Project', 20, 110), fakeWord('Quang', 220, 270), fakeWord('Bao', 300, 340)];
-  const flagged = wordsToRedact(line, [], ['quang bao'], false);
+  const { flagged } = wordsToRedact(line, [], ['quang bao'], false, false);
   if (flagged.size !== 2 || !flagged.has(1) || !flagged.has(2)) {
     throw new Error(`expected the two words making up "quang bao" flagged, got [${[...flagged].join(',')}]`);
   }
+});
+
+check('wordsToRedact: entropyEnabled=false never produces suspects, even for a random-looking word', () => {
+  const line = [fakeWord('password:', 20, 110), fakeWord('Xk9mQ2vLtR7zAa1', 120, 260)];
+  const { suspects } = wordsToRedact(line, [], [], false, false);
+  if (suspects.length !== 0) throw new Error(`expected 0 suspects with entropy disabled, got ${suspects.length}`);
+});
+
+check('wordsToRedact: entropyEnabled=true flags a random-looking word as a suspect, not a certain match', () => {
+  const line = [fakeWord('password:', 20, 110), fakeWord('Xk9mQ2vLtR7zAa1', 120, 260)];
+  const { flagged, suspects } = wordsToRedact(line, [], [], false, true);
+  if (flagged.size !== 0) throw new Error(`expected no CERTAIN matches (entropy must never be certain), got ${flagged.size}`);
+  if (suspects.length !== 1) throw new Error(`expected 1 suspect, got ${suspects.length}`);
+  if (!suspects[0].wordIndices.has(1)) throw new Error('expected the suspect to point at word index 1');
+});
+
+check('wordsToRedact: a word already covered by a custom-term match is not also reported as an entropy suspect', () => {
+  // Same "don't suspect what's already certain" rule as findEntropyMatches,
+  // exercised through the OCR word path specifically.
+  const line = [fakeWord('Xk9mQ2vLtR7zAa1', 20, 260)];
+  const { flagged, suspects } = wordsToRedact(line, [], ['xk9mq2vltr7zaa1'], false, true);
+  if (flagged.size !== 1) throw new Error(`expected the custom term to be a certain match, got ${flagged.size}`);
+  if (suspects.length !== 0) throw new Error(`expected 0 suspects once the word is already a certain match, got ${suspects.length}`);
 });
 
 // --- Word (.docx) → PDF: XML-entity decoding, visible-text extraction,
@@ -491,6 +519,32 @@ check('redactParagraphs: paragraphs are joined with newlines and a match in one 
   if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
   const expected = 'First paragraph with [TERM] here.\nSecond paragraph, no match.';
   if (text !== expected) throw new Error(`expected "${expected}", got "${text}"`);
+});
+
+check('redactParagraphs: entropy suspects are counted but NEVER redacted from the text, even when enabled', () => {
+  // the hard rule from the user's own spec: a high-entropy suspect must
+  // stay in plain sight unless the user confirms it (via the custom
+  // term list) — redactParagraphs must never black it out on its own
+  const { text, redactedCount, suspectCount } = redactParagraphs(
+    ['The password is Xk9mQ2vLtR7zAa1 and nothing else.'],
+    [],
+    [],
+    false,
+    {},
+    true // entropyEnabled
+  );
+  if (suspectCount !== 1) throw new Error(`expected 1 suspect, got ${suspectCount}`);
+  if (redactedCount !== 0) throw new Error(`expected 0 real redactions, got ${redactedCount}`);
+  if (!text.includes('Xk9mQ2vLtR7zAa1')) throw new Error(`suspect text must survive untouched, got "${text}"`);
+});
+
+check('redactParagraphs: entropy suspects are not even counted when entropyEnabled is false/omitted', () => {
+  const { suspectCount } = redactParagraphs(
+    ['The password is Xk9mQ2vLtR7zAa1 and nothing else.'],
+    [], [], false, {}
+    // entropyEnabled omitted -> undefined -> falsy
+  );
+  if (suspectCount !== 0) throw new Error(`expected 0 suspects when entropy detection is off, got ${suspectCount}`);
 });
 
 check('full pipeline: a custom term Word split across runs is still caught after extraction + redaction', () => {

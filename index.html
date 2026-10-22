@@ -278,6 +278,24 @@
     color: #facf6f;
     border: 1px dashed rgba(250, 199, 117, 0.6);
   }
+  .suspect-list {
+    margin-top: 10px;
+    border: 1px solid rgba(250, 199, 117, 0.35);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: rgba(250, 199, 117, 0.06);
+  }
+  .suspect-list-title { font-size: 12px; font-weight: 600; color: #facf6f; margin-bottom: 4px; }
+  .suspect-list-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .suspect-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 4px 0;
+  }
+  .suspect-item input[type="checkbox"] { accent-color: #facf6f; }
   #highlighted {
     white-space: pre-wrap;
     word-break: break-word;
@@ -345,6 +363,7 @@
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="imgProgress"></div>
   <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
+  <div id="imgSuspectList" class="suspect-list" style="display:none;"></div>
 </div>
 
 <div class="panel">
@@ -1498,15 +1517,17 @@ function collectLines(data) {
 //     server name with a space in it) still matches too.
 // Pure/DOM-free on purpose, so it can be exercised directly by a
 // plain test as well as by the browser.
-function wordsToRedact(lineWords, activeRules, terms, caseSensitive) {
-  const flagged = new Set();
-
-  lineWords.forEach((word, i) => {
-    if (findMatches(word.text, activeRules, terms, caseSensitive).length > 0) {
-      flagged.add(i);
-    }
-  });
-
+// Returns { flagged, suspects } for one OCR line:
+//  - flagged:  a Set of word indices that are CERTAIN matches (custom
+//    term or regex rule) — these get their pixels overwritten
+//    unconditionally, same as before entropy existed.
+//  - suspects: an array of { wordIndices, text, entropy } for entropy
+//    hits (only computed when entropyEnabled) — these get a yellow
+//    OUTLINE drawn around them (see redactWordsOnCanvas below), never
+//    a pixel fill, until the user ticks them in the suspect checklist.
+//    wordIndices is a Set because, like a certain match, a suspect
+//    span can cover more than one OCR word box.
+function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled) {
   let joined = '';
   const spans = [];
   lineWords.forEach((word, i) => {
@@ -1522,13 +1543,39 @@ function wordsToRedact(lineWords, activeRules, terms, caseSensitive) {
     spans.push({ start, end: joined.length });
   });
 
-  findMatches(joined, activeRules, terms, caseSensitive).forEach(m => {
+  // Certain spans, in `joined`-string coordinates: the whole-line pass
+  // (catches a value OCR split across words) plus each word checked on
+  // its own (catches a match a prior fix's whole-line rejoin happens
+  // to miss). Kept as explicit {start,end} spans — not just the word-
+  // index Set below — because findEntropyMatches needs real character
+  // ranges to know what NOT to suspect.
+  const certainSpans = findMatches(joined, activeRules, terms, caseSensitive)
+    .map(m => ({ start: m.start, end: m.end }));
+  lineWords.forEach((word, i) => {
+    if (findMatches(word.text, activeRules, terms, caseSensitive).length > 0) {
+      certainSpans.push(spans[i]);
+    }
+  });
+
+  const flagged = new Set();
+  certainSpans.forEach(cs => {
     spans.forEach((span, i) => {
-      if (span.start < m.end && span.end > m.start) flagged.add(i);
+      if (span.start < cs.end && span.end > cs.start) flagged.add(i);
     });
   });
 
-  return flagged;
+  const suspects = [];
+  if (entropyEnabled) {
+    findEntropyMatches(joined, certainSpans).forEach(m => {
+      const wordIndices = new Set();
+      spans.forEach((span, i) => {
+        if (span.start < m.end && span.end > m.start) wordIndices.add(i);
+      });
+      if (wordIndices.size) suspects.push({ wordIndices, text: joined.slice(m.start, m.end), entropy: m.entropy });
+    });
+  }
+
+  return { flagged, suspects };
 }
 
 // Creates a Tesseract worker pointed at the vendored (local-only) engine
@@ -1545,24 +1592,137 @@ async function createTesseractWorker(lang, onProgress) {
 }
 
 // Runs each OCR line through the shared detection pipeline (see
-// wordsToRedact) and blacks out the bounding box of every flagged
-// word directly on the given canvas context. Returns how many words
-// were redacted. Shared by the image panel and the PDF panel (used
-// there as an optional fallback pass for scanned/image-only pages, on
-// top of the text-layer detection).
-function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive) {
-  ctx.fillStyle = '#000000';
+// wordsToRedact) and applies two DIFFERENT treatments on the given
+// canvas context — this is the actual "real deletion vs. visual
+// overlay" line the project cares about:
+//  - a certain match (custom term or regex rule), OR a suspect whose
+//    id is already in confirmedIds — pixels are overwritten with a
+//    solid black fill. From this point on the original pixels are
+//    gone from the canvas; this is real redaction.
+//  - an UNconfirmed entropy suspect — only a yellow OUTLINE is
+//    stroked around it. The pixels underneath are left completely
+//    untouched. It only gets filled on a later call, once the user
+//    has ticked it in the suspect checklist and its id lands in
+//    confirmedIds (see renderImageRedactions, which always redraws
+//    from the clean original first — see loadImageFile).
+// Returns how many regions were actually filled, plus every suspect
+// found (confirmed or not), so the caller can build/update a
+// checklist. Shared by the image panel and the PDF panel (used there
+// as an optional fallback pass for scanned/image-only pages).
+function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds) {
+  confirmedIds = confirmedIds || new Set();
   let redactedCount = 0;
-  lines.forEach(lineWords => {
-    const flagged = wordsToRedact(lineWords, activeRules, terms, caseSensitive);
+  const suspects = [];
+  const pad = 2;
+  lines.forEach((lineWords, lineIdx) => {
+    const { flagged, suspects: lineSuspects } = wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled);
+
+    ctx.fillStyle = '#000000';
     flagged.forEach(i => {
       const { x0, y0, x1, y1 } = lineWords[i].bbox;
-      const pad = 2;
       ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
       redactedCount++;
     });
+
+    lineSuspects.forEach(s => {
+      // Stable across re-renders of the SAME scan (line index + word
+      // indices don't change when only confirmedIds changes), which is
+      // what lets a checklist checkbox find "its" suspect again.
+      const idxs = [...s.wordIndices];
+      const id = `${lineIdx}:${idxs.join(',')}`;
+      const boxes = idxs.map(i => lineWords[i].bbox);
+      const x0 = Math.min(...boxes.map(b => b.x0));
+      const y0 = Math.min(...boxes.map(b => b.y0));
+      const x1 = Math.max(...boxes.map(b => b.x1));
+      const y1 = Math.max(...boxes.map(b => b.y1));
+      if (confirmedIds.has(id)) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+        redactedCount++;
+      } else {
+        ctx.save();
+        ctx.strokeStyle = '#facf6f';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+        ctx.restore();
+      }
+      suspects.push({ id, text: s.text });
+    });
   });
-  return redactedCount;
+  return { redactedCount, suspects };
+}
+
+// State kept from the most recent OCR pass, so a checklist toggle can
+// redraw the image (certain matches + whichever suspects are now
+// confirmed) WITHOUT re-running OCR — OCR is the slow part, redrawing
+// from already-known word boxes is instant.
+let lastImgLines = [];
+let lastImgActiveRules = [];
+let lastImgEntropyEnabled = false;
+let confirmedImgSuspects = new Set();
+const imgSuspectListEl = document.getElementById('imgSuspectList');
+
+// Always redraws from the untouched original bitmap first (originalImageBitmap
+// is never itself modified — see loadImageFile), then re-applies every
+// certain match and every currently-confirmed suspect. This is what makes
+// un-ticking a suspect possible on a flattened canvas: there is nothing to
+// "undo" a pixel fill, so the whole image is rebuilt from the clean source
+// every time.
+function renderImageRedactions() {
+  const t = I18N[currentLang];
+  imgCanvas.width = originalImageBitmap.naturalWidth;
+  imgCanvas.height = originalImageBitmap.naturalHeight;
+  imgCtx.drawImage(originalImageBitmap, 0, 0);
+
+  const { redactedCount, suspects } = redactWordsOnCanvas(
+    imgCtx, lastImgLines, lastImgActiveRules, customTerms, customCaseSensitiveEl.checked,
+    lastImgEntropyEnabled, confirmedImgSuspects
+  );
+  renderImgSuspectChecklist(suspects);
+
+  const unconfirmed = suspects.length - confirmedImgSuspects.size;
+  let msg = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
+  if (unconfirmed > 0) msg += ' · ' + t.statsSuspects(unconfirmed);
+  imgProgressEl.textContent = msg;
+  imgDownloadBtn.disabled = false;
+}
+
+// Builds the checklist of entropy suspects below the canvas. Ticking a
+// box adds/removes the suspect's id from confirmedImgSuspects and calls
+// renderImageRedactions() again — that single re-render is what actually
+// moves the region from "yellow outline" to "black fill" (or back).
+function renderImgSuspectChecklist(suspects) {
+  const t = I18N[currentLang];
+  imgSuspectListEl.innerHTML = '';
+  if (!suspects.length) {
+    imgSuspectListEl.style.display = 'none';
+    return;
+  }
+  imgSuspectListEl.style.display = 'block';
+  const title = document.createElement('div');
+  title.className = 'suspect-list-title';
+  title.textContent = t.imgSuspectListTitle;
+  const hint = document.createElement('div');
+  hint.className = 'suspect-list-hint';
+  hint.textContent = t.imgSuspectConfirmHint;
+  imgSuspectListEl.appendChild(title);
+  imgSuspectListEl.appendChild(hint);
+  suspects.forEach(s => {
+    const label = document.createElement('label');
+    label.className = 'suspect-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = confirmedImgSuspects.has(s.id);
+    cb.addEventListener('change', () => {
+      if (cb.checked) confirmedImgSuspects.add(s.id); else confirmedImgSuspects.delete(s.id);
+      renderImageRedactions();
+    });
+    const span = document.createElement('span');
+    span.textContent = s.text;
+    label.appendChild(cb);
+    label.appendChild(span);
+    imgSuspectListEl.appendChild(label);
+  });
 }
 
 imgScanBtn.addEventListener('click', async () => {
@@ -1571,6 +1731,7 @@ imgScanBtn.addEventListener('click', async () => {
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;
   imgProgressEl.textContent = t.imgProgressLoading;
+  confirmedImgSuspects = new Set();
 
   // Redraw the clean original before each scan, so re-scanning after
   // changing language/rules never stacks redactions on redactions.
@@ -1590,12 +1751,10 @@ imgScanBtn.addEventListener('click', async () => {
     const { data } = await worker.recognize(imgCanvas, {}, { blocks: true });
     await worker.terminate();
 
-    const lines = collectLines(data);
-    const activeRules = getActiveRules();
-    const redactedCount = redactWordsOnCanvas(imgCtx, lines, activeRules, customTerms, customCaseSensitiveEl.checked);
-
-    imgProgressEl.textContent = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
-    imgDownloadBtn.disabled = false;
+    lastImgLines = collectLines(data);
+    lastImgActiveRules = getActiveRules();
+    lastImgEntropyEnabled = isEntropyEnabled();
+    renderImageRedactions();
   } catch (err) {
     // Log the real error to the DevTools console and append its message
     // to the on-screen text, so the actual cause (404, MIME type, CORS,
@@ -1629,6 +1788,10 @@ imgClearBtn.addEventListener('click', () => {
   imgDownloadBtn.disabled = true;
   imgProgressEl.textContent = '';
   imageFileInput.value = '';
+  lastImgLines = [];
+  confirmedImgSuspects = new Set();
+  imgSuspectListEl.innerHTML = '';
+  imgSuspectListEl.style.display = 'none';
 });
 
 // ============================================================
@@ -1778,7 +1941,7 @@ function redactionPadX(avgCharWidthPx, isSubRange) {
 
 // Renders one page to a canvas and blacks out any text-layer match
 // directly on it. Returns the canvas plus how many items were redacted.
-async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRules, terms, caseSensitive) {
+async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRules, terms, caseSensitive, entropyEnabled) {
   const page = await pdfDoc.getPage(pageNum);
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
@@ -1844,7 +2007,46 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
     });
   });
 
-  return { canvas, ctx, redactedCount };
+  // Entropy suspects — same "never auto-redact" rule as everywhere
+  // else, but the PDF panel has no per-page interactive checklist (a
+  // multi-page canvas redraw is much more expensive than the single
+  // image panel's). Instead, a suspect gets a yellow OUTLINE stroked
+  // directly onto the page, baked into the downloaded PDF as a visible
+  // "review this" marker — never a black fill. The pixels underneath
+  // are left completely untouched. If the user agrees it's a secret,
+  // the fix is to add it to the custom term list and re-scan — a
+  // custom term IS a certain match and gets a real fill, same as any
+  // other confirmed region.
+  let suspectCount = 0;
+  if (entropyEnabled) {
+    const suspects = findEntropyMatches(fullText, matches);
+    ctx.strokeStyle = '#facf6f';
+    ctx.lineWidth = 2;
+    spans.forEach(span => {
+      const str = span.item.str || '';
+      const len = str.length;
+      if (!len) return;
+      const overlapping = suspects.filter(s => s.start < span.end && s.end > span.start);
+      if (!overlapping.length) return;
+      const fullItemBox = textItemBBox(viewport, span.item);
+      const avgCharWidthPx = (fullItemBox.x1 - fullItemBox.x0) / len;
+      overlapping.forEach(s => {
+        const charStart = Math.max(0, s.start - span.start);
+        const charEnd = Math.min(len, s.end - span.start);
+        if (charEnd <= charStart) return;
+        const box = textItemBBox(viewport, span.item, charStart / len, charEnd / len);
+        const h = box.y1 - box.y0;
+        const isSubRange = charStart > 0 || charEnd < len;
+        const padX = redactionPadX(avgCharWidthPx, isSubRange);
+        const padTop = Math.max(2, h * 0.10);
+        const padBottom = Math.max(4, h * 0.35);
+        ctx.strokeRect(box.x0 - padX, box.y0 - padTop, (box.x1 - box.x0) + padX * 2, (box.y1 - box.y0) + padTop + padBottom);
+        suspectCount++;
+      });
+    });
+  }
+
+  return { canvas, ctx, redactedCount, suspectCount };
 }
 
 pdfScanBtn.addEventListener('click', async () => {
@@ -1886,19 +2088,33 @@ pdfScanBtn.addEventListener('click', async () => {
       ocrWorker = await createTesseractWorker(pdfOcrLangSelect.value, () => {});
     }
 
+    // entropy suspects are flag-only here (no per-page checklist UI —
+    // see the big comment inside renderAndRedactPdfPage) so I just need
+    // a running count to tell the user at the end, same pattern as
+    // totalRedacted
+    const entropyEnabled = isEntropyEnabled();
     let totalRedacted = 0;
+    let totalSuspects = 0;
     for (let i = 1; i <= numPages; i++) {
       pdfProgressEl.textContent = t.pdfProgressParsingPage(i, numPages);
-      const { canvas, ctx, redactedCount } = await renderAndRedactPdfPage(
-        pdfjsLib, pdfDoc, i, scale, activeRules, customTerms, caseSensitive
+      const { canvas, ctx, redactedCount, suspectCount } = await renderAndRedactPdfPage(
+        pdfjsLib, pdfDoc, i, scale, activeRules, customTerms, caseSensitive, entropyEnabled
       );
       totalRedacted += redactedCount;
+      totalSuspects += suspectCount;
 
       if (ocrWorker) {
         pdfProgressEl.textContent = t.pdfProgressOcrPage(i, numPages);
         const { data } = await ocrWorker.recognize(canvas, {}, { blocks: true });
         const lines = collectLines(data);
-        totalRedacted += redactWordsOnCanvas(ctx, lines, activeRules, customTerms, caseSensitive);
+        // OCR fallback has no confirm-checklist of its own either (same
+        // reasoning as above) — pass confirmedIds=undefined so
+        // redactWordsOnCanvas defaults it to an empty set and every
+        // suspect stays an outline-only yellow box, never a black fill
+        const { redactedCount: ocrRedacted, suspects: ocrSuspects } =
+          redactWordsOnCanvas(ctx, lines, activeRules, customTerms, caseSensitive, entropyEnabled);
+        totalRedacted += ocrRedacted;
+        totalSuspects += ocrSuspects.length;
       }
 
       pdfPageCanvases.push(canvas);
@@ -1929,7 +2145,9 @@ pdfScanBtn.addEventListener('click', async () => {
     }
     pdfOutputBytes = await outPdf.save();
 
-    pdfProgressEl.textContent = totalRedacted > 0 ? t.pdfProgressDone(totalRedacted, numPages) : t.pdfProgressNone;
+    let progressMsg = totalRedacted > 0 ? t.pdfProgressDone(totalRedacted, numPages) : t.pdfProgressNone;
+    if (totalSuspects > 0) progressMsg += ' ' + t.officeEntropyHint(totalSuspects);
+    pdfProgressEl.textContent = progressMsg;
     pdfDownloadBtn.disabled = false;
     pdfPagesWrap.style.display = 'block';
   } catch (err) {
@@ -2039,7 +2257,7 @@ function extractDocxParagraphs(xml) {
 // across separate <w:t> runs within one paragraph is still one
 // contiguous string by the time it's checked. Replaces every match with
 // the same localized mask label used everywhere else in the app.
-function redactParagraphs(paragraphs, activeRules, terms, caseSensitive, masks) {
+function redactParagraphs(paragraphs, activeRules, terms, caseSensitive, masks, entropyEnabled) {
   const fullText = paragraphs.join('\n');
   const matches = findMatches(fullText, activeRules, terms, caseSensitive);
   let out = '';
@@ -2050,7 +2268,18 @@ function redactParagraphs(paragraphs, activeRules, terms, caseSensitive, masks) 
     cursor = m.end;
   });
   out += fullText.slice(cursor);
-  return { text: out, redactedCount: matches.length };
+  // Entropy suspects: flag-only here, same "never auto-redact without
+  // confirmation" rule as the rest of the app — but unlike the image/
+  // scanned-PDF canvases, this output PDF is freshly-drawn vector text
+  // (buildSimplePdfFromText), not a raster I can stroke a yellow box
+  // onto. Re-coloring individual runs inside that text layout would be
+  // a much bigger change for a "flag only" feature, so a suspect is
+  // just counted here and left word-for-word in `out`, in its original
+  // black text — the count turns into officeEntropyHint's guidance
+  // message in the click handler below. Confirming one still goes
+  // through the custom term list, same path as every other panel.
+  const suspects = entropyEnabled ? findEntropyMatches(fullText, matches) : [];
+  return { text: out, redactedCount: matches.length, suspectCount: suspects.length };
 }
 
 // Pulls visible text from every relevant part inside the .docx zip, in
@@ -2188,13 +2417,16 @@ docxScanBtn.addEventListener('click', async () => {
     const paragraphs = await extractDocxVisibleText(zip);
     const activeRules = getActiveRules();
     const caseSensitive = customCaseSensitiveEl.checked;
-    const { text, redactedCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks);
+    const entropyEnabled = isEntropyEnabled();
+    const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
 
     docxProgressEl.textContent = t.docxProgressBuildingPdf;
     const fontBytes = await loadDocxFontBytes();
     docxOutputBytes = await buildSimplePdfFromText(text, fontBytes);
 
-    docxProgressEl.textContent = redactedCount > 0 ? t.docxProgressDone(redactedCount) : t.docxProgressNone;
+    let progressMsg = redactedCount > 0 ? t.docxProgressDone(redactedCount) : t.docxProgressNone;
+    if (suspectCount > 0) progressMsg += ' ' + t.officeEntropyHint(suspectCount);
+    docxProgressEl.textContent = progressMsg;
     docxDownloadBtn.disabled = false;
   } catch (err) {
     console.error('Word processing failed:', err);
