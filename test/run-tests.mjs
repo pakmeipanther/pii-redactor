@@ -79,9 +79,19 @@ const docxPureFunctionsCode = extractBetween(
   '\n\n// Pulls visible text from every relevant part inside the .docx zip',
   'decodeXmlText + extractDocxParagraphs + redactParagraphs'
 );
+// extractPptxParagraphs sits sandwiched between the two zip-dependent
+// (not Node-testable without a real JSZip instance) async functions
+// extractDocxVisibleText and extractPptxVisibleText — pulled out on its
+// own, same "pure string function only" rule as docxPureFunctionsCode
+// above skipping extractDocxVisibleText.
+const pptxPureFunctionsCode = extractBetween(
+  "// PowerPoint's DrawingML text model is simpler than Word's",
+  '\n\n// Slide parts are named slide1.xml',
+  'extractPptxParagraphs'
+);
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs };`;
-const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs };`;
+const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -489,6 +499,48 @@ check('extractDocxParagraphs: multiple paragraphs are returned in document order
   if (paragraphs.length !== 2 || paragraphs[0] !== 'First.' || paragraphs[1] !== 'Second.') {
     throw new Error(`expected ["First.", "Second."], got ${JSON.stringify(paragraphs)}`);
   }
+});
+
+check('extractPptxParagraphs: a value split across several <a:t> runs in one paragraph reads as one contiguous string', () => {
+  // Same run-splitting reality as Word, different namespace prefix:
+  // PowerPoint can still split one visible word across <a:r> runs.
+  const xml = '<a:p><a:r><a:t>Contact </a:t></a:r><a:r><a:t>Acme</a:t></a:r><a:r><a:t>Corp</a:t></a:r><a:r><a:t> for details.</a:t></a:r></a:p>';
+  const paragraphs = extractPptxParagraphs(xml);
+  if (paragraphs.length !== 1 || paragraphs[0] !== 'Contact AcmeCorp for details.') {
+    throw new Error(`expected ["Contact AcmeCorp for details."], got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('extractPptxParagraphs: XML-entity-escaped text inside a run is decoded', () => {
+  const xml = '<a:p><a:r><a:t>Company: Smith &amp; Sons</a:t></a:r></a:p>';
+  const paragraphs = extractPptxParagraphs(xml);
+  if (paragraphs.length !== 1 || paragraphs[0] !== 'Company: Smith & Sons') {
+    throw new Error(`expected ["Company: Smith & Sons"], got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('extractPptxParagraphs: paragraphs across several text boxes on the same slide XML are returned in document order', () => {
+  // A slide's shapes (title box, body box, ...) each carry their own
+  // <a:p> paragraphs one after another in the slide XML — no per-shape
+  // grouping needed, a flat document-order walk is enough.
+  const xml = '<p:sp><p:txBody><a:p><a:r><a:t>Slide title</a:t></a:r></a:p></p:txBody></p:sp>' +
+              '<p:sp><p:txBody><a:p><a:r><a:t>First bullet.</a:t></a:r></a:p><a:p><a:r><a:t>Second bullet.</a:t></a:r></a:p></p:txBody></p:sp>';
+  const paragraphs = extractPptxParagraphs(xml);
+  const expected = ['Slide title', 'First bullet.', 'Second bullet.'];
+  if (JSON.stringify(paragraphs) !== JSON.stringify(expected)) {
+    throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(paragraphs)}`);
+  }
+});
+
+check('full pipeline: a custom term split across pptx runs is still caught after extraction + redaction', () => {
+  // Mirrors the equivalent docx full-pipeline test below: extraction and
+  // redaction are two separate pure functions, so this checks they
+  // actually compose correctly for the PowerPoint path too.
+  const xml = '<a:p><a:r><a:t>Contact </a:t></a:r><a:r><a:t>Acme</a:t></a:r><a:r><a:t>Corp</a:t></a:r><a:r><a:t> for details.</a:t></a:r></a:p>';
+  const paragraphs = extractPptxParagraphs(xml);
+  const { text, redactedCount } = redactParagraphs(paragraphs, [], ['acmecorp'], false, { custom: '[INTERNAL TERM]' });
+  if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
+  if (text !== 'Contact [INTERNAL TERM] for details.') throw new Error(`unexpected output: "${text}"`);
 });
 
 check('redactParagraphs: matches are replaced with the caller-supplied mask label and counted', () => {

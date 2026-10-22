@@ -408,6 +408,20 @@
 </div>
 
 <div class="panel">
+  <h2 data-i18n="sectionPptx">1e. Hoặc tải file PowerPoint (.pptx)</h2>
+  <div class="subtitle" data-i18n="pptxDesc" style="margin-bottom:10px;">Trích nội dung văn bản trên các slide (không gồm ghi chú diễn giả), che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, hình ảnh, biểu đồ hay animation gốc của file PowerPoint.</div>
+  <div class="dropzone" id="pptxDropzone" role="button" tabindex="0" data-i18n="pptxDropzoneText">Kéo-thả file .pptx vào đây, hoặc bấm để chọn file</div>
+  <input type="file" id="pptxFileInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;">
+  <div class="img-progress" id="pptxFileName"></div>
+  <div class="img-row">
+    <button id="pptxScanBtn" data-i18n="pptxScanBtn" disabled>Chuyển &amp; che thông tin nhạy cảm → PDF</button>
+    <button id="pptxDownloadBtn" class="secondary" data-i18n="pptxDownloadBtn" disabled>Tải PDF đã xử lý</button>
+    <button id="pptxClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
+  </div>
+  <div class="img-progress" id="pptxProgress"></div>
+</div>
+
+<div class="panel">
   <h2 data-i18n="sectionCustom">2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)</h2>
   <div class="subtitle" data-i18n="customDesc" style="margin-bottom:10px;">Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn.</div>
   <div class="custom-row">
@@ -536,6 +550,18 @@ const I18N = {
     docxProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file Word — vẫn tạo file PDF từ nội dung gốc.',
     docxProgressError: 'Lỗi khi xử lý file Word — file có thể bị hỏng hoặc không đúng định dạng .docx.',
     docxDownloadName: 'van-ban-da-che-thong-tin.pdf',
+    sectionPptx: '1e. Hoặc tải file PowerPoint (.pptx)',
+    pptxDesc: 'Trích nội dung văn bản trên các slide (không gồm ghi chú diễn giả), che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, hình ảnh, biểu đồ hay animation gốc của file PowerPoint.',
+    pptxDropzoneText: 'Kéo-thả file .pptx vào đây, hoặc bấm để chọn file',
+    pptxScanBtn: 'Chuyển & che thông tin nhạy cảm → PDF',
+    pptxDownloadBtn: 'Tải PDF đã xử lý',
+    pptxProgressLoadingLib: 'Đang tải thư viện xử lý file PowerPoint...',
+    pptxProgressExtracting: 'Đang trích xuất nội dung văn bản từ các slide...',
+    pptxProgressBuildingPdf: 'Đang tạo file PDF...',
+    pptxProgressDone: n => `Hoàn tất — đã che ${n} vùng nhạy cảm và tạo file PDF mới.`,
+    pptxProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file PowerPoint — vẫn tạo file PDF từ nội dung gốc.',
+    pptxProgressError: 'Lỗi khi xử lý file PowerPoint — file có thể bị hỏng hoặc không đúng định dạng .pptx.',
+    pptxDownloadName: 'slide-da-che-thong-tin.pdf',
     scanBtn: 'Quét & đánh dấu',
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
@@ -638,6 +664,18 @@ const I18N = {
     docxProgressNone: 'No sensitive data found in the Word file — a PDF was still created from the original content.',
     docxProgressError: 'Error processing the Word file — it may be corrupted or not a valid .docx.',
     docxDownloadName: 'redacted-text.pdf',
+    sectionPptx: '1e. Or upload a PowerPoint file (.pptx)',
+    pptxDesc: 'Extracts the visible text from slides (speaker notes are not included), redacts sensitive information, then outputs a simple PDF — good enough to paste to an AI. This PDF does NOT preserve the original layout, images, charts, or animations of the PowerPoint file.',
+    pptxDropzoneText: 'Drag and drop a .pptx file here, or click to choose a file',
+    pptxScanBtn: 'Convert & redact → PDF',
+    pptxDownloadBtn: 'Download processed PDF',
+    pptxProgressLoadingLib: 'Loading PowerPoint-processing library...',
+    pptxProgressExtracting: 'Extracting text content from slides...',
+    pptxProgressBuildingPdf: 'Building PDF file...',
+    pptxProgressDone: n => `Done — redacted ${n} sensitive region(s) and created a new PDF.`,
+    pptxProgressNone: 'No sensitive data found in the PowerPoint file — a PDF was still created from the original content.',
+    pptxProgressError: 'Error processing the PowerPoint file — it may be corrupted or not a valid .pptx.',
+    pptxDownloadName: 'redacted-slides.pdf',
     scanBtn: 'Scan & highlight',
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
@@ -740,6 +778,18 @@ const I18N = {
     docxProgressNone: 'Aucune information sensible trouvée dans le fichier Word — un PDF a tout de même été créé à partir du contenu original.',
     docxProgressError: 'Erreur lors du traitement du fichier Word — il est peut-être corrompu ou n\'est pas un .docx valide.',
     docxDownloadName: 'texte-cavarde.pdf',
+    sectionPptx: '1e. Ou importez un fichier PowerPoint (.pptx)',
+    pptxDesc: 'Extrait le texte visible des diapositives (les notes du présentateur ne sont pas incluses), masque les informations sensibles, puis génère un PDF simple — suffisant à transmettre à une IA. Ce PDF ne conserve PAS la mise en page, les images, les graphiques ni les animations d\'origine.',
+    pptxDropzoneText: 'Glissez-déposez un fichier .pptx ici, ou cliquez pour choisir un fichier',
+    pptxScanBtn: 'Convertir et caviarder → PDF',
+    pptxDownloadBtn: 'Télécharger le PDF traité',
+    pptxProgressLoadingLib: 'Chargement de la bibliothèque de traitement PowerPoint...',
+    pptxProgressExtracting: 'Extraction du contenu textuel des diapositives...',
+    pptxProgressBuildingPdf: 'Création du fichier PDF...',
+    pptxProgressDone: n => `Terminé — ${n} zone(s) sensible(s) masquée(s) et nouveau PDF créé.`,
+    pptxProgressNone: 'Aucune information sensible trouvée dans le fichier PowerPoint — un PDF a tout de même été créé à partir du contenu original.',
+    pptxProgressError: 'Erreur lors du traitement du fichier PowerPoint — il est peut-être corrompu ou n\'est pas un .pptx valide.',
+    pptxDownloadName: 'diapositives-caviardees.pdf',
     scanBtn: 'Analyser et surligner',
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
@@ -842,6 +892,18 @@ const I18N = {
     docxProgressNone: 'Keine sensiblen Daten in der Word-Datei gefunden — es wurde trotzdem ein PDF aus dem Originalinhalt erstellt.',
     docxProgressError: 'Fehler bei der Verarbeitung der Word-Datei — sie ist möglicherweise beschädigt oder keine gültige .docx-Datei.',
     docxDownloadName: 'geschwaerzter-text.pdf',
+    sectionPptx: '1e. Oder eine PowerPoint-Datei (.pptx) hochladen',
+    pptxDesc: 'Extrahiert den sichtbaren Text der Folien (Referentennotizen werden nicht einbezogen), schwärzt sensible Informationen und erzeugt daraus ein einfaches PDF — ausreichend, um es einer KI zu übergeben. Dieses PDF behält NICHT das ursprüngliche Layout, Bilder, Diagramme oder Animationen bei.',
+    pptxDropzoneText: 'PowerPoint-Datei (.pptx) hierher ziehen oder klicken, um eine Datei auszuwählen',
+    pptxScanBtn: 'Umwandeln & schwärzen → PDF',
+    pptxDownloadBtn: 'Bearbeitetes PDF herunterladen',
+    pptxProgressLoadingLib: 'PowerPoint-Verarbeitungsbibliothek wird geladen...',
+    pptxProgressExtracting: 'Textinhalt der Folien wird extrahiert...',
+    pptxProgressBuildingPdf: 'PDF-Datei wird erstellt...',
+    pptxProgressDone: n => `Fertig — ${n} sensible Bereich(e) geschwärzt und neues PDF erstellt.`,
+    pptxProgressNone: 'Keine sensiblen Daten in der PowerPoint-Datei gefunden — es wurde trotzdem ein PDF aus dem Originalinhalt erstellt.',
+    pptxProgressError: 'Fehler bei der Verarbeitung der PowerPoint-Datei — sie ist möglicherweise beschädigt oder keine gültige .pptx-Datei.',
+    pptxDownloadName: 'geschwaerzte-folien.pdf',
     scanBtn: 'Scannen & markieren',
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
@@ -2306,6 +2368,55 @@ async function extractDocxVisibleText(zip) {
   return allParagraphs;
 }
 
+// PowerPoint's DrawingML text model is simpler than Word's: a slide is
+// just a flat sequence of <a:p> paragraphs (inside <a:t> runs) wherever
+// a text box sits on the slide — no header/footer/footnote parts to
+// chase down like .docx has. Same decodeXmlText reuse, same "regex walk,
+// not DOMParser" reasoning as extractDocxParagraphs (keeps this a pure,
+// Node-testable string function).
+function extractPptxParagraphs(xml) {
+  const paragraphs = [];
+  const pRe = /<a:p\b[^>]*>([\s\S]*?)<\/a:p>/g;
+  const tRe = /<a:t\b[^>]*>([\s\S]*?)<\/a:t>/g;
+  let pm;
+  while ((pm = pRe.exec(xml)) !== null) {
+    const body = pm[1];
+    let text = '';
+    let tm;
+    tRe.lastIndex = 0;
+    while ((tm = tRe.exec(body)) !== null) {
+      text += decodeXmlText(tm[1]);
+    }
+    paragraphs.push(text);
+  }
+  return paragraphs;
+}
+
+// Slide parts are named slide1.xml, slide2.xml, ... — sorted as plain
+// strings that would put slide10 before slide2, so the slide number has
+// to be pulled out and compared numerically to keep the extracted text
+// in the same order the deck is actually presented in.
+// Deliberately NOT reading ppt/notesSlides/* here: speaker notes aren't
+// part of what's shown on the slide itself, same "visible content only"
+// call as skipping <w:delText> in the Word path above — whatever isn't
+// pulled into `allParagraphs` never reaches the output PDF at all, so
+// this is also the conservative choice (notes text, secret or not,
+// simply never leaves the original file).
+async function extractPptxVisibleText(zip) {
+  const slideRe = /^ppt\/slides\/slide(\d+)\.xml$/;
+  const slideNames = Object.keys(zip.files)
+    .map(n => ({ name: n, m: n.match(slideRe) }))
+    .filter(x => x.m)
+    .sort((a, b) => Number(a.m[1]) - Number(b.m[1]))
+    .map(x => x.name);
+  const allParagraphs = [];
+  for (const name of slideNames) {
+    const xml = await zip.file(name).async('string');
+    allParagraphs.push(...extractPptxParagraphs(xml));
+  }
+  return allParagraphs;
+}
+
 let docxFontBytesPromise = null;
 function loadDocxFontBytes() {
   if (!docxFontBytesPromise) {
@@ -2459,6 +2570,116 @@ docxClearBtn.addEventListener('click', () => {
   docxProgressEl.textContent = '';
   docxFileNameEl.textContent = '';
   docxFileInput.value = '';
+});
+
+// ============================================================
+// PowerPoint (.pptx) -> redacted PDF — same shape as the Word panel
+// right above (extract visible text -> redactParagraphs -> brand-new
+// vector-text PDF via buildSimplePdfFromText). Reusing that exact
+// function rather than writing a second PDF builder, since the output
+// contract is identical: plain word-wrapped text, no original layout.
+// ============================================================
+const pptxDropzone = document.getElementById('pptxDropzone');
+const pptxFileInput = document.getElementById('pptxFileInput');
+const pptxFileNameEl = document.getElementById('pptxFileName');
+const pptxScanBtn = document.getElementById('pptxScanBtn');
+const pptxDownloadBtn = document.getElementById('pptxDownloadBtn');
+const pptxClearBtn = document.getElementById('pptxClearBtn');
+const pptxProgressEl = document.getElementById('pptxProgress');
+
+let pptxOriginalBytes = null; // ArrayBuffer of the uploaded file, kept so re-scanning doesn't need a re-upload
+let pptxOutputBytes = null;   // Uint8Array of the generated PDF, once built
+
+function loadPptxFile(file) {
+  if (!file) return;
+  const looksLikePptx = file.name.toLowerCase().endsWith('.pptx');
+  if (!looksLikePptx) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    pptxOriginalBytes = reader.result;
+    pptxFileNameEl.textContent = file.name;
+    pptxScanBtn.disabled = false;
+    pptxDownloadBtn.disabled = true;
+    pptxOutputBytes = null;
+    pptxProgressEl.textContent = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+pptxDropzone.addEventListener('click', () => pptxFileInput.click());
+pptxDropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pptxFileInput.click(); }
+});
+pptxFileInput.addEventListener('change', (e) => loadPptxFile(e.target.files[0]));
+pptxDropzone.addEventListener('dragover', (e) => { e.preventDefault(); pptxDropzone.classList.add('drag-over'); });
+pptxDropzone.addEventListener('dragleave', () => pptxDropzone.classList.remove('drag-over'));
+pptxDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  pptxDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) loadPptxFile(e.dataTransfer.files[0]);
+});
+
+pptxScanBtn.addEventListener('click', async () => {
+  const t = I18N[currentLang];
+  if (!pptxOriginalBytes) return;
+  pptxScanBtn.disabled = true;
+  pptxDownloadBtn.disabled = true;
+  pptxOutputBytes = null;
+  pptxProgressEl.textContent = t.pptxProgressLoadingLib;
+
+  try {
+    // Same .slice(0) precaution as the Word/PDF panels — JSZip can hold
+    // onto or transfer the buffer it's given, so re-scanning after an
+    // edit to the custom term list must not risk an already-consumed
+    // ArrayBuffer. pptxOriginalBytes itself stays intact for every re-scan.
+    const zip = await JSZip.loadAsync(pptxOriginalBytes.slice(0));
+
+    pptxProgressEl.textContent = t.pptxProgressExtracting;
+    const paragraphs = await extractPptxVisibleText(zip);
+    const activeRules = getActiveRules();
+    const caseSensitive = customCaseSensitiveEl.checked;
+    const entropyEnabled = isEntropyEnabled();
+    const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
+
+    pptxProgressEl.textContent = t.pptxProgressBuildingPdf;
+    const fontBytes = await loadDocxFontBytes(); // same embedded DejaVu Sans font, no need for a second copy
+    pptxOutputBytes = await buildSimplePdfFromText(text, fontBytes);
+
+    let progressMsg = redactedCount > 0 ? t.pptxProgressDone(redactedCount) : t.pptxProgressNone;
+    if (suspectCount > 0) progressMsg += ' ' + t.officeEntropyHint(suspectCount);
+    pptxProgressEl.textContent = progressMsg;
+    pptxDownloadBtn.disabled = false;
+  } catch (err) {
+    console.error('PowerPoint processing failed:', err);
+    const detail = (err && (err.message || err.toString())) || 'unknown error';
+    pptxProgressEl.textContent = t.pptxProgressError + ' [' + detail + ']';
+  } finally {
+    pptxScanBtn.disabled = false;
+  }
+});
+
+pptxDownloadBtn.addEventListener('click', () => {
+  if (!pptxOutputBytes) return;
+  const t = I18N[currentLang];
+  const blob = new Blob([pptxOutputBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = t.pptxDownloadName || 'redacted-slides.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+pptxClearBtn.addEventListener('click', () => {
+  pptxOriginalBytes = null;
+  pptxOutputBytes = null;
+  pptxScanBtn.disabled = true;
+  pptxDownloadBtn.disabled = true;
+  pptxProgressEl.textContent = '';
+  pptxFileNameEl.textContent = '';
+  pptxFileInput.value = '';
 });
 
 // Initialization
