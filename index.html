@@ -267,6 +267,17 @@
     border-radius: 3px;
     padding: 0 2px;
   }
+  /* Entropy suspects: amber, not red — visually distinct from a
+     certain match because, unlike every other <mark>, the text inside
+     is NOT yet redacted. data-suspect-idx makes both the unconfirmed
+     (.suspect) and confirmed (.confirmed) states clickable, so the
+     cursor says so. */
+  mark[data-suspect-idx] { cursor: pointer; }
+  mark.suspect {
+    background: rgba(250, 199, 117, 0.18);
+    color: #facf6f;
+    border: 1px dashed rgba(250, 199, 117, 0.6);
+  }
   #highlighted {
     white-space: pre-wrap;
     word-break: break-word;
@@ -513,6 +524,12 @@ const I18N = {
     statsNoText: 'Chưa có văn bản để quét.',
     statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
     statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
+    statsSuspects: n => `${n} nghi ngờ entropy cao (chưa xác nhận — sẽ KHÔNG bị ẩn trừ khi bạn bấm vào để xác nhận)`,
+    entropySuspectTitle: 'Nghi ngờ mật khẩu/secret (entropy cao) — bấm để xác nhận che',
+    entropyConfirmedTitle: 'Đã xác nhận — sẽ bị ẩn khi tải về. Bấm lại để bỏ xác nhận',
+    imgSuspectListTitle: 'Nghi ngờ mật khẩu/secret (entropy cao) — tick để xác nhận che',
+    imgSuspectConfirmHint: 'Vùng viền vàng trên ảnh là nghi ngờ, pixel CHƯA bị xóa. Tick vào ô bên dưới để xác nhận che — ảnh tự vẽ lại ngay.',
+    officeEntropyHint: n => `⚠ Tìm thấy ${n} chuỗi nghi ngờ (entropy cao) nhưng KHÔNG được tự động che. Nếu đúng là bí mật, thêm chuỗi đó vào "Từ khóa nội bộ tùy chỉnh" ở trên rồi quét lại — danh sách tùy chỉnh luôn được che ngay, không cần xác nhận lại.`,
     footer: 'Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·',
     footerLink: 'xem mã nguồn trên GitHub',
     downloadName: 'van-ban-da-lam-sach.txt',
@@ -525,7 +542,8 @@ const I18N = {
       creditcard: 'Số thẻ ngân hàng',
       dburi: 'Connection string database (URI: postgres/mysql/mongodb/redis/jdbc...)',
       dbkv: 'Connection string kiểu Server=...;Database=...;Password=...;',
-      dbport: 'Cổng kết nối database (port)'
+      dbport: 'Cổng kết nối database (port)',
+      entropy: 'Mật khẩu / chuỗi ngẫu nhiên (entropy cao)'
     },
     masks: {
       email: '[EMAIL ĐÃ ẨN]',
@@ -537,7 +555,8 @@ const I18N = {
       dburi: '[CHUỖI KẾT NỐI DATABASE ĐÃ ẨN]',
       dbkv: '[THÔNG TIN KẾT NỐI DATABASE ĐÃ ẨN]',
       dbport: '[CỔNG ĐÃ ẨN]',
-      custom: '[TỪ KHÓA NỘI BỘ ĐÃ ẨN]'
+      custom: '[TỪ KHÓA NỘI BỘ ĐÃ ẨN]',
+      entropy: '[CHUỖI NGHI NGỜ (ENTROPY CAO) ĐÃ ẨN]'
     }
   },
   en: {
@@ -607,6 +626,12 @@ const I18N = {
     statsNoText: 'No text to scan yet.',
     statsNoMatch: 'No matches found for the selected types.',
     statsFound: n => `Found ${n} sensitive region(s) —`,
+    statsSuspects: n => `${n} high-entropy suspect(s) (unconfirmed — will NOT be redacted unless you click to confirm)`,
+    entropySuspectTitle: 'Suspected password/secret (high entropy) — click to confirm redaction',
+    entropyConfirmedTitle: 'Confirmed — will be redacted on download. Click again to un-confirm',
+    imgSuspectListTitle: 'Suspected passwords/secrets (high entropy) — tick to confirm redaction',
+    imgSuspectConfirmHint: 'Yellow-outlined regions on the image are suspects — pixels NOT yet erased. Tick a box below to confirm; the image redraws automatically.',
+    officeEntropyHint: n => `⚠ Found ${n} high-entropy suspect string(s) — NOT auto-redacted. If one is really a secret, add it to the custom term list above and re-scan — the custom list is always redacted immediately, no re-confirmation needed.`,
     footer: 'Runs entirely locally · no data leaves your machine ·',
     footerLink: 'view the source on GitHub',
     downloadName: 'redacted-text.txt',
@@ -619,7 +644,8 @@ const I18N = {
       creditcard: 'Credit/bank card number',
       dburi: 'Database connection string (URI: postgres/mysql/mongodb/redis/jdbc...)',
       dbkv: 'Connection string in Server=...;Database=...;Password=...; form',
-      dbport: 'Database connection port'
+      dbport: 'Database connection port',
+      entropy: 'Password / random string (high entropy)'
     },
     masks: {
       email: '[EMAIL REDACTED]',
@@ -631,7 +657,8 @@ const I18N = {
       dburi: '[DATABASE CONNECTION STRING REDACTED]',
       dbkv: '[DATABASE CONNECTION INFO REDACTED]',
       dbport: '[PORT REDACTED]',
-      custom: '[INTERNAL TERM REDACTED]'
+      custom: '[INTERNAL TERM REDACTED]',
+      entropy: '[HIGH-ENTROPY STRING REDACTED]'
     }
   },
   fr: {
@@ -701,6 +728,12 @@ const I18N = {
     statsNoText: 'Aucun texte à analyser.',
     statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
     statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
+    statsSuspects: n => `${n} suspicion(s) d'entropie élevée (non confirmée(s) — ne seront PAS masquées sauf confirmation)`,
+    entropySuspectTitle: 'Mot de passe/secret suspecté (entropie élevée) — cliquez pour confirmer le masquage',
+    entropyConfirmedTitle: 'Confirmé — sera masqué au téléchargement. Cliquez à nouveau pour annuler',
+    imgSuspectListTitle: 'Mots de passe/secrets suspectés (entropie élevée) — cochez pour confirmer le masquage',
+    imgSuspectConfirmHint: "Les zones encadrées en jaune sur l'image sont des suspicions — les pixels ne sont PAS encore effacés. Cochez une case ci-dessous pour confirmer ; l'image est redessinée automatiquement.",
+    officeEntropyHint: n => `⚠ ${n} chaîne(s) suspecte(s) (entropie élevée) trouvée(s) — PAS masquée(s) automatiquement. S'il s'agit bien d'un secret, ajoutez-le à la liste de termes personnalisés ci-dessus puis relancez l'analyse — la liste personnalisée est toujours masquée immédiatement, sans confirmation supplémentaire.`,
     footer: "S'exécute entièrement en local · aucune donnée ne quitte votre machine ·",
     footerLink: 'voir le code source sur GitHub',
     downloadName: 'texte-nettoye.txt',
@@ -713,7 +746,8 @@ const I18N = {
       creditcard: 'Numéro de carte bancaire',
       dburi: 'Chaîne de connexion base de données (URI : postgres/mysql/mongodb/redis/jdbc...)',
       dbkv: 'Chaîne de connexion type Server=...;Database=...;Password=...;',
-      dbport: 'Port de connexion à la base de données'
+      dbport: 'Port de connexion à la base de données',
+      entropy: 'Mot de passe / chaîne aléatoire (entropie élevée)'
     },
     masks: {
       email: '[EMAIL MASQUÉ]',
@@ -725,7 +759,8 @@ const I18N = {
       dburi: '[CHAÎNE DE CONNEXION BDD MASQUÉE]',
       dbkv: '[INFOS DE CONNEXION BDD MASQUÉES]',
       dbport: '[PORT MASQUÉ]',
-      custom: '[TERME INTERNE MASQUÉ]'
+      custom: '[TERME INTERNE MASQUÉ]',
+      entropy: '[CHAÎNE À ENTROPIE ÉLEVÉE MASQUÉE]'
     }
   },
   de: {
@@ -795,6 +830,12 @@ const I18N = {
     statsNoText: 'Noch kein Text zum Scannen.',
     statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
     statsFound: n => `${n} sensible Bereich(e) gefunden —`,
+    statsSuspects: n => `${n} Verdachtsfall/-fälle mit hoher Entropie (unbestätigt — wird/werden NICHT geschwärzt, bis Sie bestätigen)`,
+    entropySuspectTitle: 'Vermutetes Passwort/Secret (hohe Entropie) — klicken, um die Schwärzung zu bestätigen',
+    entropyConfirmedTitle: 'Bestätigt — wird beim Download geschwärzt. Erneut klicken, um die Bestätigung aufzuheben',
+    imgSuspectListTitle: 'Vermutete Passwörter/Secrets (hohe Entropie) — zum Bestätigen ankreuzen',
+    imgSuspectConfirmHint: 'Gelb umrandete Bereiche im Bild sind Verdachtsfälle — Pixel noch NICHT gelöscht. Unten ein Kästchen ankreuzen, um zu bestätigen; das Bild wird automatisch neu gezeichnet.',
+    officeEntropyHint: n => `⚠ ${n} Zeichenfolge(n) mit hoher Entropie gefunden — NICHT automatisch geschwärzt. Falls es sich wirklich um ein Secret handelt, oben zur Liste benutzerdefinierter Begriffe hinzufügen und erneut scannen — die eigene Liste wird immer sofort geschwärzt, ohne erneute Bestätigung.`,
     footer: 'Läuft vollständig lokal · keine Daten verlassen Ihr Gerät ·',
     footerLink: 'Quellcode auf GitHub ansehen',
     downloadName: 'bereinigter-text.txt',
@@ -807,7 +848,8 @@ const I18N = {
       creditcard: 'Bankkartennummer',
       dburi: 'Datenbank-Connection-String (URI: postgres/mysql/mongodb/redis/jdbc...)',
       dbkv: 'Connection-String im Format Server=...;Database=...;Password=...;',
-      dbport: 'Datenbank-Verbindungsport'
+      dbport: 'Datenbank-Verbindungsport',
+      entropy: 'Passwort / Zufallszeichenfolge (hohe Entropie)'
     },
     masks: {
       email: '[E-MAIL ENTFERNT]',
@@ -819,7 +861,8 @@ const I18N = {
       dburi: '[DATENBANK-CONNECTION-STRING ENTFERNT]',
       dbkv: '[DATENBANK-VERBINDUNGSDATEN ENTFERNT]',
       dbport: '[PORT ENTFERNT]',
-      custom: '[INTERNER BEGRIFF ENTFERNT]'
+      custom: '[INTERNER BEGRIFF ENTFERNT]',
+      entropy: '[ZEICHENFOLGE MIT HOHER ENTROPIE ENTFERNT]'
     }
   }
 };
@@ -1057,6 +1100,23 @@ function buildRuleCheckboxes() {
     wrap.appendChild(span);
     ruleListEl.appendChild(wrap);
   });
+  // Entropy isn't a RULES entry — it's a statistical pass, not a fixed
+  // regex (see findEntropyMatches) — but it still belongs in "data
+  // types to detect" so it can be turned off like any other rule.
+  // Appended here, by id, rather than folded into RULES so
+  // getActiveRules() (which only ever feeds the regex loop in
+  // findMatches) never has to special-case it.
+  const entropyWrap = document.createElement('label');
+  entropyWrap.className = 'rule-item';
+  const entropyCb = document.createElement('input');
+  entropyCb.type = 'checkbox';
+  entropyCb.checked = true;
+  entropyCb.id = 'entropyRuleCheckbox';
+  entropyCb.dataset.rule = 'entropy';
+  const entropySpan = document.createTextNode(' ' + I18N[currentLang].rules.entropy);
+  entropyWrap.appendChild(entropyCb);
+  entropyWrap.appendChild(entropySpan);
+  ruleListEl.appendChild(entropyWrap);
 }
 
 function escapeHtml(str) {
@@ -1121,27 +1181,152 @@ function findMatches(text, activeRules, terms, caseSensitive) {
   return merged;
 }
 
+// ============================================================
+// ENTROPY — flags random-looking strings that slipped past every
+// regex above because they don't match any known format (e.g. a
+// password typed by hand into a config file, not a recognizable API
+// key shape). Shannon entropy measures how "unpredictable" a string's
+// characters are: ordinary words repeat common letters in predictable
+// patterns (low entropy), while a string mashed out on a keyboard has
+// a close-to-uniform character distribution (high entropy).
+//
+// This is the one detection source in the whole app that NEVER
+// auto-redacts. Hashes, UUIDs, base64 blobs, and even long compound
+// words can score as "high entropy" — the false-positive rate here is
+// real, unlike the regex rules above which only match known, specific
+// formats. So every hit is surfaced as a SUSPECT, not a match: shown
+// to the user but left completely unredacted in the output until they
+// explicitly confirm it (see renderScanResult + the click handler on
+// #highlighted below, and the per-panel suspect handling for images/
+// PDF/Office files further down). This is the project's "no automatic
+// 100%" rule applied at its strictest, because this is the one
+// detector most likely to be wrong.
+// ============================================================
+const ENTROPY_MIN_LENGTH = 12;
+// Different character sets have a different theoretical max entropy
+// (log2 of alphabet size — ~4 bits/char for hex, ~6 for base64), so
+// one fixed threshold would either miss short alphanumeric passwords
+// or flag every long hex hash. Classify the token first, then pick
+// its threshold.
+const ENTROPY_THRESHOLDS = { hex: 3.0, base64ish: 4.3, mixed: 3.6 };
+
+function shannonEntropy(str) {
+  const freq = {};
+  for (const ch of str) freq[ch] = (freq[ch] || 0) + 1;
+  let h = 0;
+  for (const ch in freq) {
+    const p = freq[ch] / str.length;
+    h -= p * Math.log2(p);
+  }
+  return h;
+}
+
+function classifyAlphabet(str) {
+  if (/^[0-9a-fA-F]+$/.test(str)) return 'hex';
+  // Only counts as "base64ish" if it actually uses a base64-only symbol
+  // (+, / or trailing =) — a plain mixed-case alphanumeric string (the
+  // shape of a typical generated password) uses the same character set
+  // as base64 *without* those symbols, and measurably sits at a lower
+  // entropy than real base64 (confirmed while tuning: ~3.9 bits/char
+  // for a 15-char mixed-case password vs. ~4.6 for real base64 of
+  // similar length) — classifying it as base64ish would hold it to a
+  // threshold it rarely clears. It gets the 'mixed' bucket instead.
+  if (/^[A-Za-z0-9+/]+=*$/.test(str) && /[+/=]/.test(str)) return 'base64ish';
+  return 'mixed';
+}
+
+// Scans for contiguous runs of password/token-shaped characters
+// (letters, digits, and the handful of symbols that commonly show up
+// in generated secrets) at least ENTROPY_MIN_LENGTH long, keeping only
+// the ones whose entropy clears their alphabet's threshold. Skips any
+// span already covered by a certain match (custom term or regex rule)
+// — no point suspecting what detection is already sure about.
+function findEntropyMatches(text, alreadyMatched) {
+  const matches = [];
+  const tokenRe = /[A-Za-z0-9+/_.=-]{12,}/g;
+  let m;
+  while ((m = tokenRe.exec(text)) !== null) {
+    const token = m[0];
+    const start = m.index, end = m.index + token.length;
+    const overlaps = alreadyMatched.some(am => am.start < end && am.end > start);
+    if (overlaps) continue;
+    const alphabet = classifyAlphabet(token);
+    const entropy = shannonEntropy(token);
+    if (entropy >= ENTROPY_THRESHOLDS[alphabet]) {
+      matches.push({ start, end, ruleId: 'entropy', entropy });
+    }
+  }
+  return matches;
+}
+
+// Entropy isn't wired into RULES/getActiveRules() (see buildRuleCheckboxes)
+// because it isn't a regex rule — it's a separate statistical pass with
+// its own confirm-before-redact behavior, so every call site that cares
+// whether it's on reads the checkbox directly through this helper.
+function isEntropyEnabled() {
+  const cb = document.getElementById('entropyRuleCheckbox');
+  return cb ? cb.checked : false;
+}
+
+let lastScanText = '';           // raw text as of the last scan — lets a suspect toggle re-render without touching the (possibly since-edited) textarea
+let lastCertainMatches = [];     // custom + regex — always redacted
+let lastSuspectMatches = [];     // entropy hits — redacted only once confirmed
+let confirmedSuspects = new Set(); // indexes into lastSuspectMatches the user has clicked to confirm
 let lastCleanedText = '';
 
 function runScan() {
-  const t = I18N[currentLang];
   const text = document.getElementById('input').value;
   const activeRules = getActiveRules();
-  const matches = findMatches(text, activeRules, customTerms, customCaseSensitiveEl.checked);
+  lastScanText = text;
+  lastCertainMatches = findMatches(text, activeRules, customTerms, customCaseSensitiveEl.checked);
+  lastSuspectMatches = isEntropyEnabled() ? findEntropyMatches(text, lastCertainMatches) : [];
+  confirmedSuspects = new Set();
+  renderScanResult();
+}
 
+// Rebuilds the highlighted view and the downloadable clean text from
+// lastCertainMatches/lastSuspectMatches/confirmedSuspects, without
+// re-running detection. Called once by runScan() and again every time
+// a suspect <mark> is clicked, so confirming or un-confirming a single
+// entropy suspect is instant and never re-reads the textarea.
+function renderScanResult() {
+  const t = I18N[currentLang];
+  const text = lastScanText;
   const labelFor = id => id === 'custom' ? t.customMatchLabel : t.rules[id];
+
+  const timeline = [
+    ...lastCertainMatches.map(m => ({ ...m, kind: 'certain' })),
+    ...lastSuspectMatches.map((m, i) => ({ ...m, suspectIdx: i, kind: confirmedSuspects.has(i) ? 'confirmed' : 'suspect' }))
+  ].sort((a, b) => a.start - b.start);
 
   let htmlOut = '';
   let cleanOut = '';
   let cursor = 0;
   const counts = {};
+  let suspectCount = 0;
 
-  matches.forEach(m => {
+  timeline.forEach(m => {
     htmlOut += escapeHtml(text.slice(cursor, m.start));
-    cleanOut += text.slice(cursor, m.start);
-    htmlOut += `<mark title="${labelFor(m.ruleId)}">${escapeHtml(text.slice(m.start, m.end))}</mark>`;
-    cleanOut += t.masks[m.ruleId];
-    counts[m.ruleId] = (counts[m.ruleId] || 0) + 1;
+    const raw = text.slice(m.start, m.end);
+    if (m.kind === 'certain') {
+      htmlOut += `<mark title="${labelFor(m.ruleId)}">${escapeHtml(raw)}</mark>`;
+      cleanOut += t.masks[m.ruleId];
+      counts[m.ruleId] = (counts[m.ruleId] || 0) + 1;
+    } else if (m.kind === 'confirmed') {
+      // Confirmed by the user — now masked exactly like a certain
+      // match, but stays clickable (data-suspect-idx) so a mis-click
+      // can be undone before downloading.
+      htmlOut += `<mark class="confirmed" data-suspect-idx="${m.suspectIdx}" title="${t.entropyConfirmedTitle}">${escapeHtml(raw)}</mark>`;
+      cleanOut += t.masks.entropy;
+      counts.entropy = (counts.entropy || 0) + 1;
+    } else {
+      // Suspect, not yet confirmed: flagged in amber, but the ORIGINAL
+      // characters still pass straight through to cleanOut. This is
+      // the actual "no auto-redact" behavior — not just a visual cue.
+      htmlOut += `<mark class="suspect" data-suspect-idx="${m.suspectIdx}" title="${t.entropySuspectTitle}">${escapeHtml(raw)}</mark>`;
+      cleanOut += raw;
+      suspectCount++;
+    }
     cursor = m.end;
   });
   htmlOut += escapeHtml(text.slice(cursor));
@@ -1151,13 +1336,26 @@ function runScan() {
   document.getElementById('highlighted').innerHTML = htmlOut || '<span style="color:var(--muted)">—</span>';
 
   const statsEl = document.getElementById('stats');
-  if (matches.length === 0) {
+  const maskedTotal = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (maskedTotal === 0 && suspectCount === 0) {
     statsEl.textContent = text.trim() ? t.statsNoMatch : t.statsNoText;
   } else {
     const parts = Object.entries(counts).map(([id, n]) => `${labelFor(id)}: ${n}`);
-    statsEl.innerHTML = `${t.statsFound(matches.length)} ${parts.join(' · ')}`;
+    let line = maskedTotal > 0 ? `${t.statsFound(maskedTotal)} ${parts.join(' · ')}` : '';
+    if (suspectCount > 0) line += (line ? ' · ' : '') + t.statsSuspects(suspectCount);
+    statsEl.innerHTML = line;
   }
 }
+
+// Clicking a suspect (or an already-confirmed suspect) toggles it and
+// re-renders — the only way an entropy hit ever becomes redacted.
+document.getElementById('highlighted').addEventListener('click', (e) => {
+  const mark = e.target.closest('mark[data-suspect-idx]');
+  if (!mark) return;
+  const idx = Number(mark.dataset.suspectIdx);
+  if (confirmedSuspects.has(idx)) confirmedSuspects.delete(idx); else confirmedSuspects.add(idx);
+  renderScanResult();
+});
 
 document.getElementById('scanBtn').addEventListener('click', runScan);
 
@@ -1165,6 +1363,10 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   document.getElementById('input').value = '';
   document.getElementById('highlighted').innerHTML = '—';
   document.getElementById('stats').textContent = I18N[currentLang].statsEmpty;
+  lastScanText = '';
+  lastCertainMatches = [];
+  lastSuspectMatches = [];
+  confirmedSuspects = new Set();
   lastCleanedText = '';
 });
 

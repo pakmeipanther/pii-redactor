@@ -56,8 +56,13 @@ const findCustomMatchesCode = extractBetween(
 );
 const findMatchesCode = extractBetween(
   'function findMatches(text, activeRules, terms, caseSensitive) {',
-  '\nlet lastCleanedText',
+  '\nconst ENTROPY_MIN_LENGTH',
   'findMatches'
+);
+const entropyCode = extractBetween(
+  'const ENTROPY_MIN_LENGTH = 12;',
+  '\nlet lastScanText',
+  'shannonEntropy + classifyAlphabet + findEntropyMatches'
 );
 const textItemBBoxAndPadCode = extractBetween(
   'function textItemBBox(viewport, item, fracStart = 0, fracEnd = 1) {',
@@ -75,8 +80,8 @@ const docxPureFunctionsCode = extractBetween(
   'decodeXmlText + extractDocxParagraphs + redactParagraphs'
 );
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs };`;
-const { RULES, findMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs };`;
+const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -497,6 +502,68 @@ check('full pipeline: a custom term Word split across runs is still caught after
   const { text, redactedCount } = redactParagraphs(paragraphs, [], ['acmecorp'], false, { custom: '[INTERNAL TERM]' });
   if (redactedCount !== 1) throw new Error(`expected 1 redaction, got ${redactedCount}`);
   if (text !== 'Contact [INTERNAL TERM] for details.') throw new Error(`unexpected output: "${text}"`);
+});
+
+// --- entropy detection: synthetic data, no real secrets ----------------
+
+check('shannonEntropy: a repeated character has zero entropy', () => {
+  const h = shannonEntropy('aaaaaaaaaaaa');
+  if (h !== 0) throw new Error(`expected 0, got ${h}`);
+});
+
+check('shannonEntropy: 8 equally-frequent distinct characters hit exactly log2(8)', () => {
+  const h = shannonEntropy('abcdefgh');
+  if (Math.abs(h - 3) > 1e-9) throw new Error(`expected 3, got ${h}`);
+});
+
+check('classifyAlphabet: hex-only string', () => {
+  if (classifyAlphabet('deadbeefcafebabe1234') !== 'hex') throw new Error('expected hex');
+});
+
+check('classifyAlphabet: real base64 (uses + / or = padding) is base64ish, not mixed', () => {
+  if (classifyAlphabet('aW50ZXJuYWxDb21wYW55U2VjcmV0MTIzNA==') !== 'base64ish') throw new Error('expected base64ish');
+});
+
+check('classifyAlphabet: a plain mixed-case alphanumeric password is "mixed", not "base64ish"', () => {
+  // Deliberately NOT base64ish even though it only uses letters/digits —
+  // see the comment on classifyAlphabet in index.html for why: it
+  // measurably sits at a lower entropy than real base64 of the same
+  // length, so holding it to base64's higher threshold would miss it.
+  if (classifyAlphabet('Xk9mQ2vLtR7zAa1') !== 'mixed') throw new Error('expected mixed');
+});
+
+check('findEntropyMatches: a random-looking mixed-case token in a sentence is flagged', () => {
+  const matches = findEntropyMatches('The password is Xk9mQ2vLtR7zAa1 and nothing else.', []);
+  if (matches.length !== 1) throw new Error(`expected 1 suspect, got ${matches.length}`);
+  if (matches[0].ruleId !== 'entropy') throw new Error(`expected ruleId "entropy", got "${matches[0].ruleId}"`);
+});
+
+check('findEntropyMatches: an ordinary sentence with no random-looking tokens is never flagged', () => {
+  const matches = findEntropyMatches('This is just an ordinary sentence with no secrets at all here.', []);
+  if (matches.length !== 0) throw new Error(`expected 0 suspects, got ${matches.length}`);
+});
+
+check('findEntropyMatches: a token shorter than ENTROPY_MIN_LENGTH is never flagged, however random it looks', () => {
+  const matches = findEntropyMatches('pw: Xk9mQ2v', []);
+  if (matches.length !== 0) throw new Error(`expected 0 suspects (token too short), got ${matches.length}`);
+});
+
+check('findEntropyMatches: a span already covered by a certain match is skipped, even if high-entropy', () => {
+  const text = 'contact jane.doe123456789012@example.com now';
+  const matches = findEntropyMatches(text, [{ start: 8, end: 20 }]);
+  if (matches.length !== 0) throw new Error(`expected the overlapping span to be skipped, got ${matches.length} suspect(s)`);
+});
+
+check('findEntropyMatches: known false-positive class — a long camelCase compound identifier can clear the threshold', () => {
+  // Documents a real limitation rather than hiding it (same spirit as
+  // the ipv6 "known limitation" test above): Shannon entropy cannot
+  // distinguish "random secret" from "long compound word with mixed
+  // case", because both have an unpredictable-looking character
+  // distribution. This is exactly why entropy suspects are never
+  // auto-redacted anywhere in the app — see the big comment above
+  // ENTROPY_MIN_LENGTH in index.html.
+  const matches = findEntropyMatches('Variable name: ThisIsAnOrdinaryEnglishSentenceVariable used here.', []);
+  if (matches.length !== 1) throw new Error(`expected this known false positive to still occur (documenting current behavior), got ${matches.length} suspect(s) — if this now passes with 0, the threshold changed; update this test and the README note together`);
 });
 
 // --- report ------------------------------------------------------------
