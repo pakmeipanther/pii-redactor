@@ -357,7 +357,12 @@
       <option value="deu">Deutsch</option>
     </select>
     <button id="imgScanBtn" data-i18n="imgScanBtn" disabled>Quét &amp; làm đen vùng nhạy cảm</button>
-    <button id="imgDownloadBtn" class="secondary" data-i18n="imgDownloadBtn" disabled>Tải ảnh đã xử lý (.png)</button>
+    <!-- no data-i18n here on purpose: this label's text always carries
+         the uploaded file's own extension (.png/.jpg/.webp) appended by
+         updateImgDownloadBtnLabel(), so applyI18n() must never stomp on
+         it with the bare base string — see that function's comment. -->
+    <button id="imgDownloadBtn" class="secondary" disabled>Tải ảnh đã xử lý (.png)</button>
+    <button id="imgDownloadPdfBtn" class="secondary" data-i18n="imgDownloadPdfBtn" disabled>Tải dưới dạng PDF</button>
     <button id="imgClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
@@ -516,7 +521,8 @@ const I18N = {
     dropzoneText: 'Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file',
     ocrLangLabel: 'Ngôn ngữ OCR:',
     imgScanBtn: 'Quét & làm đen vùng nhạy cảm',
-    imgDownloadBtn: 'Tải ảnh đã xử lý (.png)',
+    imgDownloadBtn: 'Tải ảnh đã xử lý',
+    imgDownloadPdfBtn: 'Tải dưới dạng PDF',
     imgProgressLoading: 'Đang tải mô hình OCR (chỉ lần đầu)...',
     imgProgressRecognizing: p => `Đang nhận diện chữ trong ảnh... ${p}%`,
     imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
@@ -630,7 +636,8 @@ const I18N = {
     dropzoneText: 'Drag and drop an image here, paste (Ctrl/Cmd+V), or click to choose a file',
     ocrLangLabel: 'OCR language:',
     imgScanBtn: 'Scan & black out sensitive regions',
-    imgDownloadBtn: 'Download processed image (.png)',
+    imgDownloadBtn: 'Download processed image',
+    imgDownloadPdfBtn: 'Download as PDF',
     imgProgressLoading: 'Loading OCR model (first time only)...',
     imgProgressRecognizing: p => `Recognizing text in image... ${p}%`,
     imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
@@ -744,7 +751,8 @@ const I18N = {
     dropzoneText: 'Glissez-déposez une image ici, collez (Ctrl/Cmd+V), ou cliquez pour choisir un fichier',
     ocrLangLabel: 'Langue OCR :',
     imgScanBtn: 'Analyser et noircir les zones sensibles',
-    imgDownloadBtn: 'Télécharger l\'image traitée (.png)',
+    imgDownloadBtn: 'Télécharger l\'image traitée',
+    imgDownloadPdfBtn: 'Télécharger en PDF',
     imgProgressLoading: 'Chargement du modèle OCR (première fois seulement)...',
     imgProgressRecognizing: p => `Reconnaissance du texte dans l'image... ${p}%`,
     imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
@@ -858,7 +866,8 @@ const I18N = {
     dropzoneText: 'Bild hierher ziehen, einfügen (Strg/Cmd+V) oder klicken, um eine Datei auszuwählen',
     ocrLangLabel: 'OCR-Sprache:',
     imgScanBtn: 'Scannen & sensible Bereiche schwärzen',
-    imgDownloadBtn: 'Bearbeitetes Bild herunterladen (.png)',
+    imgDownloadBtn: 'Bearbeitetes Bild herunterladen',
+    imgDownloadPdfBtn: 'Als PDF herunterladen',
     imgProgressLoading: 'OCR-Modell wird geladen (nur beim ersten Mal)...',
     imgProgressRecognizing: p => `Text im Bild wird erkannt... ${p}%`,
     imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
@@ -1468,6 +1477,7 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   currentLang = e.target.value;
   applyI18n();
   buildRuleCheckboxes();
+  updateImgDownloadBtnLabel();
 });
 
 // ============================================================
@@ -1496,11 +1506,37 @@ const imgCanvasWrap = document.getElementById('imgCanvasWrap');
 const imgCtx = imgCanvas.getContext('2d');
 const imgScanBtn = document.getElementById('imgScanBtn');
 const imgDownloadBtn = document.getElementById('imgDownloadBtn');
+const imgDownloadPdfBtn = document.getElementById('imgDownloadPdfBtn');
 const imgClearBtn = document.getElementById('imgClearBtn');
 const imgProgressEl = document.getElementById('imgProgress');
 const ocrLangSelect = document.getElementById('ocrLangSelect');
 
 let originalImageBitmap = null;
+// What format the "download processed image" button hands back —
+// defaults to the file the person actually uploaded (v1.1 proposal:
+// native format by default, PDF only as the explicit second option),
+// falling back to PNG for anything canvas.toBlob can't re-encode to
+// (gif, bmp, svg, ...). Re-encoding never touches real deletion either
+// way — the redaction already happened as real pixel fills on the
+// canvas before toBlob ever runs; this only decides the container
+// format of the already-redacted pixels.
+let originalImageMimeType = 'image/png';
+const CANVAS_EXPORTABLE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
+function imgExtFromMime(mime) {
+  if (mime === 'image/jpeg') return '.jpg';
+  if (mime === 'image/webp') return '.webp';
+  return '.png';
+}
+
+// imgDownloadBtn has no data-i18n attribute (see its HTML comment) —
+// its label is always "base string + current extension", so every spot
+// that can change either half (image load, language switch) calls this
+// instead of relying on applyI18n() to render it.
+function updateImgDownloadBtnLabel() {
+  const t = I18N[currentLang];
+  imgDownloadBtn.textContent = t.imgDownloadBtn + ' (' + imgExtFromMime(originalImageMimeType) + ')';
+}
 
 function loadImageFile(file) {
   if (!file || !file.type.startsWith('image/')) return;
@@ -1510,9 +1546,12 @@ function loadImageFile(file) {
     imgCanvas.height = img.naturalHeight;
     imgCtx.drawImage(img, 0, 0);
     originalImageBitmap = img;
+    originalImageMimeType = CANVAS_EXPORTABLE_MIME_TYPES.includes(file.type) ? file.type : 'image/png';
+    updateImgDownloadBtnLabel();
     imgCanvasWrap.style.display = 'block';
     imgScanBtn.disabled = false;
     imgDownloadBtn.disabled = true;
+    imgDownloadPdfBtn.disabled = true;
     imgProgressEl.textContent = '';
     URL.revokeObjectURL(img.src);
   };
@@ -1747,6 +1786,7 @@ function renderImageRedactions() {
   if (unconfirmed > 0) msg += ' · ' + t.statsSuspects(unconfirmed);
   imgProgressEl.textContent = msg;
   imgDownloadBtn.disabled = false;
+  imgDownloadPdfBtn.disabled = false;
 }
 
 // Builds the checklist of entropy suspects below the canvas. Ticking a
@@ -1792,6 +1832,7 @@ imgScanBtn.addEventListener('click', async () => {
   if (!originalImageBitmap) return;
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;
+  imgDownloadPdfBtn.disabled = true;
   imgProgressEl.textContent = t.imgProgressLoading;
   confirmedImgSuspects = new Set();
 
@@ -1830,24 +1871,57 @@ imgScanBtn.addEventListener('click', async () => {
 });
 
 imgDownloadBtn.addEventListener('click', () => {
+  // Native-format export (v1.1 proposal default) — whatever format the
+  // person actually uploaded, re-encoded from the already-redacted
+  // canvas pixels. See originalImageMimeType's comment for why the
+  // fallback-to-PNG case is fine from a redaction standpoint.
   imgCanvas.toBlob((blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'redacted-image.png';
+    a.download = 'redacted-image' + imgExtFromMime(originalImageMimeType);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, 'image/png');
+  }, originalImageMimeType);
+});
+
+imgDownloadPdfBtn.addEventListener('click', async () => {
+  // Second, optional export format (v1.1 proposal) — a one-page PDF
+  // wrapping the already-redacted canvas. Always goes through PNG
+  // first regardless of the upload's own format: lossless, simplest,
+  // and the exact same embedPng(...) call the scanned-PDF panel
+  // already uses for its own pages (see pdfScanBtn's handler) — no
+  // second PDF-assembly code path to maintain.
+  const pngBytes = await new Promise((resolve) => {
+    imgCanvas.toBlob((blob) => { blob.arrayBuffer().then(buf => resolve(new Uint8Array(buf))); }, 'image/png');
+  });
+  const outPdf = await PDFLib.PDFDocument.create();
+  const pngImage = await outPdf.embedPng(pngBytes);
+  const page = outPdf.addPage([imgCanvas.width, imgCanvas.height]);
+  page.drawImage(pngImage, { x: 0, y: 0, width: imgCanvas.width, height: imgCanvas.height });
+  const pdfBytes = await outPdf.save();
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'redacted-image.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 });
 
 imgClearBtn.addEventListener('click', () => {
   originalImageBitmap = null;
+  originalImageMimeType = 'image/png';
   imgCanvasWrap.style.display = 'none';
   imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;
+  imgDownloadPdfBtn.disabled = true;
+  updateImgDownloadBtnLabel();
   imgProgressEl.textContent = '';
   imageFileInput.value = '';
   lastImgLines = [];
@@ -2686,6 +2760,7 @@ pptxClearBtn.addEventListener('click', () => {
 document.getElementById('langSelect').value = currentLang;
 buildRuleCheckboxes();
 applyI18n();
+updateImgDownloadBtnLabel();
 </script>
 
 </body>
