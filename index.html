@@ -50,8 +50,19 @@
     gap: 16px;
     margin-bottom: 4px;
   }
-  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; display: inline; }
+  .version-tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .footer-author { margin-top: 4px; }
   select#langSelect {
     background: var(--panel);
     color: var(--text);
@@ -320,7 +331,10 @@
 
 <div class="topbar">
   <div>
-    <h1 data-i18n="title">PII Redactor</h1>
+    <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
+         overwrites a [data-i18n] element's whole textContent on every
+         language switch, which would wipe out a nested span instantly. -->
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.1.0</span></h1>
     <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
   </div>
   <select id="langSelect" aria-label="Language">
@@ -464,8 +478,14 @@
 </div>
 
 <footer>
-  <span data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·</span>
-  <a href="https://github.com/pakmeipanther/pii-redactor" target="_blank" rel="noopener noreferrer" data-i18n="footerLink" style="color:var(--muted);">xem mã nguồn trên GitHub</a>
+  <div>
+    <span data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·</span>
+    <a href="https://github.com/pakmeipanther/pii-redactor" target="_blank" rel="noopener noreferrer" data-i18n="footerLink" style="color:var(--muted);">xem mã nguồn trên GitHub</a>
+  </div>
+  <div class="footer-author">
+    <span data-i18n="authorLabel">Tác giả</span>: Nguyễn Tiến Trung ·
+    <a href="mailto:tientrung.nguyen.de@gmail.com" style="color:var(--muted);">tientrung.nguyen.de@gmail.com</a>
+  </div>
 </footer>
 
 <!--
@@ -583,6 +603,7 @@ const I18N = {
     officeEntropyHint: n => `⚠ Tìm thấy ${n} chuỗi nghi ngờ (entropy cao) nhưng KHÔNG được tự động che. Nếu đúng là bí mật, thêm chuỗi đó vào "Từ khóa nội bộ tùy chỉnh" ở trên rồi quét lại — danh sách tùy chỉnh luôn được che ngay, không cần xác nhận lại.`,
     footer: 'Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·',
     footerLink: 'xem mã nguồn trên GitHub',
+    authorLabel: 'Tác giả',
     downloadName: 'van-ban-da-lam-sach.txt',
     rules: {
       email: 'Email',
@@ -698,6 +719,7 @@ const I18N = {
     officeEntropyHint: n => `⚠ Found ${n} high-entropy suspect string(s) — NOT auto-redacted. If one is really a secret, add it to the custom term list above and re-scan — the custom list is always redacted immediately, no re-confirmation needed.`,
     footer: 'Runs entirely locally · no data leaves your machine ·',
     footerLink: 'view the source on GitHub',
+    authorLabel: 'Author',
     downloadName: 'redacted-text.txt',
     rules: {
       email: 'Email',
@@ -813,6 +835,7 @@ const I18N = {
     officeEntropyHint: n => `⚠ ${n} chaîne(s) suspecte(s) (entropie élevée) trouvée(s) — PAS masquée(s) automatiquement. S'il s'agit bien d'un secret, ajoutez-le à la liste de termes personnalisés ci-dessus puis relancez l'analyse — la liste personnalisée est toujours masquée immédiatement, sans confirmation supplémentaire.`,
     footer: "S'exécute entièrement en local · aucune donnée ne quitte votre machine ·",
     footerLink: 'voir le code source sur GitHub',
+    authorLabel: 'Auteur',
     downloadName: 'texte-nettoye.txt',
     rules: {
       email: 'Email',
@@ -928,6 +951,7 @@ const I18N = {
     officeEntropyHint: n => `⚠ ${n} Zeichenfolge(n) mit hoher Entropie gefunden — NICHT automatisch geschwärzt. Falls es sich wirklich um ein Secret handelt, oben zur Liste benutzerdefinierter Begriffe hinzufügen und erneut scannen — die eigene Liste wird immer sofort geschwärzt, ohne erneute Bestätigung.`,
     footer: 'Läuft vollständig lokal · keine Daten verlassen Ihr Gerät ·',
     footerLink: 'Quellcode auf GitHub ansehen',
+    authorLabel: 'Autor',
     downloadName: 'bereinigter-text.txt',
     rules: {
       email: 'E-Mail',

@@ -1,16 +1,20 @@
-# PII Redactor
+# PII Redactor <sup>v1.1.0</sup>
 
 A single-file, client-side tool that strips personal data and internal
-infrastructure secrets out of text, Word documents, PDFs, and screenshots
-**before** that content is pasted into any AI tool — so sensitive
-information never leaves your machine in the first place.
+infrastructure secrets out of text, Word documents, PowerPoint decks,
+PDFs, and screenshots **before** that content is pasted into any AI
+tool — so sensitive information never leaves your machine in the
+first place.
 
-> Status: text redaction (regex + custom term list), image/screenshot
-> OCR redaction, PDF redaction, and Word (.docx) → redacted-PDF
-> conversion are working, with a synthetic-data test suite and a demo
-> GIF above. Local NER was investigated and deferred for now — see
-> [Known limitations](#known-limitations) for why. See
-> [Roadmap](#roadmap) below.
+> Status (v1.1.0): text redaction (regex + custom term list +
+> entropy-based secret detection), image/screenshot OCR redaction, PDF
+> redaction, Word (.docx) → redacted-PDF conversion, and PowerPoint
+> (.pptx) → redacted-PDF conversion are all working, with a
+> synthetic-data test suite and a demo GIF above. Local NER was
+> investigated and deferred for now — see
+> [Known limitations](#known-limitations) for why. Looking for the
+> original v1.0.0 release instead? See [Versioning](#versioning) below.
+> See [Roadmap](#roadmap) below.
 
 ![Demo: pasting text with fake PII, scanning, adding a custom internal term, and switching the UI to German](docs/images/demo.gif)
 
@@ -56,6 +60,10 @@ PII Redactor additionally redacts:
   and rendered into a brand-new, simple PDF — built from scratch, never
   by editing the original file, so none of its hidden XML, styles, or
   metadata ever reach the output.
+- **PowerPoint decks (.pptx)** — same approach as Word: the visible
+  slide text is extracted (speaker notes are deliberately excluded —
+  not visible slide content) and rendered into a brand-new PDF, never
+  by editing the original file.
 
 All of this runs **100% locally**, with no backend and no outbound network
 calls at all (enforced at the browser level by the page's own
@@ -67,8 +75,9 @@ text only, or need a server/cloud component to touch images and PDFs.
 
 - **Single `.html` file, plus a `vendor/` folder for offline OCR** — no
   build step. Text redaction needs nothing but the browser; image/OCR/
-  PDF redaction need the vendored files beside them (see
-  [Running the image/OCR/PDF/Word features](#running-the-imageocrpdfword-features)).
+  PDF/Word/PowerPoint redaction need the vendored files beside them
+  (see
+  [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features)).
 - **No network calls** — enforced with a `Content-Security-Policy` meta
   tag. `connect-src` is scoped to `'self'` only (not a wildcard or a CDN
   domain) so the page can read the vendored OCR engine and language
@@ -85,25 +94,62 @@ text only, or need a server/cloud component to touch images and PDFs.
 
 ## Architecture
 
-**Detection — three sources, merged by priority:**
+**Detection — four sources, merged by priority, with two different
+trust levels:**
 
-1. **User-defined list** (highest priority, applied without re-confirmation)
-   — company names, internal server names, project codenames that no
-   model could ever guess on its own.
+1. **User-defined list** (highest priority, applied without
+   re-confirmation) — company names, internal server names, project
+   codenames that no model could ever guess on its own.
 2. **Regex** — structured patterns: emails, IPs, phone numbers, API
    keys/tokens, card numbers, and database connection strings (both URI
    form like `postgres://user:pass@host:port/dbname` and key-value form
    like `Server=...;Database=...;Password=...;` — covering both direct
    and pooler connections in one pattern).
-3. **Local NER model** (deferred — see
+3. **Entropy-based detection** (optional, off by default like every
+   other rule — toggle it in "Data Types to Detect") — flags
+   high-entropy strings (Shannon entropy over the string's character
+   distribution) that look like random passwords, tokens, or API keys
+   but don't match any fixed regex pattern. Sources 1 and 2 above are
+   **certain matches** and get redacted immediately; an entropy hit is
+   only ever a **suspect** — it's highlighted in yellow and NEVER
+   blacked out / included in the output until a human explicitly
+   confirms it (see each panel below for exactly how). This is a
+   deliberate trust split: a regex match for "looks like an email" is
+   essentially never wrong, but "this string's entropy is high" has a
+   real false-positive rate (a random invoice number, a hash, a
+   generated ID), so it gets a human in the loop instead of an
+   automatic black box.
+4. **Local NER model** (deferred — see
    [Known limitations](#known-limitations)) — would catch person and
    organization names that regex can't, by running a small pretrained
    transformer model (via `transformers.js`, WebAssembly/WebGPU) entirely
    in the browser.
 
-**Pipeline:** Input (text / image / PDF) → Detection (3 sources above) →
-Review & confirm (flagged regions highlighted) → Real redaction (format-
-specific) → Export clean file.
+**How an entropy suspect gets confirmed, per panel** (never automatic,
+always a deliberate human action):
+
+- **Text panel** — a suspect renders as a clickable amber `<mark>`;
+  clicking it toggles it into a confirmed, masked state (and back).
+- **Image panel** — same idea, but on a raster canvas there's no way
+  to "undo" a pixel fill, so confirming/un-confirming a suspect redraws
+  the whole image fresh from the untouched original and re-applies
+  every certain match plus every *currently* confirmed suspect. A
+  checklist below the image lists each suspect string so you can tick
+  the ones that are really secrets.
+- **PDF and Word/PowerPoint panels** — no per-page interactive
+  checklist (redrawing a multi-page canvas on every tick is much more
+  expensive than one image). A suspect instead gets a yellow outline
+  stroked onto the page (PDF) or is simply left untouched in the
+  output text (Word/PowerPoint, which build a fresh vector-text PDF
+  with no canvas to outline) — in both cases the guidance is the
+  same: if it's really a secret, add it to the custom term list above
+  and re-scan, which redacts it through the already-trusted,
+  no-re-confirmation path.
+
+**Pipeline:** Input (text / image / PDF / Word / PowerPoint) →
+Detection (4 sources above) → Review & confirm (certain matches
+redacted outright; suspects highlighted and gated behind confirmation)
+→ Real redaction (format-specific) → Export clean file.
 
 **Image/screenshot redaction specifically:** the image is OCR'd locally
 (see [Tech stack](#tech-stack)), each recognized word is run through the
@@ -161,6 +207,20 @@ trade-off: this feature only ever outputs a PDF (never a redacted
 `.docx`), and that PDF does not preserve the original's layout,
 tables, or images — see [Known limitations](#known-limitations).
 
+**PowerPoint (.pptx) → PDF redaction specifically:** same approach as
+Word, since `.pptx` is also a ZIP of XML parts. Only
+`ppt/slides/slideN.xml` is read (in numeric slide order), and only the
+`<a:t>` run text inside `<a:p>` paragraphs — PowerPoint's DrawingML
+text model is flatter than Word's, so there's no header/footer/
+footnote chasing needed. Speaker notes (`ppt/notesSlides/*`) are
+deliberately never read at all — they aren't part of what's shown on
+the slide, so whether or not they contain something sensitive, that
+content simply never reaches the output PDF. The extracted text goes
+through the identical `redactParagraphs` pipeline and
+`buildSimplePdfFromText` renderer already used for Word — same
+DejaVu Sans font, same "built from scratch, nothing from the original
+file copied over" guarantee, same PDF-only output.
+
 See the demo GIF near the top of this README for the full flow in
 action (text → scan → custom term → multilingual UI).
 
@@ -185,9 +245,9 @@ a glance.
   diacritic coverage, which the 14 standard PDF fonts lack. **Vendored
   locally** under `/vendor/fonts`. See [NOTICE.md](vendor/NOTICE.md).
 - [JSZip](https://stuk.github.io/jszip/) (v3.10.1) — unzips an uploaded
-  `.docx` file (itself a ZIP archive of XML) so its visible text can be
-  extracted and redacted. **Vendored locally** under `/vendor/jszip`.
-  See [NOTICE.md](vendor/NOTICE.md).
+  `.docx` or `.pptx` file (both are themselves ZIP archives of XML) so
+  their visible text can be extracted and redacted. **Vendored
+  locally** under `/vendor/jszip`. See [NOTICE.md](vendor/NOTICE.md).
 - [tesseract.js](https://tesseract.projectnaptha.com/) — OCR for
   screenshots and (optionally) scanned PDF pages. **Vendored locally**
   under `/vendor/tesseract` and `/vendor/tessdata` (English, Vietnamese,
@@ -196,39 +256,48 @@ a glance.
 - [transformers.js](https://huggingface.co/docs/transformers.js) — would
   run a local NER model fully offline; evaluated but not integrated yet,
   see [Known limitations](#known-limitations)
+- **No library for entropy detection** — Shannon entropy over a
+  string's character distribution is plain arithmetic, implemented
+  directly with no dependency.
 
 ## Usage
 
 1. For text-only redaction: open `index.html` directly in any modern
    browser (Chrome, Firefox, Safari, Edge) — no install, no server.
-2. For image/screenshot or PDF redaction: see
-   [Running the image/OCR/PDF/Word features](#running-the-imageocrpdfword-features)
-   below — both need a local server due to a browser restriction on
-   reading local files.
-3. Paste text, drop/paste an image, drop a PDF file, or drop a Word
-   (.docx) file.
+2. For image/screenshot, PDF, Word, or PowerPoint redaction: see
+   [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features)
+   below — all of them need a local server due to a browser
+   restriction on reading local files.
+3. Paste text, drop/paste an image, drop a PDF file, drop a Word
+   (.docx) file, or drop a PowerPoint (.pptx) file.
 4. Review the highlighted matches (text), the blacked-out regions
    (image), or the redacted page previews (PDF) — always look before
-   exporting. For a Word file, the output is a new PDF built from the
-   redacted text (see [Known limitations](#known-limitations)) rather
-   than a previewable page.
-5. Download the cleaned file.
+   exporting, and explicitly confirm any yellow-highlighted entropy
+   suspect you agree is actually sensitive (see
+   [Architecture](#architecture)). For a Word or PowerPoint file, the
+   output is a new PDF built from the redacted text (see
+   [Known limitations](#known-limitations)) rather than a previewable
+   page.
+5. Download the cleaned file — images offer their original format
+   (PNG/JPEG/WEBP) by default, with an optional "download as PDF"
+   button alongside it.
 
 The UI is available in **English, Français, Deutsch, and Tiếng Việt** —
 switch languages from the selector in the top bar. For a full,
 beginner-friendly walkthrough with screenshots-free step-by-step
-instructions in each of those languages, see the
-[full user guide](#pii-redactor) linked at the top of this README.
+instructions in each of those languages, see the full user guide:
+[English](docs/guide.en.md) · [Tiếng Việt](docs/guide.vi.md) ·
+[Deutsch](docs/guide.de.md) · [Français](docs/guide.fr.md).
 
-## Running the image/OCR/PDF/Word features
+## Running the image/OCR/PDF/Word/PowerPoint features
 
 Opening `index.html` by double-clicking it uses the `file://` protocol,
 under which browsers block a page from fetching other local files (the
 OCR engine's `.wasm` core, the language data, the pdf.js/pdf-lib
-modules, and — for the Word→PDF feature — the embedded font and
-JSZip) for security reasons. The text-only redaction panel is
-unaffected and works directly via `file://`. For the image, PDF, and
-Word panels:
+modules, and — for the Word/PowerPoint→PDF features — the embedded
+font and JSZip) for security reasons. The text-only redaction panel is
+unaffected and works directly via `file://`. For the image, PDF,
+Word, and PowerPoint panels:
 
 ```sh
 # from the project folder
@@ -243,12 +312,16 @@ restriction.
 ## Testing
 
 `test/run-tests.mjs` is a small, dependency-free regression suite for
-the detection pipeline (the regex rules, the custom-term list, and how
-they merge by priority). It doesn't duplicate that logic into a second
-file — it extracts the real `RULES`/`findMatches`/`findCustomMatches`
-code straight out of `index.html` and runs it as-is, so a test failure
-always means the shipped file actually changed behavior. All fixtures
-are synthetic/fake data invented for the test, never real secrets.
+the detection pipeline (the regex rules, the custom-term list, entropy
+detection, and how they all merge by priority) plus the Word/PowerPoint
+text-extraction functions. It doesn't duplicate that logic into a
+second file — it extracts the real `RULES`/`findMatches`/
+`findCustomMatches`/`findEntropyMatches`/`extractDocxParagraphs`/
+`extractPptxParagraphs`/`redactParagraphs` code straight out of
+`index.html` and runs it as-is, so a test failure always means the
+shipped file actually changed behavior. All fixtures are
+synthetic/fake data invented for the test, never real secrets. As of
+v1.1.0: 57 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -274,6 +347,36 @@ node test/run-tests.mjs
 - [x] Test suite with synthetic data (see [Testing](#testing))
 - [x] Demo GIF
 - [x] Multi-language user guide (EN/VI/DE/FR) in [docs/](docs/)
+- [x] **v1.1** PowerPoint (.pptx) input → extract, redact, and render
+      as a simple PDF, mirroring the Word pipeline
+- [x] **v1.1** Entropy-based detection (Shannon entropy) as an
+      optional, confirm-before-redact "Data Types to Detect" category
+      — catches high-entropy passwords/tokens/secrets that regex and
+      the custom term list miss, across every panel
+- [x] **v1.1** Image panel: export in the uploaded file's own format
+      (PNG/JPEG/WEBP) by default, with an optional "download as PDF"
+      button
+- [x] **v1.1** Versioning — see [Versioning](#versioning)
+
+## Versioning
+
+This project uses tagged releases, and every tag stays downloadable on
+GitHub forever — publishing a new version never removes an older one.
+See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
+
+- **v1.0.0** — the first stable release: text (regex + custom list),
+  image/screenshot OCR, PDF, and Word (.docx) redaction. Tag:
+  [`v1.0.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.0.0).
+- **v1.1.0** (current) — adds PowerPoint (.pptx) support, entropy-based
+  secret detection, and native-format image export with an optional
+  PDF option. Tag:
+  [`v1.1.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0).
+
+To use a specific version instead of the latest `main`, download the
+`index.html` (plus the matching `vendor/` folder) from that tag's
+"Source code" archive on the [Releases page](https://github.com/pakmeipanther/pii-redactor/releases),
+or `git checkout v1.0.0` locally — a tagged version never changes
+underneath you, even as `main` keeps moving forward.
 
 ## Known limitations
 
@@ -294,6 +397,14 @@ node test/run-tests.mjs
   task-specific model), names and organizations not caught by the
   custom term list or regex are **not** redacted — always review the
   highlighted matches before exporting.
+- **Entropy-based detection is a statistical heuristic, not a
+  classifier** — it flags *any* sufficiently random-looking string
+  above a length/entropy threshold, so it will suspect things that
+  aren't secrets (a hash, a generated invoice/order ID, a UUID) and
+  can still miss a short or low-entropy "real" secret (e.g. a short,
+  dictionary-word-based password). This is exactly why it's
+  confirm-before-redact instead of auto-redact like regex/custom-list
+  matches — see [Architecture](#architecture).
 - Image OCR runs word-by-word, so a sensitive value split across
   multiple OCR words (e.g. a phone number with spaces) may only be
   partially blacked out.
@@ -332,6 +443,18 @@ node test/run-tests.mjs
   brand-new PDF from only the extracted, redacted text sidesteps that
   risk entirely. If you need to send the document to someone else,
   send the generated PDF.
+- **PowerPoint (.pptx) → PDF has the same scope as Word → PDF**: text
+  only, no original layout/images/charts/animations, PDF-only output,
+  built from scratch. Additionally, **speaker notes are never read or
+  included** — only the text actually shown on a slide is extracted,
+  so if a secret exists only in a presenter's notes, it was never in
+  the output to begin with (nothing to redact, since it's never
+  shown to an audience).
+- **PDF and Word/PowerPoint entropy suspects are flag-only, with no
+  per-document interactive checklist** (unlike the text and image
+  panels) — see [Architecture](#architecture) for exactly what each
+  panel does instead. The confirmation path is always the same: add
+  the string to the custom term list and re-scan.
 - Testing has used synthetic/fake data only — never real company secrets.
 - **(Fixed)** PDF redaction used to black out a matched text item's
   *entire* bounding box — which could mean a whole line — whenever a
@@ -403,6 +526,10 @@ node test/run-tests.mjs
   editing the uploaded file in place, so no original PDF object,
   embedded font, or metadata field (e.g. author, producer, XMP data)
   is ever copied into the exported file.
+
+## Author
+
+**Nguyễn Tiến Trung** — tientrung.nguyen.de@gmail.com
 
 ## License
 
