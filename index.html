@@ -209,6 +209,24 @@
     cursor: pointer;
   }
   .dropzone.drag-over { border-color: var(--accent); color: var(--text); }
+  /* Feedback line for the unified drop zone below — confirms which
+     pipeline is about to run on the file that was just dropped/picked,
+     or explains why nothing happened when the format isn't one of the
+     five this tool understands. */
+  .detected-type {
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(79, 140, 255, 0.1);
+    border: 1px solid rgba(79, 140, 255, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 10px;
+  }
+  .detected-type.unknown {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border-color: rgba(255, 92, 92, 0.35);
+  }
   .img-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
   .img-row select {
     background: #0d0f13;
@@ -334,7 +352,7 @@
     <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
          overwrites a [data-i18n] element's whole textContent on every
          language switch, which would wipe out a nested span instantly. -->
-    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.1.0</span></h1>
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.2.0</span></h1>
     <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
   </div>
   <select id="langSelect" aria-label="Language">
@@ -353,15 +371,29 @@
 
 <div class="panel">
   <h2 data-i18n="section1">1. Dán văn bản cần xử lý</h2>
-  <div class="subtitle" data-i18n="textPanelImageHint" style="margin-bottom:10px;">Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được phần xử lý ảnh bên dưới (mục 1b) nhận và quét OCR, chứ không dán vào khung văn bản này.</div>
+  <div class="subtitle" data-i18n="textPanelImageHint" style="margin-bottom:10px;">Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được nhận là ảnh và chuyển sang quét OCR, chứ không dán vào khung văn bản này.</div>
   <textarea id="input" data-i18n-placeholder="placeholder"></textarea>
+
+  <!-- Used to be four separate drop zones (ảnh/PDF/Word/PowerPoint),
+       each requiring the person to already know what kind of file
+       they were holding before picking the right box. detectFileType()
+       in the script below does that sorting instead — MIME type first,
+       file extension as a fallback, and the file's own magic bytes as
+       the final (unspoofable) tie-breaker — so there is exactly one
+       place to drop anything, and the matching result panel further
+       down reveals itself once the type is known. -->
+  <div class="dropzone" id="unifiedDropzone" role="button" tabindex="0" data-i18n="unifiedDropzoneText">Kéo-thả ảnh, PDF, Word hoặc PowerPoint vào đây, hoặc bấm để chọn file — phần mềm sẽ tự nhận diện loại file</div>
+  <input type="file" id="unifiedFileInput" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation,.txt,.md,.csv,.log,text/plain" style="display:none;">
+  <div class="detected-type" id="detectedType" style="display:none;"></div>
 </div>
 
-<div class="panel">
-  <h2 data-i18n="sectionImage">1b. Hoặc tải ảnh / ảnh chụp màn hình</h2>
+<!-- The four panels below are what the old 1b/1c/1d/1e sections used to
+     be, minus their own drop zone (now unified above) — each one stays
+     hidden until the router decides this is the file's type, so only
+     one is ever visible at a time. -->
+<div class="panel" id="imagePanel" style="display:none;">
+  <h2 data-i18n="sectionImage">Ảnh / ảnh chụp màn hình</h2>
   <div class="subtitle" data-i18n="imageDesc" style="margin-bottom:10px;">OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.</div>
-  <div class="dropzone" id="dropzone" role="button" tabindex="0" data-i18n="dropzoneText">Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file</div>
-  <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
   <div class="img-row">
     <label data-i18n="ocrLangLabel" style="font-size:13px;color:var(--muted);">Ngôn ngữ OCR:</label>
     <select id="ocrLangSelect">
@@ -385,11 +417,9 @@
   <div id="imgSuspectList" class="suspect-list" style="display:none;"></div>
 </div>
 
-<div class="panel">
-  <h2 data-i18n="sectionPdf">1c. Hoặc tải file PDF</h2>
+<div class="panel" id="pdfPanel" style="display:none;">
+  <h2 data-i18n="sectionPdf">File PDF</h2>
   <div class="subtitle" data-i18n="pdfDesc" style="margin-bottom:10px;">Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).</div>
-  <div class="dropzone" id="pdfDropzone" role="button" tabindex="0" data-i18n="pdfDropzoneText">Kéo-thả file PDF vào đây, hoặc bấm để chọn file</div>
-  <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" style="display:none;">
   <div class="img-progress" id="pdfFileName"></div>
   <label class="custom-options">
     <input type="checkbox" id="pdfOcrCheckbox">
@@ -412,11 +442,9 @@
   <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
 </div>
 
-<div class="panel">
-  <h2 data-i18n="sectionDocx">1d. Hoặc tải file Word (.docx)</h2>
+<div class="panel" id="docxPanel" style="display:none;">
+  <h2 data-i18n="sectionDocx">File Word (.docx)</h2>
   <div class="subtitle" data-i18n="docxDesc" style="margin-bottom:10px;">Trích nội dung văn bản từ file Word, che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, bảng hay ảnh gốc của file Word; bình luận (comment) và nội dung đã bị xóa khi bật Track Changes cũng không được đưa vào, vì đó không phải nội dung đang hiển thị.</div>
-  <div class="dropzone" id="docxDropzone" role="button" tabindex="0" data-i18n="docxDropzoneText">Kéo-thả file .docx vào đây, hoặc bấm để chọn file</div>
-  <input type="file" id="docxFileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;">
   <div class="img-progress" id="docxFileName"></div>
   <div class="img-row">
     <button id="docxScanBtn" data-i18n="docxScanBtn" disabled>Chuyển &amp; che thông tin nhạy cảm → PDF</button>
@@ -426,11 +454,9 @@
   <div class="img-progress" id="docxProgress"></div>
 </div>
 
-<div class="panel">
-  <h2 data-i18n="sectionPptx">1e. Hoặc tải file PowerPoint (.pptx)</h2>
+<div class="panel" id="pptxPanel" style="display:none;">
+  <h2 data-i18n="sectionPptx">File PowerPoint (.pptx)</h2>
   <div class="subtitle" data-i18n="pptxDesc" style="margin-bottom:10px;">Trích nội dung văn bản trên các slide (không gồm ghi chú diễn giả), che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, hình ảnh, biểu đồ hay animation gốc của file PowerPoint.</div>
-  <div class="dropzone" id="pptxDropzone" role="button" tabindex="0" data-i18n="pptxDropzoneText">Kéo-thả file .pptx vào đây, hoặc bấm để chọn file</div>
-  <input type="file" id="pptxFileInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none;">
   <div class="img-progress" id="pptxFileName"></div>
   <div class="img-row">
     <button id="pptxScanBtn" data-i18n="pptxScanBtn" disabled>Chuyển &amp; che thông tin nhạy cảm → PDF</button>
@@ -519,9 +545,13 @@ const I18N = {
     title: 'PII Redactor',
     subtitle: 'Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.',
     badge: '● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn',
-    section1: '1. Dán văn bản cần xử lý',
+    section1: '1. Dán văn bản, hoặc kéo-thả / chọn file (ảnh, PDF, Word, PowerPoint)',
     placeholder: 'Dán văn bản có chứa email, IP, số điện thoại, connection string database... vào đây',
-    textPanelImageHint: 'Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được phần xử lý ảnh bên dưới (mục 1b) nhận và quét OCR, chứ không dán vào khung văn bản này.',
+    textPanelImageHint: 'Mẹo: dán (Ctrl/Cmd+V) một ảnh vào đây cũng được — nó sẽ tự động được nhận là ảnh và chuyển sang quét OCR, chứ không dán vào khung văn bản này.',
+    unifiedDropzoneText: 'Kéo-thả ảnh, PDF, Word hoặc PowerPoint vào đây, hoặc bấm để chọn file — phần mềm sẽ tự nhận diện loại file',
+    detectedTypePrefix: 'Đã nhận diện:',
+    unknownFileType: '⚠ Không nhận diện được định dạng file này. Các định dạng được hỗ trợ: văn bản (.txt), ảnh (PNG/JPEG/WEBP), PDF, Word (.docx), PowerPoint (.pptx).',
+    sectionText: 'Văn bản (.txt)',
     ocrLangAccuracyHint: 'Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.',
     sectionCustom: '2. Từ khóa nội bộ tùy chỉnh (tên công ty, tên server...)',
     customDesc: 'Phần mềm không thể tự biết đây là bí mật — anh khai báo, nó sẽ luôn được ẩn, không cần xác nhận lại.',
@@ -536,9 +566,8 @@ const I18N = {
     section2: '3. Loại dữ liệu cần nhận diện',
     section3: '4. Kết quả',
     fileProtocolWarning: '⚠ Bạn đang mở file này trực tiếp (file://). Tính năng xử lý ảnh cần chạy qua một local server để trình duyệt cho phép đọc file cục bộ khác — chạy python3 -m http.server trong thư mục này rồi mở http://localhost:8000. Phần văn bản ở trên vẫn hoạt động bình thường.',
-    sectionImage: '1b. Hoặc tải ảnh / ảnh chụp màn hình',
+    sectionImage: 'Ảnh / ảnh chụp màn hình',
     imageDesc: 'OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.',
-    dropzoneText: 'Kéo-thả ảnh vào đây, dán (Ctrl/Cmd+V), hoặc bấm để chọn file',
     ocrLangLabel: 'Ngôn ngữ OCR:',
     imgScanBtn: 'Quét & làm đen vùng nhạy cảm',
     imgDownloadBtn: 'Tải ảnh đã xử lý',
@@ -548,9 +577,8 @@ const I18N = {
     imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
     imgProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong ảnh.',
     imgProgressError: 'Lỗi khi xử lý ảnh — xem Ghi chú Bước 4 (cần chạy qua local server, không phải file://).',
-    sectionPdf: '1c. Hoặc tải file PDF',
+    sectionPdf: 'File PDF',
     pdfDesc: 'Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).',
-    pdfDropzoneText: 'Kéo-thả file PDF vào đây, hoặc bấm để chọn file',
     pdfOcrCheckboxLabel: 'Cũng chạy OCR trên từng trang — chỉ cần bật nếu PDF là file scan/ảnh (không có lớp chữ chọn được), sẽ chậm hơn',
     pdfOcrLangLabel: 'Ngôn ngữ OCR (nếu bật):',
     pdfScanBtn: 'Quét & làm đen PDF',
@@ -564,9 +592,8 @@ const I18N = {
     pdfProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file PDF.',
     pdfProgressError: 'Lỗi khi xử lý PDF.',
     pdfPageLabel: (i, n) => `Trang ${i}/${n}`,
-    sectionDocx: '1d. Hoặc tải file Word (.docx)',
+    sectionDocx: 'File Word (.docx)',
     docxDesc: 'Trích nội dung văn bản từ file Word, che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, bảng hay ảnh gốc của file Word; bình luận (comment) và nội dung đã bị xóa khi bật Track Changes cũng không được đưa vào, vì đó không phải nội dung đang hiển thị.',
-    docxDropzoneText: 'Kéo-thả file .docx vào đây, hoặc bấm để chọn file',
     docxScanBtn: 'Chuyển & che thông tin nhạy cảm → PDF',
     docxDownloadBtn: 'Tải PDF đã xử lý',
     docxProgressLoadingLib: 'Đang tải thư viện xử lý file Word...',
@@ -576,9 +603,8 @@ const I18N = {
     docxProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong file Word — vẫn tạo file PDF từ nội dung gốc.',
     docxProgressError: 'Lỗi khi xử lý file Word — file có thể bị hỏng hoặc không đúng định dạng .docx.',
     docxDownloadName: 'van-ban-da-che-thong-tin.pdf',
-    sectionPptx: '1e. Hoặc tải file PowerPoint (.pptx)',
+    sectionPptx: 'File PowerPoint (.pptx)',
     pptxDesc: 'Trích nội dung văn bản trên các slide (không gồm ghi chú diễn giả), che thông tin nhạy cảm, rồi xuất ra một file PDF đơn giản — đủ để dán cho AI đọc. PDF này KHÔNG giữ nguyên bố cục, hình ảnh, biểu đồ hay animation gốc của file PowerPoint.',
-    pptxDropzoneText: 'Kéo-thả file .pptx vào đây, hoặc bấm để chọn file',
     pptxScanBtn: 'Chuyển & che thông tin nhạy cảm → PDF',
     pptxDownloadBtn: 'Tải PDF đã xử lý',
     pptxProgressLoadingLib: 'Đang tải thư viện xử lý file PowerPoint...',
@@ -635,9 +661,13 @@ const I18N = {
     title: 'PII Redactor',
     subtitle: 'Remove sensitive information from text before handing it to AI.',
     badge: '● No network connection is made — all processing happens in your browser',
-    section1: '1. Paste the text to process',
+    section1: '1. Paste text, or drop / choose a file (image, PDF, Word, PowerPoint)',
     placeholder: 'Paste text containing emails, IPs, phone numbers, database connection strings...',
-    textPanelImageHint: "Tip: pasting (Ctrl/Cmd+V) an image here also works — it's automatically picked up by the image panel below (1b) for OCR, not inserted into this text box.",
+    textPanelImageHint: "Tip: pasting (Ctrl/Cmd+V) an image here also works — it's automatically recognized as an image and sent to OCR, not inserted into this text box.",
+    unifiedDropzoneText: 'Drag and drop an image, PDF, Word, or PowerPoint file here, or click to choose a file — the type is detected automatically',
+    detectedTypePrefix: 'Detected:',
+    unknownFileType: "⚠ This file format wasn't recognized. Supported formats: text (.txt), image (PNG/JPEG/WEBP), PDF, Word (.docx), PowerPoint (.pptx).",
+    sectionText: 'Text (.txt)',
     ocrLangAccuracyHint: 'Pick the language the image is actually written in — the wrong language lowers OCR accuracy and can let sensitive text slip through unredacted.',
     sectionCustom: '2. Custom internal terms (company name, server name...)',
     customDesc: 'The tool cannot know these on its own — declare them once and they will always be redacted, with no re-confirmation needed.',
@@ -652,9 +682,8 @@ const I18N = {
     section2: '3. Data types to detect',
     section3: '4. Result',
     fileProtocolWarning: '⚠ You\'re opening this file directly (file://). Image processing needs to run through a local server so the browser allows reading other local files — run python3 -m http.server in this folder, then open http://localhost:8000. The text section above still works normally.',
-    sectionImage: '1b. Or upload an image / screenshot',
+    sectionImage: 'Image / screenshot',
     imageDesc: 'OCR finds text in the image, then draws real pixels over sensitive regions — not a transparent overlay.',
-    dropzoneText: 'Drag and drop an image here, paste (Ctrl/Cmd+V), or click to choose a file',
     ocrLangLabel: 'OCR language:',
     imgScanBtn: 'Scan & black out sensitive regions',
     imgDownloadBtn: 'Download processed image',
@@ -664,9 +693,8 @@ const I18N = {
     imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
     imgProgressNone: 'No sensitive regions found in the image.',
     imgProgressError: 'Error processing the image — see the Step 4 note (must run via a local server, not file://).',
-    sectionPdf: '1c. Or upload a PDF file',
+    sectionPdf: 'PDF file',
     pdfDesc: 'Each page is re-rendered as an image, sensitive regions are blacked out directly on that image, and the pages are reassembled into a new PDF — no original text layer or metadata survives (the exported file is no longer selectable/copyable text, like a scanned document).',
-    pdfDropzoneText: 'Drag and drop a PDF file here, or click to choose a file',
     pdfOcrCheckboxLabel: 'Also run OCR on each page — only needed if the PDF is a scan/image (no selectable text layer), slower',
     pdfOcrLangLabel: 'OCR language (if enabled):',
     pdfScanBtn: 'Scan & black out PDF',
@@ -680,9 +708,8 @@ const I18N = {
     pdfProgressNone: 'No sensitive regions found in the PDF.',
     pdfProgressError: 'Error processing the PDF.',
     pdfPageLabel: (i, n) => `Page ${i}/${n}`,
-    sectionDocx: '1d. Or upload a Word file (.docx)',
+    sectionDocx: 'Word file (.docx)',
     docxDesc: 'Extracts the visible text from a Word file, redacts sensitive information, then outputs a simple PDF — good enough to paste to an AI. This PDF does NOT preserve the original layout, tables, or images of the Word file; comments and text deleted under Track Changes are not included either, since that is not currently-visible content.',
-    docxDropzoneText: 'Drag and drop a .docx file here, or click to choose a file',
     docxScanBtn: 'Convert & redact → PDF',
     docxDownloadBtn: 'Download processed PDF',
     docxProgressLoadingLib: 'Loading Word-processing library...',
@@ -692,9 +719,8 @@ const I18N = {
     docxProgressNone: 'No sensitive data found in the Word file — a PDF was still created from the original content.',
     docxProgressError: 'Error processing the Word file — it may be corrupted or not a valid .docx.',
     docxDownloadName: 'redacted-text.pdf',
-    sectionPptx: '1e. Or upload a PowerPoint file (.pptx)',
+    sectionPptx: 'PowerPoint file (.pptx)',
     pptxDesc: 'Extracts the visible text from slides (speaker notes are not included), redacts sensitive information, then outputs a simple PDF — good enough to paste to an AI. This PDF does NOT preserve the original layout, images, charts, or animations of the PowerPoint file.',
-    pptxDropzoneText: 'Drag and drop a .pptx file here, or click to choose a file',
     pptxScanBtn: 'Convert & redact → PDF',
     pptxDownloadBtn: 'Download processed PDF',
     pptxProgressLoadingLib: 'Loading PowerPoint-processing library...',
@@ -751,9 +777,13 @@ const I18N = {
     title: 'PII Redactor',
     subtitle: "Supprimez les informations sensibles d'un texte avant de le transmettre à une IA.",
     badge: "● Aucune connexion réseau n'est établie — tout le traitement se fait dans votre navigateur",
-    section1: '1. Collez le texte à traiter',
+    section1: '1. Collez du texte, ou glissez-déposez / choisissez un fichier (image, PDF, Word, PowerPoint)',
     placeholder: 'Collez un texte contenant des emails, IP, numéros de téléphone, chaînes de connexion à une base de données...',
-    textPanelImageHint: "Astuce : coller (Ctrl/Cmd+V) une image ici fonctionne aussi — elle est automatiquement récupérée par le panneau image ci-dessous (1b) pour l'OCR, et non insérée dans ce champ de texte.",
+    textPanelImageHint: "Astuce : coller (Ctrl/Cmd+V) une image ici fonctionne aussi — elle est automatiquement reconnue comme une image et envoyée à l'OCR, et non insérée dans ce champ de texte.",
+    unifiedDropzoneText: 'Glissez-déposez une image, un PDF, un fichier Word ou PowerPoint ici, ou cliquez pour choisir un fichier — le type est détecté automatiquement',
+    detectedTypePrefix: 'Détecté :',
+    unknownFileType: "⚠ Ce format de fichier n'a pas été reconnu. Formats pris en charge : texte (.txt), image (PNG/JPEG/WEBP), PDF, Word (.docx), PowerPoint (.pptx).",
+    sectionText: 'Texte (.txt)',
     ocrLangAccuracyHint: "Choisissez la langue réelle de l'image — une langue incorrecte réduit la précision de l'OCR et peut laisser passer des informations sensibles non caviardées.",
     sectionCustom: '2. Termes internes personnalisés (nom d\'entreprise, nom de serveur...)',
     customDesc: 'L\'outil ne peut pas le deviner seul — déclarez-le une fois, il sera toujours masqué, sans confirmation supplémentaire.',
@@ -768,9 +798,8 @@ const I18N = {
     section2: '3. Types de données à détecter',
     section3: '4. Résultat',
     fileProtocolWarning: "⚠ Vous ouvrez ce fichier directement (file://). Le traitement d'image nécessite un serveur local pour que le navigateur autorise la lecture d'autres fichiers locaux — lancez python3 -m http.server dans ce dossier, puis ouvrez http://localhost:8000. La section texte ci-dessus fonctionne normalement.",
-    sectionImage: '1b. Ou importez une image / capture d\'écran',
+    sectionImage: 'Image / capture d\'écran',
     imageDesc: 'L\'OCR trouve le texte dans l\'image, puis noircit réellement les pixels des zones sensibles — pas un calque transparent.',
-    dropzoneText: 'Glissez-déposez une image ici, collez (Ctrl/Cmd+V), ou cliquez pour choisir un fichier',
     ocrLangLabel: 'Langue OCR :',
     imgScanBtn: 'Analyser et noircir les zones sensibles',
     imgDownloadBtn: 'Télécharger l\'image traitée',
@@ -780,9 +809,8 @@ const I18N = {
     imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
     imgProgressNone: 'Aucune zone sensible trouvée dans l\'image.',
     imgProgressError: 'Erreur lors du traitement de l\'image — voir la note de l\'étape 4 (doit passer par un serveur local, pas file://).',
-    sectionPdf: '1c. Ou importez un fichier PDF',
+    sectionPdf: 'Fichier PDF',
     pdfDesc: 'Chaque page est redessinée en image, les zones sensibles sont noircies directement sur cette image, puis les pages sont réassemblées en un nouveau PDF — aucune couche de texte ni métadonnée d\'origine ne subsiste (le fichier exporté n\'est plus sélectionnable/copiable, comme un document scanné).',
-    pdfDropzoneText: 'Glissez-déposez un fichier PDF ici, ou cliquez pour choisir un fichier',
     pdfOcrCheckboxLabel: 'Exécuter aussi l\'OCR sur chaque page — utile seulement si le PDF est un scan/image (pas de couche de texte sélectionnable), plus lent',
     pdfOcrLangLabel: 'Langue OCR (si activé) :',
     pdfScanBtn: 'Analyser et noircir le PDF',
@@ -796,9 +824,8 @@ const I18N = {
     pdfProgressNone: 'Aucune zone sensible trouvée dans le PDF.',
     pdfProgressError: 'Erreur lors du traitement du PDF.',
     pdfPageLabel: (i, n) => `Page ${i}/${n}`,
-    sectionDocx: '1d. Ou importez un fichier Word (.docx)',
+    sectionDocx: 'Fichier Word (.docx)',
     docxDesc: 'Extrait le texte visible d\'un fichier Word, masque les informations sensibles, puis génère un PDF simple — suffisant à transmettre à une IA. Ce PDF ne conserve PAS la mise en page, les tableaux ni les images d\'origine ; les commentaires et le texte supprimé via le suivi des modifications ne sont pas non plus inclus, car ce n\'est pas le contenu actuellement visible.',
-    docxDropzoneText: 'Glissez-déposez un fichier .docx ici, ou cliquez pour choisir un fichier',
     docxScanBtn: 'Convertir et caviarder → PDF',
     docxDownloadBtn: 'Télécharger le PDF traité',
     docxProgressLoadingLib: 'Chargement de la bibliothèque de traitement Word...',
@@ -808,9 +835,8 @@ const I18N = {
     docxProgressNone: 'Aucune information sensible trouvée dans le fichier Word — un PDF a tout de même été créé à partir du contenu original.',
     docxProgressError: 'Erreur lors du traitement du fichier Word — il est peut-être corrompu ou n\'est pas un .docx valide.',
     docxDownloadName: 'texte-cavarde.pdf',
-    sectionPptx: '1e. Ou importez un fichier PowerPoint (.pptx)',
+    sectionPptx: 'Fichier PowerPoint (.pptx)',
     pptxDesc: 'Extrait le texte visible des diapositives (les notes du présentateur ne sont pas incluses), masque les informations sensibles, puis génère un PDF simple — suffisant à transmettre à une IA. Ce PDF ne conserve PAS la mise en page, les images, les graphiques ni les animations d\'origine.',
-    pptxDropzoneText: 'Glissez-déposez un fichier .pptx ici, ou cliquez pour choisir un fichier',
     pptxScanBtn: 'Convertir et caviarder → PDF',
     pptxDownloadBtn: 'Télécharger le PDF traité',
     pptxProgressLoadingLib: 'Chargement de la bibliothèque de traitement PowerPoint...',
@@ -867,9 +893,13 @@ const I18N = {
     title: 'PII Redactor',
     subtitle: 'Entfernen Sie sensible Informationen aus Text, bevor er an eine KI übergeben wird.',
     badge: '● Es wird keine Netzwerkverbindung hergestellt — die gesamte Verarbeitung erfolgt in Ihrem Browser',
-    section1: '1. Zu bearbeitenden Text einfügen',
+    section1: '1. Text einfügen oder Datei per Drag & Drop / Auswahl hinzufügen (Bild, PDF, Word, PowerPoint)',
     placeholder: 'Text mit E-Mails, IPs, Telefonnummern, Datenbank-Connection-Strings einfügen...',
-    textPanelImageHint: 'Tipp: Ein Bild hier einzufügen (Strg/Cmd+V) funktioniert auch — es wird automatisch vom Bildbereich weiter unten (1b) für die OCR übernommen, nicht in dieses Textfeld eingefügt.',
+    textPanelImageHint: 'Tipp: Ein Bild hier einzufügen (Strg/Cmd+V) funktioniert auch — es wird automatisch als Bild erkannt und zur OCR geschickt, nicht in dieses Textfeld eingefügt.',
+    unifiedDropzoneText: 'Bild, PDF, Word- oder PowerPoint-Datei hierher ziehen oder klicken, um eine Datei auszuwählen — der Dateityp wird automatisch erkannt',
+    detectedTypePrefix: 'Erkannt:',
+    unknownFileType: '⚠ Dieses Dateiformat wurde nicht erkannt. Unterstützte Formate: Text (.txt), Bild (PNG/JPEG/WEBP), PDF, Word (.docx), PowerPoint (.pptx).',
+    sectionText: 'Text (.txt)',
     ocrLangAccuracyHint: 'Wählen Sie die tatsächliche Sprache des Bildes — eine falsche Sprache verringert die OCR-Genauigkeit und kann dazu führen, dass sensible Daten nicht geschwärzt werden.',
     sectionCustom: '2. Benutzerdefinierte interne Begriffe (Firmenname, Servername...)',
     customDesc: 'Das Tool kann dies nicht selbst wissen — einmal angeben, und es wird immer entfernt, ohne erneute Bestätigung.',
@@ -884,9 +914,8 @@ const I18N = {
     section2: '3. Zu erkennende Datentypen',
     section3: '4. Ergebnis',
     fileProtocolWarning: '⚠ Sie öffnen diese Datei direkt (file://). Die Bildverarbeitung benötigt einen lokalen Server, damit der Browser das Lesen anderer lokaler Dateien erlaubt — führen Sie python3 -m http.server in diesem Ordner aus und öffnen Sie dann http://localhost:8000. Der Textbereich oben funktioniert weiterhin normal.',
-    sectionImage: '1b. Oder ein Bild / einen Screenshot hochladen',
+    sectionImage: 'Bild / Screenshot',
     imageDesc: 'OCR findet Text im Bild und übermalt sensible Bereiche dann mit echten Pixeln — keine durchsichtige Ebene.',
-    dropzoneText: 'Bild hierher ziehen, einfügen (Strg/Cmd+V) oder klicken, um eine Datei auszuwählen',
     ocrLangLabel: 'OCR-Sprache:',
     imgScanBtn: 'Scannen & sensible Bereiche schwärzen',
     imgDownloadBtn: 'Bearbeitetes Bild herunterladen',
@@ -896,9 +925,8 @@ const I18N = {
     imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
     imgProgressNone: 'Keine sensiblen Bereiche im Bild gefunden.',
     imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Hinweis zu Schritt 4 (muss über einen lokalen Server laufen, nicht file://).',
-    sectionPdf: '1c. Oder eine PDF-Datei hochladen',
+    sectionPdf: 'PDF-Datei',
     pdfDesc: 'Jede Seite wird neu als Bild gerendert, sensible Bereiche werden direkt auf diesem Bild geschwärzt, und die Seiten werden zu einem neuen PDF zusammengesetzt — es bleibt keine ursprüngliche Textebene oder Metadaten erhalten (die exportierte Datei ist nicht mehr auswählbar/kopierbar, wie ein gescanntes Dokument).',
-    pdfDropzoneText: 'PDF-Datei hierher ziehen oder klicken, um eine Datei auszuwählen',
     pdfOcrCheckboxLabel: 'Auch OCR auf jeder Seite ausführen — nur nötig, wenn das PDF ein Scan/Bild ist (keine auswählbare Textebene), langsamer',
     pdfOcrLangLabel: 'OCR-Sprache (falls aktiviert):',
     pdfScanBtn: 'PDF scannen & schwärzen',
@@ -912,9 +940,8 @@ const I18N = {
     pdfProgressNone: 'Keine sensiblen Bereiche im PDF gefunden.',
     pdfProgressError: 'Fehler bei der PDF-Verarbeitung.',
     pdfPageLabel: (i, n) => `Seite ${i}/${n}`,
-    sectionDocx: '1d. Oder eine Word-Datei (.docx) hochladen',
+    sectionDocx: 'Word-Datei (.docx)',
     docxDesc: 'Extrahiert den sichtbaren Text einer Word-Datei, schwärzt sensible Informationen und erzeugt daraus ein einfaches PDF — ausreichend, um es einer KI zu übergeben. Dieses PDF behält NICHT das ursprüngliche Layout, Tabellen oder Bilder der Word-Datei bei; Kommentare und per Änderungsverfolgung gelöschter Text werden ebenfalls nicht übernommen, da dies kein aktuell sichtbarer Inhalt ist.',
-    docxDropzoneText: 'Word-Datei (.docx) hierher ziehen oder klicken, um eine Datei auszuwählen',
     docxScanBtn: 'Umwandeln & schwärzen → PDF',
     docxDownloadBtn: 'Bearbeitetes PDF herunterladen',
     docxProgressLoadingLib: 'Word-Verarbeitungsbibliothek wird geladen...',
@@ -924,9 +951,8 @@ const I18N = {
     docxProgressNone: 'Keine sensiblen Daten in der Word-Datei gefunden — es wurde trotzdem ein PDF aus dem Originalinhalt erstellt.',
     docxProgressError: 'Fehler bei der Verarbeitung der Word-Datei — sie ist möglicherweise beschädigt oder keine gültige .docx-Datei.',
     docxDownloadName: 'geschwaerzter-text.pdf',
-    sectionPptx: '1e. Oder eine PowerPoint-Datei (.pptx) hochladen',
+    sectionPptx: 'PowerPoint-Datei (.pptx)',
     pptxDesc: 'Extrahiert den sichtbaren Text der Folien (Referentennotizen werden nicht einbezogen), schwärzt sensible Informationen und erzeugt daraus ein einfaches PDF — ausreichend, um es einer KI zu übergeben. Dieses PDF behält NICHT das ursprüngliche Layout, Bilder, Diagramme oder Animationen bei.',
-    pptxDropzoneText: 'PowerPoint-Datei (.pptx) hierher ziehen oder klicken, um eine Datei auszuwählen',
     pptxScanBtn: 'Umwandeln & schwärzen → PDF',
     pptxDownloadBtn: 'Bearbeitetes PDF herunterladen',
     pptxProgressLoadingLib: 'PowerPoint-Verarbeitungsbibliothek wird geladen...',
@@ -1523,8 +1549,6 @@ if (location.protocol === 'file:') {
   document.getElementById('fileProtocolWarning').style.display = 'block';
 }
 
-const dropzone = document.getElementById('dropzone');
-const imageFileInput = document.getElementById('imageFileInput');
 const imgCanvas = document.getElementById('imgCanvas');
 const imgCanvasWrap = document.getElementById('imgCanvasWrap');
 const imgCtx = imgCanvas.getContext('2d');
@@ -1582,28 +1606,179 @@ function loadImageFile(file) {
   img.src = URL.createObjectURL(file);
 }
 
-dropzone.addEventListener('click', () => imageFileInput.click());
+// ============================================================
+// UNIFIED FILE ROUTER
+// This used to be four separate drop zones, one per format, each
+// wired to only one load*File() function — so the person had to sort
+// their own file before they could even drop it in the right box.
+// Everything funnels through one drop zone now; detectFileType()
+// below is the only place that decides which pipeline a dropped file
+// actually goes to.
+//
+// loadImageFile/loadPdfFile/loadDocxFile/loadPptxFile (defined in
+// their own sections further down) already take a raw File object,
+// so routing is just "detect, then call the matching one" — none of
+// the per-format processing logic changes because of this.
+// ============================================================
+const unifiedDropzone = document.getElementById('unifiedDropzone');
+const unifiedFileInput = document.getElementById('unifiedFileInput');
+const detectedTypeEl = document.getElementById('detectedType');
+
+// One leftover result panel per format (the old 1b/1c/1d/1e sections,
+// minus their own drop zone) — exactly one is shown at a time, chosen
+// by the detected type.
+const resultPanels = {
+  image: document.getElementById('imagePanel'),
+  pdf: document.getElementById('pdfPanel'),
+  docx: document.getElementById('docxPanel'),
+  pptx: document.getElementById('pptxPanel')
+};
+
+function showResultPanel(type) {
+  Object.entries(resultPanels).forEach(([key, el]) => {
+    el.style.display = key === type ? 'block' : 'none';
+  });
+}
+
+// Works out what kind of file was just dropped/picked, in three
+// passes of decreasing trust:
+//
+//   1. File.type (MIME) — what the browser itself reports. Right
+//      almost all the time, so it's checked first.
+//   2. File extension — covers the cases where the OS handed the
+//      browser no MIME type at all (seen in practice with .docx from
+//      some Linux file pickers).
+//   3. The file's own magic bytes — the one check a renamed extension
+//      can't fool, and the only way to tell a .docx from a .pptx once
+//      neither MIME nor extension can be trusted: both are plain ZIP
+//      archives under the hood, so the signature alone ("this is a
+//      zip") isn't enough — the archive's own internal file names
+//      have to be read to tell them apart.
+//
+// Returns 'image' | 'pdf' | 'docx' | 'pptx' | 'text' | 'unknown'.
+async function detectFileType(file) {
+  const name = file.name.toLowerCase();
+
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type === 'application/pdf') return 'pdf';
+  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx';
+  if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return 'pptx';
+  if (file.type === 'text/plain') return 'text';
+
+  if (/\.(png|jpe?g|webp)$/.test(name)) return 'image';
+  if (name.endsWith('.pdf')) return 'pdf';
+  if (name.endsWith('.docx')) return 'docx';
+  if (name.endsWith('.pptx')) return 'pptx';
+
+  // Magic-byte check. Read just enough of the front of the file to check
+  // each format's signature — never the whole file, so this stays cheap
+  // even on a large PDF. This has to run BEFORE the ".txt/.md/..."
+  // extension guess below, not after: a renamed file (real PDF saved as
+  // "notes.txt", for instance) still carries its real signature, and the
+  // whole point of checking magic bytes at all is to catch exactly that
+  // case — checking it last would mean the extension always wins first
+  // and the signature check would never actually override anything.
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const hex = Array.from(head).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  if (hex.startsWith('25504446')) return 'pdf';   // "%PDF"
+  if (hex.startsWith('89504e47')) return 'image';  // PNG signature
+  if (hex.startsWith('ffd8ff')) return 'image';    // JPEG signature
+  if (hex.startsWith('52494646') && hex.slice(16, 24) === '57454250') return 'image'; // RIFF....WEBP
+
+  if (hex.startsWith('504b0304')) {
+    // A generic ZIP signature — .docx and .pptx both are ZIP archives,
+    // so the signature alone can't tell them apart. What can: a ZIP's
+    // per-entry file name sits in its local file header as plain
+    // ASCII, uncompressed, even though the entry's own content after
+    // it is deflate-compressed — so a plain text search over the raw
+    // bytes for one of each format's own well-known internal paths is
+    // enough, with no ZIP-parsing library needed just to tell them apart.
+    const sample = new TextDecoder('latin1').decode(await file.slice(0, 65536).arrayBuffer());
+    if (sample.includes('word/document.xml')) return 'docx';
+    if (sample.includes('ppt/presentation.xml')) return 'pptx';
+  }
+
+  // No binary signature matched, so a text extension can be trusted now
+  // (nothing binary was hiding behind it) — same check as before, just
+  // moved below the magic-byte tier instead of above it.
+  if (/\.(txt|md|log|csv)$/.test(name)) return 'text';
+
+  // Still nothing — see if the content itself reads as plain text
+  // (covers a .txt-like file saved with an unfamiliar extension, or no
+  // extension at all).
+  const textSample = new TextDecoder('utf-8', { fatal: false }).decode(await file.slice(0, 4096).arrayBuffer());
+  const controlCharCount = (textSample.match(/[\x00-\x08\x0e-\x1f]/g) || []).length;
+  if (textSample.length > 0 && controlCharCount / textSample.length < 0.01) return 'text';
+
+  return 'unknown';
+}
+
+const TYPE_LABEL_KEY = { image: 'sectionImage', pdf: 'sectionPdf', docx: 'sectionDocx', pptx: 'sectionPptx', text: 'sectionText' };
+
+async function routeFile(file) {
+  if (!file) return;
+  const t = I18N[currentLang];
+  const type = await detectFileType(file);
+
+  if (type === 'unknown') {
+    detectedTypeEl.textContent = t.unknownFileType;
+    detectedTypeEl.classList.add('unknown');
+    detectedTypeEl.style.display = 'block';
+    Object.values(resultPanels).forEach(el => el.style.display = 'none');
+    return;
+  }
+
+  detectedTypeEl.textContent = t.detectedTypePrefix + ' ' + t[TYPE_LABEL_KEY[type]] + ' (' + file.name + ')';
+  detectedTypeEl.classList.remove('unknown');
+  detectedTypeEl.style.display = 'block';
+
+  if (type === 'text') {
+    // A dropped/selected plain-text file behaves exactly like pasting
+    // its content — it goes straight into the text box, no dedicated
+    // result panel of its own needed.
+    document.getElementById('input').value = await file.text();
+    Object.values(resultPanels).forEach(el => el.style.display = 'none');
+    return;
+  }
+
+  showResultPanel(type);
+  if (type === 'image') loadImageFile(file);
+  else if (type === 'pdf') loadPdfFile(file);
+  else if (type === 'docx') loadDocxFile(file);
+  else if (type === 'pptx') loadPptxFile(file);
+
+  resultPanels[type].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+unifiedDropzone.addEventListener('click', () => unifiedFileInput.click());
 // role="button" on the dropzone makes it reachable by Tab, but a div
 // doesn't activate on Enter/Space the way a real <button> would — wire
 // that up manually so keyboard-only users can open the file picker too.
-dropzone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); imageFileInput.click(); }
+unifiedDropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); unifiedFileInput.click(); }
 });
-imageFileInput.addEventListener('change', (e) => loadImageFile(e.target.files[0]));
+unifiedFileInput.addEventListener('change', (e) => routeFile(e.target.files[0]));
 
-dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-dropzone.addEventListener('drop', (e) => {
+unifiedDropzone.addEventListener('dragover', (e) => { e.preventDefault(); unifiedDropzone.classList.add('drag-over'); });
+unifiedDropzone.addEventListener('dragleave', () => unifiedDropzone.classList.remove('drag-over'));
+unifiedDropzone.addEventListener('drop', (e) => {
   e.preventDefault();
-  dropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) loadImageFile(e.dataTransfer.files[0]);
+  unifiedDropzone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) routeFile(e.dataTransfer.files[0]);
 });
 
 document.addEventListener('paste', (e) => {
   const items = e.clipboardData?.items || [];
   for (const item of items) {
     if (item.type.startsWith('image/')) {
-      loadImageFile(item.getAsFile());
+      // Goes through routeFile(), not loadImageFile() directly — routeFile
+      // is also what reveals #imagePanel (hidden by default now that the
+      // four result panels share one entry point) and updates the
+      // "detected: ..." badge, so a pasted screenshot is shown exactly
+      // the same way a dropped or picked one is, not silently processed
+      // behind a still-hidden panel.
+      routeFile(item.getAsFile());
       break;
     }
   }
@@ -1947,7 +2122,7 @@ imgClearBtn.addEventListener('click', () => {
   imgDownloadPdfBtn.disabled = true;
   updateImgDownloadBtnLabel();
   imgProgressEl.textContent = '';
-  imageFileInput.value = '';
+  unifiedFileInput.value = '';
   lastImgLines = [];
   confirmedImgSuspects = new Set();
   imgSuspectListEl.innerHTML = '';
@@ -1984,8 +2159,6 @@ imgClearBtn.addEventListener('click', () => {
 // the original PDF.
 // ============================================================
 
-const pdfDropzone = document.getElementById('pdfDropzone');
-const pdfFileInput = document.getElementById('pdfFileInput');
 const pdfFileNameEl = document.getElementById('pdfFileName');
 const pdfOcrCheckbox = document.getElementById('pdfOcrCheckbox');
 const pdfOcrLangSelect = document.getElementById('pdfOcrLangSelect');
@@ -2017,19 +2190,6 @@ function loadPdfFile(file) {
   };
   reader.readAsArrayBuffer(file);
 }
-
-pdfDropzone.addEventListener('click', () => pdfFileInput.click());
-pdfDropzone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pdfFileInput.click(); }
-});
-pdfFileInput.addEventListener('change', (e) => loadPdfFile(e.target.files[0]));
-pdfDropzone.addEventListener('dragover', (e) => { e.preventDefault(); pdfDropzone.classList.add('drag-over'); });
-pdfDropzone.addEventListener('dragleave', () => pdfDropzone.classList.remove('drag-over'));
-pdfDropzone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  pdfDropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) loadPdfFile(e.dataTransfer.files[0]);
-});
 
 // Computes an axis-aligned bounding box, in canvas pixel space, for one
 // pdf.js text item.
@@ -2342,7 +2502,7 @@ pdfClearBtn.addEventListener('click', () => {
   pdfDownloadBtn.disabled = true;
   pdfProgressEl.textContent = '';
   pdfFileNameEl.textContent = '';
-  pdfFileInput.value = '';
+  unifiedFileInput.value = '';
 });
 
 // ============================================================
@@ -2566,8 +2726,6 @@ async function buildSimplePdfFromText(text, fontBytes) {
   return outPdf.save();
 }
 
-const docxDropzone = document.getElementById('docxDropzone');
-const docxFileInput = document.getElementById('docxFileInput');
 const docxFileNameEl = document.getElementById('docxFileName');
 const docxScanBtn = document.getElementById('docxScanBtn');
 const docxDownloadBtn = document.getElementById('docxDownloadBtn');
@@ -2592,19 +2750,6 @@ function loadDocxFile(file) {
   };
   reader.readAsArrayBuffer(file);
 }
-
-docxDropzone.addEventListener('click', () => docxFileInput.click());
-docxDropzone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); docxFileInput.click(); }
-});
-docxFileInput.addEventListener('change', (e) => loadDocxFile(e.target.files[0]));
-docxDropzone.addEventListener('dragover', (e) => { e.preventDefault(); docxDropzone.classList.add('drag-over'); });
-docxDropzone.addEventListener('dragleave', () => docxDropzone.classList.remove('drag-over'));
-docxDropzone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  docxDropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) loadDocxFile(e.dataTransfer.files[0]);
-});
 
 docxScanBtn.addEventListener('click', async () => {
   const t = I18N[currentLang];
@@ -2667,7 +2812,7 @@ docxClearBtn.addEventListener('click', () => {
   docxDownloadBtn.disabled = true;
   docxProgressEl.textContent = '';
   docxFileNameEl.textContent = '';
-  docxFileInput.value = '';
+  unifiedFileInput.value = '';
 });
 
 // ============================================================
@@ -2677,8 +2822,6 @@ docxClearBtn.addEventListener('click', () => {
 // function rather than writing a second PDF builder, since the output
 // contract is identical: plain word-wrapped text, no original layout.
 // ============================================================
-const pptxDropzone = document.getElementById('pptxDropzone');
-const pptxFileInput = document.getElementById('pptxFileInput');
 const pptxFileNameEl = document.getElementById('pptxFileName');
 const pptxScanBtn = document.getElementById('pptxScanBtn');
 const pptxDownloadBtn = document.getElementById('pptxDownloadBtn');
@@ -2703,19 +2846,6 @@ function loadPptxFile(file) {
   };
   reader.readAsArrayBuffer(file);
 }
-
-pptxDropzone.addEventListener('click', () => pptxFileInput.click());
-pptxDropzone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pptxFileInput.click(); }
-});
-pptxFileInput.addEventListener('change', (e) => loadPptxFile(e.target.files[0]));
-pptxDropzone.addEventListener('dragover', (e) => { e.preventDefault(); pptxDropzone.classList.add('drag-over'); });
-pptxDropzone.addEventListener('dragleave', () => pptxDropzone.classList.remove('drag-over'));
-pptxDropzone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  pptxDropzone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) loadPptxFile(e.dataTransfer.files[0]);
-});
 
 pptxScanBtn.addEventListener('click', async () => {
   const t = I18N[currentLang];
@@ -2777,7 +2907,7 @@ pptxClearBtn.addEventListener('click', () => {
   pptxDownloadBtn.disabled = true;
   pptxProgressEl.textContent = '';
   pptxFileNameEl.textContent = '';
-  pptxFileInput.value = '';
+  unifiedFileInput.value = '';
 });
 
 // Initialization

@@ -8,6 +8,33 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [1.2.0] — 2026-10-23
+
+### Added
+
+- **Unified file input.** The five separate drop zones (text / image /
+  PDF / Word / PowerPoint), each requiring the person to already know
+  what kind of file they were holding, are now one drop zone beside
+  the text box. A new `detectFileType()` router sorts the dropped or
+  picked file in three passes of decreasing trust — MIME type, then
+  file extension, then (as the final, unspoofable tie-breaker) the
+  file's own magic bytes, including reading a ZIP's internal entry
+  names to tell `.docx` apart from `.pptx` — and reveals the matching
+  result panel automatically. None of the underlying detection or
+  redaction logic changed; this only touches how a file gets routed
+  to the pipeline it already had.
+- **README:** a new note near the top states explicitly that Word/
+  PowerPoint input is deliberately converted to a plain-text-only PDF
+  for data-security reasons, and that a Word/PowerPoint file saved as
+  a PDF first can go through the full PDF pipeline instead — this was
+  previously only documented in depth further down, in Architecture.
+
+### Notes
+
+- 57/57 tests passing (`test/run-tests.mjs`), unchanged from v1.1.0 —
+  this release doesn't touch the detection/redaction pipeline the test
+  suite covers, only the surrounding UI.
+
 ## [1.1.0] — 2026-10-23
 
 ### Added
@@ -89,5 +116,6 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.2.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.0.0

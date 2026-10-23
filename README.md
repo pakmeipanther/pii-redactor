@@ -1,4 +1,4 @@
-# PII Redactor <sup>v1.1.0</sup>
+# PII Redactor <sup>v1.2.0</sup>
 
 A single-file, client-side tool that strips personal data and internal
 infrastructure secrets out of text, Word documents, PowerPoint decks,
@@ -6,15 +6,26 @@ PDFs, and screenshots **before** that content is pasted into any AI
 tool — so sensitive information never leaves your machine in the
 first place.
 
-> Status (v1.1.0): text redaction (regex + custom term list +
-> entropy-based secret detection), image/screenshot OCR redaction, PDF
-> redaction, Word (.docx) → redacted-PDF conversion, and PowerPoint
-> (.pptx) → redacted-PDF conversion are all working, with a
-> synthetic-data test suite and a demo GIF above. Local NER was
-> investigated and deferred for now — see
-> [Known limitations](#known-limitations) for why. Looking for the
-> original v1.0.0 release instead? See [Versioning](#versioning) below.
+> Status (v1.2.0): one unified input (paste text, or drop/pick an
+> image, PDF, Word, or PowerPoint file — the type is auto-detected,
+> no need to pick the right box yourself), text redaction (regex +
+> custom term list + entropy-based secret detection), image/screenshot
+> OCR redaction, PDF redaction, Word (.docx) → redacted-PDF
+> conversion, and PowerPoint (.pptx) → redacted-PDF conversion are all
+> working, with a synthetic-data test suite and a demo GIF above.
+> Local NER was investigated and deferred for now — see
+> [Known limitations](#known-limitations) for why. Looking for an
+> earlier release instead? See [Versioning](#versioning) below.
 > See [Roadmap](#roadmap) below.
+
+> **Note on Word/PowerPoint:** this tool deliberately converts .docx
+> and .pptx input into a **plain-text-only PDF** — never a redacted
+> copy of the original file. That's a security choice, not a missing
+> feature (see [Architecture](#architecture) for why), and it means
+> layout, tables, and images in the original don't carry over. If you
+> need the PDF pipeline's page-image output instead (which preserves
+> layout), save your Word/PowerPoint file as a PDF yourself first,
+> then drop that PDF in.
 
 ![Demo: pasting text with fake PII, scanning, adding a custom internal term, and switching the UI to German](docs/images/demo.gif)
 
@@ -268,8 +279,14 @@ a glance.
    [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features)
    below — all of them need a local server due to a browser
    restriction on reading local files.
-3. Paste text, drop/paste an image, drop a PDF file, drop a Word
-   (.docx) file, or drop a PowerPoint (.pptx) file.
+3. Paste text directly into the text box, or drop/pick a file — one
+   image, PDF, Word (.docx), or PowerPoint (.pptx) file — on the single
+   drop zone right below it. There's no need to sort the file into the
+   right box yourself: the type is detected automatically (by the
+   browser's own MIME sniffing first, falling back to the file
+   extension, and finally the file's actual magic bytes if neither of
+   those is trustworthy — so a mislabeled file still lands in the
+   right pipeline), and the matching panel appears once it's known.
 4. Review the highlighted matches (text), the blacked-out regions
    (image), or the redacted page previews (PDF) — always look before
    exporting, and explicitly confirm any yellow-highlighted entropy
@@ -357,6 +374,11 @@ node test/run-tests.mjs
       (PNG/JPEG/WEBP) by default, with an optional "download as PDF"
       button
 - [x] **v1.1** Versioning — see [Versioning](#versioning)
+- [x] **v1.2** Unified input — the five separate drop zones (text/
+      image/PDF/Word/PowerPoint) are now one drop zone plus the text
+      box; `detectFileType()` sorts the file by MIME type, extension,
+      and (as the final, unspoofable check) its own magic bytes, then
+      opens the matching result panel automatically
 
 ## Versioning
 
@@ -367,10 +389,15 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
 - **v1.0.0** — the first stable release: text (regex + custom list),
   image/screenshot OCR, PDF, and Word (.docx) redaction. Tag:
   [`v1.0.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.0.0).
-- **v1.1.0** (current) — adds PowerPoint (.pptx) support, entropy-based
+- **v1.1.0** — adds PowerPoint (.pptx) support, entropy-based
   secret detection, and native-format image export with an optional
   PDF option. Tag:
   [`v1.1.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0).
+- **v1.2.0** (current) — merges the five separate text/image/PDF/Word/
+  PowerPoint drop zones into one unified input with automatic file-type
+  detection; no change to the underlying detection/redaction pipelines.
+  Tag:
+  [`v1.2.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0).
 
 To use a specific version instead of the latest `main`, download the
 `index.html` (plus the matching `vendor/` folder) from that tag's
@@ -530,6 +557,11 @@ underneath you, even as `main` keeps moving forward.
 ## Author
 
 **Nguyễn Tiến Trung** — tientrung.nguyen.de@gmail.com
+
+Built with the help of Claude (Anthropic) as a coding assistant —
+architecture decisions, detection-pipeline design, and the "real
+redaction vs. cosmetic masking" requirement throughout the codebase
+are mine; Claude helped write and review the implementation.
 
 ## License
 
