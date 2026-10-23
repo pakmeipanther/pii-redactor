@@ -1,0 +1,25 @@
+# Runs the detection-pipeline regression suite (test/run-tests.mjs) on
+# every push and pull request, so a change that breaks redaction logic
+# fails loudly in CI instead of only showing up later. No npm install
+# step here on purpose -- the suite is dependency-free by design, same
+# as the app itself (see test/run-tests.mjs's own header comment).
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run the regression suite
+        run: node test/run-tests.mjs
