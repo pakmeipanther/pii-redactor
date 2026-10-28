@@ -26,6 +26,13 @@ one never removes an older one.
 - Drawing works **without OCR**, so an image can be redacted by hand where
   WebAssembly is unavailable (for example Safari in Lockdown Mode).
 - Hand-drawn regions in the four languages and in the four user guides.
+- **"Delete all terms"** for the custom term list. Clicking it opens a
+  warning instead of deleting: the list will be removed from this
+  browser's local storage and cannot be recovered, so export it as .json
+  first. "Export list first" downloads the usual backup and then asks
+  again; "Delete without exporting" is also available; Cancel and Esc
+  close the warning. Only an explicit confirm deletes, and the button is
+  off when the list is empty.
 
 ### Changed
 
@@ -39,9 +46,11 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 161 to 184 tests: the pure region model (geometry,
+- Test suite grown from 161 to 194 tests: the pure region model (geometry,
   the undo/redo store, the painter, the drawing tool), and the pointer,
   keyboard and region-list code run against a fake DOM.
+  The delete-all flow is tested exhaustively: no sequence of actions
+  deletes anything without a confirm from an open warning.
 
 ## [1.2.1] — 2026-10-28
 

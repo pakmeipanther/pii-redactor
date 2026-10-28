@@ -113,7 +113,7 @@ trust levels:**
 
 1. **User-defined list** (highest priority, applied without
    re-confirmation) — company names, internal server names, project
-   codenames that no model could ever guess on its own.
+   codenames that no model could ever guess on its own. The list can be exported and imported as .json and emptied with one button; that button first warns that the list will be removed from the browser's local storage and offers an export, and deletes only after an explicit choice.
 2. **Regex** — structured patterns: emails, IPs, phone numbers, API
    keys/tokens, card numbers, and database connection strings (both URI
    form like `postgres://user:pass@host:port/dbname` and key-value form
@@ -412,7 +412,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 184 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 194 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -462,6 +462,8 @@ node test/run-tests.mjs
 - [x] **v1.3** (unreleased) Image regions: one editable list of regions
       (automatic + hand-drawn), a drawing tool with undo/redo, a region
       list with on/off switches and highlighting; works without OCR
+- [x] **v1.3** (unreleased) "Delete all terms" for the custom list, with a
+      warning and an export offer before anything is deleted
 - [ ] **v1.3** Face detection with irreversible cover modes (next)
 
 ## Versioning

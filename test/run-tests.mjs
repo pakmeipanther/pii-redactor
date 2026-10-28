@@ -2192,6 +2192,205 @@ check('guard: drawing works without OCR -- exporting is allowed as soon as a reg
   if (!html.includes('rerenderRegionsUi();')) throw new Error('a language switch does not refresh the region list');
 });
 
+// --- "Delete all terms" with a warning (v1.3) ------------------------------
+// Deleting the list is irreversible (it only exists in this browser's local
+// storage), so the rule "nothing is deleted without an explicit confirm" is
+// tested exhaustively on the pure flow, then the UI is run against a fake DOM.
+
+const clearFlowCode = extractBetween('// CLEAR_TERMS_FLOW_START', '// CLEAR_TERMS_FLOW_END', 'CLEAR_TERMS_FLOW');
+const clearUiCode = extractBetween('// CLEAR_TERMS_UI_START', '// CLEAR_TERMS_UI_END', 'CLEAR_TERMS_UI');
+const i18nClearCode = extractBetween('// I18N_CLEAR_TERMS_START', '// I18N_CLEAR_TERMS_END', 'I18N_CLEAR_TERMS');
+const { I18N_CLEAR_TERMS } = new Function(`${i18nClearCode}\nreturn { I18N_CLEAR_TERMS };`)();
+const { clearTermsFlow } = new Function(`${clearFlowCode}\nreturn { clearTermsFlow };`)();
+
+check('clearTermsFlow: the happy paths -- warn first, export optional, delete only on confirm, cancel always closes', () => {
+  let r = clearTermsFlow('idle', 'request', 3);
+  if (r.state !== 'warn' || r.effect !== null) throw new Error('request: ' + JSON.stringify(r));
+  r = clearTermsFlow('warn', 'export', 3);
+  if (r.state !== 'exported' || r.effect !== 'export') throw new Error('export: ' + JSON.stringify(r));
+  r = clearTermsFlow('exported', 'confirm', 3);
+  if (r.state !== 'idle' || r.effect !== 'delete') throw new Error('confirm after export: ' + JSON.stringify(r));
+  r = clearTermsFlow('warn', 'confirm', 3);   // "delete without exporting"
+  if (r.state !== 'idle' || r.effect !== 'delete') throw new Error('confirm without export: ' + JSON.stringify(r));
+  for (const s of ['idle', 'warn', 'exported']) {
+    const c = clearTermsFlow(s, 'cancel', 3);
+    if (c.state !== 'idle' || c.effect !== null) throw new Error('cancel from ' + s);
+  }
+  const again = clearTermsFlow('exported', 'export', 3);
+  if (again.state !== 'exported' || again.effect !== 'export') throw new Error('exporting twice should be allowed');
+});
+
+check('clearTermsFlow: nothing to delete means no warning; a list emptied under an open warning closes it; unknown actions change nothing', () => {
+  if (clearTermsFlow('idle', 'request', 0).state !== 'idle') throw new Error('a warning for an empty list');
+  if (clearTermsFlow('warn', 'sync', 0).state !== 'idle' || clearTermsFlow('exported', 'sync', 0).state !== 'idle') throw new Error('sync with an empty list');
+  if (clearTermsFlow('warn', 'sync', 2).state !== 'warn') throw new Error('sync with terms left must keep the warning');
+  if (clearTermsFlow('warn', 'confirm', 0).effect !== null) throw new Error('confirm with nothing to delete');
+  const odd = clearTermsFlow('warn', 'whatever', 3);
+  if (odd.state !== 'warn' || odd.effect !== null) throw new Error('unknown action');
+});
+
+check('clearTermsFlow, exhaustively: a "delete" effect happens only for a confirm made from an open warning, and a warning only ever opens from "request"', () => {
+  const actions = ['request', 'export', 'confirm', 'cancel', 'sync', 'bogus'];
+  let visited = 0;
+  const walk = (state, depth, count, opened) => {
+    if (depth === 0) return;
+    for (const action of actions) {
+      for (const termCount of [0, count]) {
+        const r = clearTermsFlow(state, action, termCount);
+        visited++;
+        const mayDelete = action === 'confirm' && (state === 'warn' || state === 'exported') && termCount > 0;
+        if ((r.effect === 'delete') !== mayDelete) throw new Error(`delete effect wrong: ${state} + ${action} (count ${termCount}) -> ${JSON.stringify(r)}`);
+        if (r.effect === 'export' && !(action === 'export' && (state === 'warn' || state === 'exported'))) throw new Error('export effect out of nowhere');
+        if (r.state === 'warn' && state !== 'warn' && !(state === 'idle' && action === 'request' && termCount > 0)) throw new Error(`a warning opened from ${state} via ${action}`);
+        if (state === 'idle' && r.effect !== null) throw new Error('an effect from the idle state');
+        walk(r.state, depth - 1, count, opened);
+      }
+    }
+  };
+  walk('idle', 4, 3, false);
+  if (visited < 1000) throw new Error('the walk was too small: ' + visited);
+});
+
+check('i18n: the delete-all strings exist in all four languages with the same shape, real translations and working plurals', () => {
+  const ref = Object.keys(I18N_CLEAR_TERMS.en).sort();
+  for (const l of LANGS) {
+    if (JSON.stringify(Object.keys(I18N_CLEAR_TERMS[l]).sort()) !== JSON.stringify(ref)) throw new Error(`${l} keys differ`);
+    for (const k of ref) {
+      if (typeof I18N_CLEAR_TERMS[l][k] !== typeof I18N_CLEAR_TERMS.en[k]) throw new Error(`${l}.${k} type differs`);
+      if (l !== 'en' && typeof I18N_CLEAR_TERMS[l][k] === 'string' && I18N_CLEAR_TERMS[l][k] === I18N_CLEAR_TERMS.en[k]) throw new Error(`${l}.${k} identical to English`);
+    }
+    for (const fn of ['clearWarn', 'clearExported', 'clearDone']) {
+      for (const n of [1, 12]) if (!I18N_CLEAR_TERMS[l][fn](n).includes(String(n))) throw new Error(`${l}.${fn}(${n}) does not show the count`);
+    }
+    const warn = I18N_CLEAR_TERMS[l].clearWarn(5);
+    if (!/json/i.test(warn)) throw new Error(`${l}: the warning must mention the .json export`);
+  }
+  if (!/term\?/.test(I18N_CLEAR_TERMS.en.clearWarn(1)) || !/terms\?/.test(I18N_CLEAR_TERMS.en.clearWarn(2))) throw new Error('English plural');
+});
+
+function makeClearTermsHarness(initialTerms = ['Tamesh', 'Nkem', 'Oct']) {
+  const byId = new Map();
+  const focusLog = [];
+  const downloads = [];
+  const removeItemCalls = [];
+  const makeEl = (tag, id) => ({
+    tag, id, style: {}, listeners: {}, children: [], disabled: false, _text: '',
+    get textContent() { return this._text; }, set textContent(v) { this._text = String(v); },
+    addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
+    appendChild(c) { this.children.push(c); return c; },
+    focus() { focusLog.push(this.id); }
+  });
+  const doc = {
+    getElementById(id) { if (!byId.has(id)) byId.set(id, makeEl('div', id)); return byId.get(id); },
+    createElement(tag) { const el = makeEl(tag); if (tag === 'a') el.click = () => downloads.push({ name: el.download, payload: el.href && el.href.blob ? el.href.blob.parts.join('') : '' }); return el; },
+    body: { appendChild() {}, removeChild() {} }
+  };
+  const fakeLocalStorage = { removeItem(k) { removeItemCalls.push(k); if (fakeLocalStorage.failing) throw new Error('storage blocked'); } };
+  class FakeBlob { constructor(parts) { this.parts = parts; } }
+  const FakeURL = { createObjectURL(blob) { return { blob }; }, revokeObjectURL() {} };
+  const source = `
+    let currentLang = 'en';
+    const I18N = { en: I18N_CLEAR_TERMS.en, de: I18N_CLEAR_TERMS.de, vi: I18N_CLEAR_TERMS.vi };
+    const CUSTOM_TERMS_KEY = 'piiRedactorCustomTerms';
+    let customTerms = ${JSON.stringify(initialTerms)};
+    const customCaseSensitiveEl = { checked: true };
+    const customInputEl = document.getElementById('customInput');
+    function renderCustomChips() { renderClearTermsUi(); }
+    ${clearFlowCode}
+    ${clearUiCode}
+    renderClearTermsUi();
+    return {
+      terms: () => customTerms, setTerms: (a) => { customTerms = a; renderCustomChips(); }, state: () => clearTermsState, cleared: () => clearedCount,
+      setLang: (l) => { currentLang = l; renderClearTermsUi(); }
+    };
+  `;
+  const api = new Function('document', 'localStorage', 'Blob', 'URL', 'I18N_CLEAR_TERMS', source)(doc, fakeLocalStorage, FakeBlob, FakeURL, I18N_CLEAR_TERMS);
+  const el = id => doc.getElementById(id);
+  const click = id => (el(id).listeners.click || []).forEach(fn => fn({}));
+  const key = (id, k) => (el(id).listeners.keydown || []).forEach(fn => fn({ key: k }));
+  return { api, el, click, key, focusLog, downloads, removeItemCalls, fakeLocalStorage };
+}
+
+check('delete-all UI: the button is off for an empty list; clicking it only opens a warning -- nothing is deleted, nothing is exported', () => {
+  const h = makeClearTermsHarness([]);
+  if (!h.el('customClearBtn').disabled || h.el('customClearConfirm').style.display !== 'none') throw new Error('empty list');
+  h.api.setTerms(['Tamesh', 'Nkem', 'Oct']);
+  if (h.el('customClearBtn').disabled) throw new Error('should be enabled with terms');
+  h.click('customClearBtn');
+  const msg = h.el('customClearMessage').textContent;
+  for (const needle of ['Delete all 3 custom terms?', "browser's local storage", 'cannot be recovered', 'Export the list as a .json file first']) if (!msg.includes(needle)) throw new Error(`"${needle}" missing: ${msg}`);
+  if (h.el('customClearConfirm').style.display !== 'block' || h.el('customClearExportBtn').style.display !== 'inline-block') throw new Error('warning not shown');
+  if (h.el('customClearDeleteBtn').textContent !== 'Delete without exporting') throw new Error('delete label: ' + h.el('customClearDeleteBtn').textContent);
+  if (h.api.terms().length !== 3 || h.removeItemCalls.length || h.downloads.length) throw new Error('something happened on the first click');
+  if (h.focusLog[h.focusLog.length - 1] !== 'customClearExportBtn') throw new Error('focus should start on the safe button, not the destructive one: ' + h.focusLog);
+});
+
+check('delete-all UI: Cancel and Escape close the warning and keep every term and the stored list', () => {
+  const h = makeClearTermsHarness();
+  h.click('customClearBtn'); h.click('customClearCancelBtn');
+  if (h.el('customClearConfirm').style.display !== 'none' || h.api.terms().length !== 3 || h.removeItemCalls.length) throw new Error('cancel');
+  if (h.focusLog[h.focusLog.length - 1] !== 'customClearBtn') throw new Error('focus should return to the button');
+  h.click('customClearBtn'); h.key('customClearConfirm', 'a'); h.key('customClearConfirm', 'Escape');
+  if (h.el('customClearConfirm').style.display !== 'none' || h.api.terms().length !== 3 || h.removeItemCalls.length) throw new Error('Escape (and other keys must not)');
+});
+
+check('delete-all UI: "export first" downloads the same backup as the Export button, keeps the terms, and then asks again; "Delete now" removes them from memory and local storage', () => {
+  const h = makeClearTermsHarness();
+  h.click('customClearBtn'); h.click('customClearExportBtn');
+  if (h.downloads.length !== 1 || h.downloads[0].name !== 'pii-redactor-custom-terms.json') throw new Error('export: ' + JSON.stringify(h.downloads));
+  const payload = JSON.parse(h.downloads[0].payload);
+  if (JSON.stringify(payload.terms) !== JSON.stringify(['Tamesh', 'Nkem', 'Oct']) || payload.caseSensitive !== true) throw new Error('backup content: ' + h.downloads[0].payload);
+  if (h.api.terms().length !== 3 || h.removeItemCalls.length) throw new Error('exporting must not delete');
+  if (h.api.state() !== 'exported' || !h.el('customClearMessage').textContent.includes('Backup exported. Delete all 3 custom terms now?')) throw new Error('second question: ' + h.el('customClearMessage').textContent);
+  if (h.el('customClearExportBtn').style.display !== 'none' || h.el('customClearDeleteBtn').textContent !== 'Delete now') throw new Error('buttons after export');
+  if (h.focusLog[h.focusLog.length - 1] !== 'customClearCancelBtn') throw new Error('focus after export should be the safe button');
+  h.click('customClearDeleteBtn');
+  if (h.api.terms().length !== 0 || JSON.stringify(h.removeItemCalls) !== JSON.stringify(['piiRedactorCustomTerms'])) throw new Error('not deleted: ' + JSON.stringify(h.removeItemCalls));
+  if (h.el('customClearConfirm').style.display !== 'none' || !h.el('customClearBtn').disabled || h.el('customClearStatus').textContent !== 'Deleted 3 custom terms.') throw new Error('after delete: ' + h.el('customClearStatus').textContent);
+  if (h.focusLog[h.focusLog.length - 1] !== 'customInput') throw new Error('focus should move to the input when the list is empty');
+});
+
+check('delete-all UI: "Delete without exporting" deletes, and does NOT export; a blocked localStorage still empties the list in memory', () => {
+  const h = makeClearTermsHarness();
+  h.fakeLocalStorage.failing = true;
+  h.click('customClearBtn'); h.click('customClearDeleteBtn');
+  if (h.api.terms().length !== 0 || h.downloads.length !== 0) throw new Error('delete anyway: ' + h.api.terms().length + ' / ' + h.downloads.length);
+  if (h.el('customClearStatus').textContent !== 'Deleted 3 custom terms.') throw new Error(h.el('customClearStatus').textContent);
+});
+
+check('delete-all UI: the warning and the status follow the language, a list emptied under the warning closes it, and a new term clears the "Deleted" note', () => {
+  const h = makeClearTermsHarness();
+  h.click('customClearBtn');
+  h.api.setLang('de');
+  if (!h.el('customClearMessage').textContent.includes('Alle eigenen Begriffe (3) löschen?') || h.el('customClearDeleteBtn').textContent !== 'Ohne Export löschen') throw new Error('de: ' + h.el('customClearMessage').textContent);
+  h.api.setLang('vi');
+  if (!h.el('customClearMessage').textContent.includes('bộ nhớ cục bộ')) throw new Error('vi: ' + h.el('customClearMessage').textContent);
+  h.api.setTerms([]);
+  if (h.el('customClearConfirm').style.display !== 'none' || h.api.state() !== 'idle') throw new Error('the warning stayed open for an empty list');
+  const h2 = makeClearTermsHarness(['x']);
+  h2.click('customClearBtn');
+  if (!h2.el('customClearMessage').textContent.includes('Delete all 1 custom term?')) throw new Error('singular: ' + h2.el('customClearMessage').textContent);
+  h2.click('customClearDeleteBtn');
+  if (h2.el('customClearStatus').textContent !== 'Deleted 1 custom term.') throw new Error(h2.el('customClearStatus').textContent);
+});
+
+check('guard: only the confirmed flow can empty the list, the old Export button shares the backup code, and other list changes clear the "Deleted" note', () => {
+  if (html.split('forgetAllCustomTerms(').length - 1 !== 2) throw new Error('forgetAllCustomTerms must have exactly one definition and one call');
+  const dispatch = html.slice(html.indexOf('function dispatchClearTerms'), html.indexOf("clearTermsBtn.addEventListener('click'"));
+  if (!/if \(effect === 'delete'\) \{[^}]*forgetAllCustomTerms\(\)/.test(dispatch)) throw new Error('the call is not behind the delete effect');
+  if (html.split('customTerms = [];').length - 1 !== 1) throw new Error('customTerms is emptied somewhere other than forgetAllCustomTerms');
+  if (!html.includes("document.getElementById('customExportBtn').addEventListener('click', exportCustomTerms);")) throw new Error('the Export button does not use exportCustomTerms');
+  for (const fn of ['function addCustomTerm()', 'function removeCustomTerm(term)']) {
+    const start = html.indexOf(fn);
+    const end = html.indexOf('\nfunction ', start + 10);
+    if (!html.slice(start, end).includes('clearedCount = null;')) throw new Error(fn + ' does not clear the "Deleted" note');
+  }
+  if (!/clearedCount = null;\s+customTerms = merged;/.test(html)) throw new Error('importing does not clear the "Deleted" note');
+  if (!html.includes('  renderClearTermsUi();\n}')) throw new Error('the chip list does not refresh the clear-all UI');
+  const listBlock = html.slice(html.indexOf('id="customClearBtn"'), html.indexOf('id="customClearStatus"'));
+  if (!/id="customClearConfirm" role="alert"/.test(listBlock)) throw new Error('the warning should be announced (role="alert")');
+});
+
 // --- release consistency (v1.2.1, step 4) --------------------------------
 // Small guards so the things a reader sees -- version labels, quoted UI
 // strings in the guides, test counts -- cannot silently drift from the code.
@@ -2221,6 +2420,7 @@ check('release: the four user guides have the same structure and quote the exact
     if (!/ICC/.test(text)) throw new Error(`docs/guide.${l}.md does not mention the ICC note`);
     if (!/WebAssembly/.test(text) || !/Lockdown/.test(text)) throw new Error(`docs/guide.${l}.md does not mention WebAssembly / Lockdown Mode`);
     if (!text.includes(I18N_REGIONS[l].drawToggle)) throw new Error(`docs/guide.${l}.md does not quote the drawing tool label: "${I18N_REGIONS[l].drawToggle}"`);
+    if (!text.includes(I18N_CLEAR_TERMS[l].clearAllBtn)) throw new Error(`docs/guide.${l}.md does not quote the delete-all label: "${I18N_CLEAR_TERMS[l].clearAllBtn}"`);
     for (const [what, label] of [['thorough scan label', I18N_OCR[l].imgThoroughLabel], ['OCR text box title', I18N_OCR[l].imgOcrTextTitle]]) {
       const quoted = label.split(' (')[0];
       if (!text.includes(quoted)) throw new Error(`docs/guide.${l}.md does not quote the ${what}: "${quoted}"`);

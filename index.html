@@ -182,6 +182,11 @@
   .custom-empty { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
   .custom-io { display: flex; gap: 8px; }
   .custom-io button { padding: 7px 12px; font-size: 12px; }
+  .custom-io { flex-wrap: wrap; }
+  button.danger-outline { border-color: var(--danger); color: var(--danger); }
+  button.danger-outline:disabled { border-color: var(--border); color: var(--muted); }
+  .clear-confirm { font-size: 13px; margin-top: 10px; border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 8px; padding: 10px 12px; }
+  .clear-confirm .custom-io { margin-top: 8px; }
   .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .warn-banner {
     background: rgba(250, 199, 117, 0.12);
@@ -555,8 +560,18 @@
   <div class="custom-io">
     <button id="customExportBtn" class="secondary" data-i18n="exportBtn">Xuất danh sách (.json)</button>
     <button id="customImportBtn" class="secondary" data-i18n="importBtn">Nhập danh sách (.json)</button>
+    <button id="customClearBtn" class="secondary danger-outline" data-i18n="clearAllBtn" disabled>Delete all terms</button>
     <input type="file" id="customImportFile" accept="application/json" style="display:none;">
   </div>
+  <div class="clear-confirm" id="customClearConfirm" role="alert" style="display:none;">
+    <div id="customClearMessage"></div>
+    <div class="custom-io">
+      <button id="customClearExportBtn" class="secondary" data-i18n="clearExportFirst">Export list (.json) first</button>
+      <button id="customClearDeleteBtn" class="secondary danger-outline">Delete without exporting</button>
+      <button id="customClearCancelBtn" class="secondary" data-i18n="clearCancel">Cancel</button>
+    </div>
+  </div>
+  <div class="custom-empty" id="customClearStatus" role="status"></div>
 </div>
 
 <div class="panel">
@@ -1342,6 +1357,53 @@ const I18N_REGIONS = {
 // I18N_REGIONS_END
 for (const lang of Object.keys(I18N_REGIONS)) Object.assign(I18N[lang], I18N_REGIONS[lang]);
 
+// ---- "Delete all terms" and its warning (v1.3) ----
+// I18N_CLEAR_TERMS_START
+const I18N_CLEAR_TERMS = {
+  vi: {
+    clearAllBtn: 'Xóa tất cả từ khóa',
+    clearWarn: (n) => `Xóa tất cả ${n} từ khóa riêng? Chúng sẽ bị xóa khỏi bộ nhớ cục bộ (local storage) của trình duyệt này và không thể khôi phục. Hãy xuất danh sách ra file .json trước để có thể nhập lại sau.`,
+    clearExportFirst: 'Xuất danh sách (.json) trước',
+    clearDeleteAnyway: 'Vẫn xóa, không xuất',
+    clearExported: (n) => `Đã xuất bản sao lưu. Xóa tất cả ${n} từ khóa ngay bây giờ?`,
+    clearDeleteNow: 'Xóa ngay',
+    clearCancel: 'Hủy',
+    clearDone: (n) => `Đã xóa ${n} từ khóa.`
+  },
+  en: {
+    clearAllBtn: 'Delete all terms',
+    clearWarn: (n) => `Delete all ${n} custom term${n === 1 ? '' : 's'}? They will be removed from this browser's local storage and cannot be recovered. Export the list as a .json file first, so you can import it again later.`,
+    clearExportFirst: 'Export list (.json) first',
+    clearDeleteAnyway: 'Delete without exporting',
+    clearExported: (n) => `Backup exported. Delete all ${n} custom term${n === 1 ? '' : 's'} now?`,
+    clearDeleteNow: 'Delete now',
+    clearCancel: 'Cancel',
+    clearDone: (n) => `Deleted ${n} custom term${n === 1 ? '' : 's'}.`
+  },
+  fr: {
+    clearAllBtn: 'Supprimer tous les termes',
+    clearWarn: (n) => `Supprimer ${n} terme${n > 1 ? 's' : ''} personnalisé${n > 1 ? 's' : ''} ? ${n > 1 ? 'Ils seront effacés du stockage local de ce navigateur et ne pourront pas être récupérés.' : 'Il sera effacé du stockage local de ce navigateur et ne pourra pas être récupéré.'} Exportez d'abord la liste en fichier .json pour pouvoir la réimporter plus tard.`,
+    clearExportFirst: "Exporter d'abord la liste (.json)",
+    clearDeleteAnyway: 'Supprimer sans exporter',
+    clearExported: (n) => `Sauvegarde exportée. Supprimer maintenant ${n} terme${n > 1 ? 's' : ''} personnalisé${n > 1 ? 's' : ''} ?`,
+    clearDeleteNow: 'Supprimer maintenant',
+    clearCancel: 'Annuler',
+    clearDone: (n) => `${n} terme${n > 1 ? 's' : ''} personnalisé${n > 1 ? 's' : ''} supprimé${n > 1 ? 's' : ''}.`
+  },
+  de: {
+    clearAllBtn: 'Alle Begriffe löschen',
+    clearWarn: (n) => `Alle eigenen Begriffe (${n}) löschen? Sie werden aus dem lokalen Speicher (Local Storage) dieses Browsers entfernt und können nicht wiederhergestellt werden. Exportiere die Liste vorher als .json-Datei, damit du sie später wieder importieren kannst.`,
+    clearExportFirst: 'Liste (.json) zuerst exportieren',
+    clearDeleteAnyway: 'Ohne Export löschen',
+    clearExported: (n) => `Sicherung exportiert. Jetzt alle eigenen Begriffe (${n}) löschen?`,
+    clearDeleteNow: 'Jetzt löschen',
+    clearCancel: 'Abbrechen',
+    clearDone: (n) => `Eigene Begriffe gelöscht: ${n}.`
+  }
+};
+// I18N_CLEAR_TERMS_END
+for (const lang of Object.keys(I18N_CLEAR_TERMS)) Object.assign(I18N[lang], I18N_CLEAR_TERMS[lang]);
+
 let currentLang = 'en';
 
 // ============================================================
@@ -1442,6 +1504,112 @@ const customEmptyMsgEl = document.getElementById('customEmptyMsg');
 const customCaseSensitiveEl = document.getElementById('customCaseSensitive');
 customCaseSensitiveEl.checked = loadCustomCaseSensitive();
 
+// CLEAR_TERMS_FLOW_START
+// Deleting the whole custom-term list is irreversible -- it lives only in
+// this browser's local storage -- so it never happens on the first click.
+// The flow: click "Delete all terms" -> a warning that offers an export
+// first ('warn') -> either export (then ask again: 'exported') or choose
+// to delete anyway -> only an explicit confirm deletes. Cancel and Escape
+// close it. Pure: returns the next state and the one effect to perform
+// ('export' or 'delete'), so the rule "nothing is deleted without a
+// confirm" can be tested exhaustively.
+function clearTermsFlow(state, action, termCount) {
+  switch (action) {
+    case 'request':
+      return state === 'idle' && termCount > 0 ? { state: 'warn', effect: null } : { state, effect: null };
+    case 'export':
+      return state === 'warn' || state === 'exported' ? { state: 'exported', effect: 'export' } : { state, effect: null };
+    case 'confirm':
+      if ((state === 'warn' || state === 'exported') && termCount > 0) return { state: 'idle', effect: 'delete' };
+      return { state: 'idle', effect: null }; // nothing to delete, or nothing was asked for
+    case 'cancel':
+      return { state: 'idle', effect: null };
+    case 'sync': // the list changed under an open warning (e.g. the last term was removed)
+      return termCount === 0 ? { state: 'idle', effect: null } : { state, effect: null };
+    default:
+      return { state, effect: null };
+  }
+}
+// CLEAR_TERMS_FLOW_END
+
+// CLEAR_TERMS_UI_START
+const clearTermsBtn = document.getElementById('customClearBtn');
+const clearTermsPanel = document.getElementById('customClearConfirm');
+const clearTermsMessage = document.getElementById('customClearMessage');
+const clearTermsExportBtn = document.getElementById('customClearExportBtn');
+const clearTermsDeleteBtn = document.getElementById('customClearDeleteBtn');
+const clearTermsCancelBtn = document.getElementById('customClearCancelBtn');
+const clearTermsStatus = document.getElementById('customClearStatus');
+let clearTermsState = 'idle'; // idle | warn | exported (see clearTermsFlow)
+let clearedCount = null;      // how many terms the last "delete all" removed; shown until the list changes
+
+// Also used by the warning's "export first" step, so the backup is exactly
+// the file the normal Export button makes.
+function exportCustomTerms() {
+  const payload = { terms: customTerms, caseSensitive: customCaseSensitiveEl.checked };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pii-redactor-custom-terms.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// The only code that actually empties the list (reached only through a
+// confirmed 'delete' effect of clearTermsFlow).
+function forgetAllCustomTerms() {
+  customTerms = [];
+  try { localStorage.removeItem(CUSTOM_TERMS_KEY); } catch (e) { /* localStorage unavailable */ }
+  renderCustomChips();
+}
+
+function renderClearTermsUi() {
+  const t = I18N[currentLang];
+  const n = customTerms.length;
+  clearTermsState = clearTermsFlow(clearTermsState, 'sync', n).state;
+  clearTermsBtn.disabled = n === 0;
+  clearTermsPanel.style.display = clearTermsState === 'idle' ? 'none' : 'block';
+  if (clearTermsState === 'warn') {
+    clearTermsMessage.textContent = t.clearWarn(n);
+    clearTermsExportBtn.style.display = 'inline-block';
+    clearTermsDeleteBtn.textContent = t.clearDeleteAnyway;
+  } else if (clearTermsState === 'exported') {
+    clearTermsMessage.textContent = t.clearExported(n);
+    clearTermsExportBtn.style.display = 'none';
+    clearTermsDeleteBtn.textContent = t.clearDeleteNow;
+  }
+  clearTermsStatus.textContent = clearedCount === null ? '' : t.clearDone(clearedCount);
+}
+
+function dispatchClearTerms(action) {
+  const { state, effect } = clearTermsFlow(clearTermsState, action, customTerms.length);
+  const before = clearTermsState;
+  clearTermsState = state;
+  if (effect === 'export') exportCustomTerms();
+  if (effect === 'delete') {
+    const n = customTerms.length;
+    forgetAllCustomTerms();
+    clearedCount = n;
+  }
+  if (action === 'request' && state === 'warn') clearedCount = null;
+  renderClearTermsUi();
+  // Focus: a safe button when a warning opens (never the destructive one),
+  // and back to where the person was when it closes.
+  if (state === 'warn' && before === 'idle') clearTermsExportBtn.focus();
+  else if (state === 'exported') clearTermsCancelBtn.focus();
+  else if (state === 'idle' && before !== 'idle') (customTerms.length ? clearTermsBtn : customInputEl).focus();
+}
+clearTermsBtn.addEventListener('click', () => dispatchClearTerms('request'));
+clearTermsExportBtn.addEventListener('click', () => dispatchClearTerms('export'));
+clearTermsDeleteBtn.addEventListener('click', () => dispatchClearTerms('confirm'));
+clearTermsCancelBtn.addEventListener('click', () => dispatchClearTerms('cancel'));
+clearTermsPanel.addEventListener('keydown', (e) => { if (e.key === 'Escape') dispatchClearTerms('cancel'); });
+// CLEAR_TERMS_UI_END
+
+
 function renderCustomChips() {
   const t = I18N[currentLang];
   customChipListEl.innerHTML = '';
@@ -1461,12 +1629,14 @@ function renderCustomChips() {
     chip.appendChild(removeBtn);
     customChipListEl.appendChild(chip);
   });
+  renderClearTermsUi();
 }
 
 function addCustomTerm() {
   const val = customInputEl.value.trim();
   if (!val) return;
   if (!customTerms.includes(val)) {
+    clearedCount = null;
     customTerms.push(val);
     saveCustomTerms(customTerms);
     renderCustomChips();
@@ -1476,6 +1646,7 @@ function addCustomTerm() {
 }
 
 function removeCustomTerm(term) {
+  clearedCount = null;
   customTerms = customTerms.filter(x => x !== term);
   saveCustomTerms(customTerms);
   renderCustomChips();
@@ -1489,18 +1660,7 @@ customCaseSensitiveEl.addEventListener('change', () => {
   saveCustomCaseSensitive(customCaseSensitiveEl.checked);
 });
 
-document.getElementById('customExportBtn').addEventListener('click', () => {
-  const payload = { terms: customTerms, caseSensitive: customCaseSensitiveEl.checked };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'pii-redactor-custom-terms.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-});
+document.getElementById('customExportBtn').addEventListener('click', exportCustomTerms);
 
 document.getElementById('customImportBtn').addEventListener('click', () => {
   document.getElementById('customImportFile').click();
@@ -1519,6 +1679,7 @@ document.getElementById('customImportFile').addEventListener('change', (e) => {
       // overwriting — avoids data loss if the user imports the
       // wrong file by mistake.
       const merged = Array.from(new Set([...customTerms, ...clean]));
+      clearedCount = null;
       customTerms = merged;
       saveCustomTerms(customTerms);
       if (typeof data === 'object' && !Array.isArray(data) && typeof data.caseSensitive === 'boolean') {
