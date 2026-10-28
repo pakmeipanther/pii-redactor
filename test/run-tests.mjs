@@ -764,6 +764,293 @@ await checkAsync('documents the trap: with pdf-lib default object streams the Pr
   if (found.includes('/Producer')) throw new Error('the default-packing PDF now shows /Producer in raw bytes; the vendored pdf-lib behavior changed -- re-evaluate why saveCleanPdf sets useObjectStreams: false and update this test and the comment above createCleanPdf together');
 });
 
+// --- scanMetadata (v1.2.1) -----------------------------------------------
+// The scanner is pulled straight out of index.html and run as shipped.
+// Fixtures are built byte-by-byte here from synthetic values (a made-up
+// camera "FakeCam", a made-up author) -- never from a real photo. Every
+// "dirty" case has a matching "clean" case, because a scanner that has
+// only ever been shown dirty files can't be trusted to say "clean".
+
+const scanMetadataCode = extractBetween(
+  '// SCAN_METADATA_START',
+  '// SCAN_METADATA_END',
+  'scanMetadata'
+);
+const { scanMetadata } = new Function(`${scanMetadataCode}\nreturn { scanMetadata };`)();
+
+const bytesOf = (...parts) => {
+  const arr = [];
+  for (const p of parts) {
+    if (typeof p === 'string') for (const b of Buffer.from(p, 'latin1')) arr.push(b);
+    else for (const b of p) arr.push(b);
+  }
+  return Uint8Array.from(arr);
+};
+const codesOf = r => r.findings.map(f => f.code);
+const detailOf = (r, code) => (r.findings.find(f => f.code === code) || {}).detail || '';
+
+// ---- JPEG fixtures ----
+function jpegSegment(marker, payload) {
+  const len = payload.length + 2;
+  return bytesOf([0xFF, marker, len >> 8, len & 255], payload);
+}
+const JFIF = jpegSegment(0xE0, bytesOf('JFIF\0', [1, 1, 0, 0, 1, 0, 1, 0, 0]));
+const JPEG_SCAN = bytesOf([0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00], [0x12, 0x34, 0xFF, 0x00, 0x56], [0xFF, 0xD9]);
+const SOI = [0xFF, 0xD8];
+
+function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true } = {}) {
+  const le = littleEndian;
+  const u16 = v => le ? [v & 255, (v >> 8) & 255] : [(v >> 8) & 255, v & 255];
+  const u32 = v => le
+    ? [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]
+    : [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
+  const asciiZ = s => [...Buffer.from(s + '\0', 'latin1')];
+  const entry = (tag, type, count, value) => [...u16(tag), ...u16(type), ...u32(count), ...value];
+  const make = asciiZ('FakeCam'), model = asciiZ('Model-X'), software = asciiZ('FakeSoft 1.0'), dto = asciiZ('2026:01:02 03:04:05');
+  const ifd0Entries = gps ? 5 : 4;
+  const ifd0Off = 8;
+  const makeOff = ifd0Off + 2 + ifd0Entries * 12 + 4;
+  const modelOff = makeOff + make.length;
+  const softwareOff = modelOff + model.length;
+  const exifOff = softwareOff + software.length;
+  const dtoOff = exifOff + 2 + 12 + 4;
+  const gpsOff = dtoOff + dto.length;
+  const thumbOff = gpsOff + (gps ? 2 + 2 * 12 + 4 : 0);
+  const out = [le ? 0x49 : 0x4D, le ? 0x49 : 0x4D, ...u16(42), ...u32(ifd0Off)];
+  out.push(...u16(ifd0Entries),
+    ...entry(0x010F, 2, make.length, u32(makeOff)),
+    ...entry(0x0110, 2, model.length, u32(modelOff)),
+    ...entry(0x0131, 2, software.length, u32(softwareOff)),
+    ...entry(0x8769, 4, 1, u32(exifOff)));
+  if (gps) out.push(...entry(0x8825, 4, 1, u32(gpsOff)));
+  out.push(...u32(thumbnail ? thumbOff : 0));
+  out.push(...make, ...model, ...software);
+  out.push(...u16(1), ...entry(0x9003, 2, dto.length, u32(dtoOff)), ...u32(0));
+  out.push(...dto);
+  if (gps) out.push(...u16(2), ...entry(0x0001, 2, 2, [0x4E, 0, 0, 0]), ...entry(0x0002, 5, 3, u32(thumbOff)), ...u32(0));
+  if (thumbnail) out.push(...u16(1), ...entry(0x0103, 3, 1, [...u16(6), 0, 0]), ...u32(0));
+  return Uint8Array.from(out);
+}
+const exifSegment = opts => jpegSegment(0xE1, bytesOf('Exif\0\0', buildExifTiff(opts)));
+
+const JPEG_CLEAN = bytesOf(SOI, JFIF, JPEG_SCAN);
+const JPEG_ICC_ONLY = bytesOf(SOI, JFIF, jpegSegment(0xE2, bytesOf('ICC_PROFILE\0', [1, 1], [0, 0, 0, 0])), JPEG_SCAN);
+const JPEG_DIRTY = bytesOf(
+  SOI, JFIF,
+  exifSegment(),
+  jpegSegment(0xE1, bytesOf('http://ns.adobe.com/xap/1.0/\0', '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>')),
+  jpegSegment(0xED, bytesOf('Photoshop 3.0\0', '8BIM', [4, 4, 0, 0])),
+  jpegSegment(0xFE, bytesOf('Made by Fake Person')),
+  jpegSegment(0xE2, bytesOf('ICC_PROFILE\0', [1, 1], [0, 0, 0, 0])),
+  JPEG_SCAN
+);
+
+check('scanMetadata JPEG: a file with only JFIF + scan data is clean', () => {
+  const r = scanMetadata(JPEG_CLEAN);
+  if (r.format !== 'jpeg') throw new Error('format: ' + r.format);
+  if (r.findings.length || r.hasSensitive || r.unscannable) throw new Error('expected nothing, got ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata JPEG: an ICC profile alone is "info", not sensitive', () => {
+  const r = scanMetadata(JPEG_ICC_ONLY);
+  if (r.hasSensitive) throw new Error('ICC-only file wrongly flagged sensitive: ' + JSON.stringify(r.findings));
+  if (JSON.stringify(codesOf(r)) !== '["icc"]' || r.findings[0].severity !== 'info') throw new Error('expected a single info icc finding, got ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata JPEG: dirty file reports EXIF, XMP, IPTC, comment and ICC', () => {
+  const r = scanMetadata(JPEG_DIRTY);
+  for (const c of ['exif', 'xmp', 'iptc', 'jpeg-comment', 'icc']) {
+    if (!codesOf(r).includes(c)) throw new Error(`missing finding "${c}" in ${JSON.stringify(r.findings)}`);
+  }
+  if (!r.hasSensitive) throw new Error('hasSensitive should be true');
+});
+
+check('scanMetadata JPEG: EXIF detail lists identifying tag names, GPS and thumbnail (little-endian)', () => {
+  const r = scanMetadata(bytesOf(SOI, exifSegment({ littleEndian: true }), JPEG_SCAN));
+  const d = detailOf(r, 'exif');
+  for (const needed of ['Make', 'Model', 'Software', 'DateTimeOriginal', 'GPS', 'thumbnail']) {
+    if (!d.includes(needed)) throw new Error(`"${needed}" missing from EXIF detail: ${d}`);
+  }
+  if (!r.hasGps) throw new Error('hasGps should be true');
+});
+
+check('scanMetadata JPEG: EXIF is also parsed big-endian', () => {
+  const r = scanMetadata(bytesOf(SOI, exifSegment({ littleEndian: false }), JPEG_SCAN));
+  const d = detailOf(r, 'exif');
+  for (const needed of ['Make', 'Model', 'DateTimeOriginal', 'GPS']) {
+    if (!d.includes(needed)) throw new Error(`"${needed}" missing from big-endian EXIF detail: ${d}`);
+  }
+});
+
+check('scanMetadata JPEG: EXIF without GPS or thumbnail does not claim either', () => {
+  const r = scanMetadata(bytesOf(SOI, exifSegment({ gps: false, thumbnail: false }), JPEG_SCAN));
+  const d = detailOf(r, 'exif');
+  if (r.hasGps || d.includes('GPS') || d.includes('thumbnail')) throw new Error('false GPS/thumbnail claim: ' + d);
+  if (!d.includes('Make')) throw new Error('Make should still be listed: ' + d);
+});
+
+check('scanMetadata JPEG: bytes hidden after the end-of-image marker are reported', () => {
+  const r = scanMetadata(bytesOf(JPEG_CLEAN, 'SECRET-APPENDED-PAYLOAD'));
+  if (!codesOf(r).includes('trailing-data')) throw new Error('trailing data not reported: ' + JSON.stringify(r.findings));
+  if (detailOf(r, 'trailing-data') !== '23 bytes') throw new Error('wrong size: ' + detailOf(r, 'trailing-data'));
+});
+
+check('scanMetadata JPEG: ArrayBuffer and Node Buffer inputs work like Uint8Array', () => {
+  const ab = JPEG_DIRTY.buffer.slice(JPEG_DIRTY.byteOffset, JPEG_DIRTY.byteOffset + JPEG_DIRTY.byteLength);
+  if (!scanMetadata(ab).hasSensitive) throw new Error('ArrayBuffer input missed the metadata');
+  if (!scanMetadata(Buffer.from(JPEG_DIRTY)).hasSensitive) throw new Error('Buffer input missed the metadata');
+});
+
+// ---- PNG fixtures ----
+const pngChunk = (type, data) => {
+  const len = data.length;
+  // CRC left as zero: the scanner never validates checksums (documented limit).
+  return bytesOf([(len >>> 24) & 255, (len >>> 16) & 255, (len >>> 8) & 255, len & 255], type, data, [0, 0, 0, 0]);
+};
+const pngInsertAfterIhdr = extra => bytesOf(TINY_PNG.subarray(0, 33), extra, TINY_PNG.subarray(33));
+
+check('scanMetadata PNG: the 1x1 canvas-style PNG is clean', () => {
+  const r = scanMetadata(TINY_PNG);
+  if (r.format !== 'png') throw new Error('format: ' + r.format);
+  if (r.findings.length) throw new Error('expected nothing, got ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata PNG: text chunks report their keyword, plus eXIf, tIME and iCCP', () => {
+  const dirty = pngInsertAfterIhdr(bytesOf(
+    pngChunk('tEXt', bytesOf('Author\0Fake Person')),
+    pngChunk('iTXt', bytesOf('XML:com.adobe.xmp\0', [0, 0], '\0\0<x:xmpmeta/>')),
+    pngChunk('eXIf', buildExifTiff()),
+    pngChunk('tIME', [0x07, 0xEA, 1, 2, 3, 4, 5]),
+    pngChunk('iCCP', bytesOf('icc\0', [0, 0]))
+  ));
+  const r = scanMetadata(dirty);
+  const texts = r.findings.filter(f => f.code === 'png-text').map(f => f.detail);
+  if (!texts.includes('tEXt: Author') || !texts.includes('iTXt: XML:com.adobe.xmp')) throw new Error('text keywords not reported: ' + JSON.stringify(texts));
+  for (const c of ['exif', 'png-time', 'icc']) if (!codesOf(r).includes(c)) throw new Error(`missing "${c}"`);
+  if (!r.hasGps) throw new Error('GPS inside eXIf not detected');
+});
+
+check('scanMetadata PNG: bytes after IEND are reported', () => {
+  const r = scanMetadata(bytesOf(TINY_PNG, 'HIDDEN'));
+  if (!codesOf(r).includes('trailing-data')) throw new Error('trailing data not reported: ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata PNG: a hostile text keyword is passed through verbatim (the UI must escape it)', () => {
+  const evil = '<img src=x onerror=1>';
+  const r = scanMetadata(pngInsertAfterIhdr(pngChunk('tEXt', bytesOf(evil + '\0v'))));
+  if (detailOf(r, 'png-text') !== 'tEXt: ' + evil) throw new Error('detail altered: ' + detailOf(r, 'png-text'));
+});
+
+// ---- WebP fixtures ----
+const riffChunk = (fourcc, data) => {
+  const len = data.length;
+  const out = [...bytesOf(fourcc), len & 255, (len >>> 8) & 255, (len >>> 16) & 255, (len >>> 24) & 255, ...data];
+  if (len & 1) out.push(0);
+  return out;
+};
+const webp = chunks => {
+  const body = [...bytesOf('WEBP'), ...chunks.flat()];
+  return bytesOf('RIFF', [body.length & 255, (body.length >>> 8) & 255, (body.length >>> 16) & 255, (body.length >>> 24) & 255], body);
+};
+const WEBP_IMAGE = riffChunk('VP8 ', new Array(10).fill(0));
+
+check('scanMetadata WebP: image-only file is clean', () => {
+  const r = scanMetadata(webp([WEBP_IMAGE]));
+  if (r.format !== 'webp') throw new Error('format: ' + r.format);
+  if (r.findings.length) throw new Error('expected nothing, got ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata WebP: EXIF (with and without the Exif prefix), XMP and ICC are reported', () => {
+  const r1 = scanMetadata(webp([riffChunk('VP8X', new Array(10).fill(0)), riffChunk('EXIF', bytesOf('Exif\0\0', buildExifTiff())), riffChunk('XMP ', bytesOf('<x:xmpmeta/>')), riffChunk('ICCP', [0, 0]), WEBP_IMAGE]));
+  for (const c of ['exif', 'xmp', 'icc']) if (!codesOf(r1).includes(c)) throw new Error(`missing "${c}"`);
+  if (!detailOf(r1, 'exif').includes('Make')) throw new Error('EXIF names not read: ' + detailOf(r1, 'exif'));
+  const r2 = scanMetadata(webp([riffChunk('EXIF', buildExifTiff({ gps: false })), WEBP_IMAGE]));
+  if (!detailOf(r2, 'exif').includes('Model')) throw new Error('unprefixed EXIF not read: ' + detailOf(r2, 'exif'));
+});
+
+// ---- PDF (uses the real createCleanPdf / saveCleanPdf and pdf-lib defaults) ----
+await checkAsync('scanMetadata PDF: output of createCleanPdf + saveCleanPdf is clean and fully scannable', async () => {
+  const doc = await createCleanPdf();
+  const png = await doc.embedPng(TINY_PNG);
+  doc.addPage([200, 200]).drawImage(png, { x: 0, y: 0, width: 200, height: 200 });
+  const r = scanMetadata(await saveCleanPdf(doc));
+  if (r.format !== 'pdf') throw new Error('format: ' + r.format);
+  if (r.findings.length || r.unscannable) throw new Error('expected nothing, got ' + JSON.stringify(r.findings));
+});
+
+await checkAsync('scanMetadata PDF: negative control -- a default pdf-lib PDF (plain layout) is flagged for Producer, Creator and dates', async () => {
+  const doc = await PDFLib.PDFDocument.create();
+  doc.addPage([200, 200]);
+  const r = scanMetadata(await doc.save({ useObjectStreams: false }));
+  const fields = r.findings.filter(f => f.code === 'pdf-field').map(f => f.detail);
+  for (const f of ['Producer', 'Creator', 'CreationDate', 'ModDate']) if (!fields.includes(f)) throw new Error(`scanner missed ${f}; got ${JSON.stringify(r.findings)}`);
+  if (!codesOf(r).includes('pdf-info') || !r.hasSensitive) throw new Error('pdf-info / hasSensitive missing');
+});
+
+await checkAsync('scanMetadata PDF: a default pdf-lib PDF with object streams is reported UNSCANNABLE, never "clean"', async () => {
+  const doc = await PDFLib.PDFDocument.create();
+  doc.addPage([200, 200]);
+  const r = scanMetadata(await doc.save());
+  if (!r.unscannable || !codesOf(r).includes('pdf-objstm')) throw new Error('compressed layout was not flagged unscannable: ' + JSON.stringify(r.findings));
+});
+
+check('scanMetadata PDF: an encrypted PDF is reported unscannable', () => {
+  const r = scanMetadata(bytesOf('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Encrypt 9 0 R >>\n%%EOF'));
+  if (!r.unscannable || !codesOf(r).includes('pdf-encrypt')) throw new Error(JSON.stringify(r.findings));
+});
+
+// ---- robustness: the scanner reads untrusted files, so it must never throw or hang ----
+check('scanMetadata: empty and unrecognized input are "unscannable", never "clean"', () => {
+  for (const input of [new Uint8Array(0), bytesOf('hello world, definitely not an image'), Uint8Array.from({ length: 64 }, (_, i) => (i * 37) & 255)]) {
+    const r = scanMetadata(input);
+    if (r.format !== 'unknown' || !r.unscannable || !codesOf(r).includes('unknown-format')) throw new Error('not flagged unscannable: ' + JSON.stringify(r));
+  }
+});
+
+check('scanMetadata: truncated files never throw', () => {
+  for (const full of [JPEG_DIRTY, pngInsertAfterIhdr(pngChunk('tEXt', bytesOf('Author\0x'))), webp([riffChunk('EXIF', buildExifTiff()), WEBP_IMAGE])]) {
+    for (let cut = 0; cut < full.length; cut += 3) scanMetadata(full.subarray(0, cut));
+  }
+});
+
+check('scanMetadata: an EXIF whose IFDs point at themselves terminates', () => {
+  const tiff = Array.from(buildExifTiff({ gps: false, thumbnail: false }));
+  // IFD0's "ExifIFD" pointer -> back to IFD0 itself (offset 8), a loop.
+  const exifPtrValueAt = 8 + 2 + 3 * 12 + 8; // 4th entry (0x8769), value field
+  tiff[exifPtrValueAt] = 8; tiff[exifPtrValueAt + 1] = 0; tiff[exifPtrValueAt + 2] = 0; tiff[exifPtrValueAt + 3] = 0;
+  const r = scanMetadata(bytesOf(SOI, jpegSegment(0xE1, bytesOf('Exif\0\0', tiff)), JPEG_SCAN));
+  if (!codesOf(r).includes('exif')) throw new Error('exif not reported');
+});
+
+check('scanMetadata: absurd EXIF entry counts and offsets do not throw or hang', () => {
+  const tiff = [0x49, 0x49, 42, 0, 8, 0, 0, 0, 0xFF, 0xFF, 1, 2, 3];
+  const r = scanMetadata(bytesOf(SOI, jpegSegment(0xE1, bytesOf('Exif\0\0', tiff)), JPEG_SCAN));
+  if (!codesOf(r).includes('exif')) throw new Error('exif not reported');
+  const r2 = scanMetadata(bytesOf(SOI, jpegSegment(0xE1, bytesOf('Exif\0\0', [0x49, 0x49, 42, 0, 0xFF, 0xFF, 0xFF, 0x7F])), JPEG_SCAN));
+  if (!codesOf(r2).includes('exif')) throw new Error('exif (bad offset) not reported');
+});
+
+check('scanMetadata: an internal failure is reported as "unscannable" (fail closed), not swallowed as clean', () => {
+  // A Proxy over real JPEG bytes that starts throwing partway through, to
+  // force the scanner's catch path -- the one thing hostile files can't
+  // easily trigger on their own.
+  const flaky = new Proxy(JPEG_DIRTY, {
+    get(target, prop) {
+      if (prop === 'length') return target.length;
+      if (typeof prop === 'string' && /^\d+$/.test(prop) && Number(prop) > 40) throw new Error('simulated read failure');
+      return Reflect.get(target, prop, target);
+    }
+  });
+  const r = scanMetadata(flaky);
+  if (!r.unscannable || !codesOf(r).includes('scan-error')) throw new Error('internal failure not reported: ' + JSON.stringify(r));
+});
+
+check('scanMetadata: the scanner block uses no browser APIs (pure bytes in, plain object out)', () => {
+  const codeOnly = scanMetadataCode.replace(/\/\/.*$/gm, '');
+  const bad = codeOnly.match(/\b(document|window|navigator|localStorage|sessionStorage|FileReader|Blob|fetch|XMLHttpRequest|createObjectURL)\b/g);
+  if (bad) throw new Error('scanner references browser API(s): ' + [...new Set(bad)].join(', '));
+});
+
 // --- report ------------------------------------------------------------
 
 console.log(`\n${passed} passed, ${failed} failed (${passed + failed} total)\n`);

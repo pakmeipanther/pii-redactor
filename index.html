@@ -1563,6 +1563,243 @@ function saveCleanPdf(doc) {
 // CLEAN_PDF_HELPERS_END
 
 // ============================================================
+// METADATA SCANNER (v1.2.1)
+// Pure byte-level inspection of a file's metadata containers: no
+// browser APIs, no network, nothing is modified. Takes the file's
+// bytes (Uint8Array or ArrayBuffer) and reports what it finds in
+// JPEG (EXIF incl. GPS and embedded thumbnail, XMP, IPTC/Photoshop,
+// comments, trailing data after the image), PNG (text chunks, eXIf,
+// tIME, trailing data), WebP (EXIF, XMP) and PDF (Info dictionary
+// fields, XMP stream).
+//
+// Findings are { code, severity, detail? }. `code` is a stable id the
+// UI maps to a localized sentence; `detail` is language-neutral data
+// such as EXIF tag names or a PNG text keyword. Because `detail` can
+// be copied straight out of the scanned file, it is UNTRUSTED text:
+// the UI must show it with textContent, never innerHTML.
+//
+// severity: 'sensitive'   can identify a person, device, place, time
+//                         or tool -- never acceptable in an export
+//           'info'        technical only (e.g. an ICC colour profile)
+//           'unscannable' the scanner cannot vouch for this file
+//                         (unknown format, compressed PDF object
+//                         streams, encryption, internal error) --
+//                         callers must treat it as NOT verified
+//
+// Detection only. Removal happens elsewhere, by rebuilding the file
+// from pixels / from scratch. Limits: it does not look inside pixel
+// data (steganography, invisible watermarks), does not inflate PDF
+// object streams or decrypt, and does not validate PNG checksums.
+// ============================================================
+// SCAN_METADATA_START
+const TIFF_TAG_NAMES = {
+  0x010E: 'ImageDescription', 0x010F: 'Make', 0x0110: 'Model', 0x0131: 'Software',
+  0x0132: 'DateTime', 0x013B: 'Artist', 0x013C: 'HostComputer', 0x8298: 'Copyright',
+  0x9003: 'DateTimeOriginal', 0x9004: 'DateTimeDigitized', 0x9286: 'UserComment',
+  0xA420: 'ImageUniqueID', 0xA430: 'CameraOwnerName', 0xA431: 'BodySerialNumber',
+  0xA434: 'LensModel', 0xA435: 'LensSerialNumber',
+  0x9C9B: 'XPTitle', 0x9C9C: 'XPComment', 0x9C9D: 'XPAuthor', 0x9C9E: 'XPKeywords', 0x9C9F: 'XPSubject'
+};
+
+function scanMetadata(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const n = bytes.length;
+  const result = { format: 'unknown', findings: [], hasSensitive: false, hasGps: false, unscannable: false };
+
+  function add(code, severity, detail) {
+    if (result.findings.some(f => f.code === code && f.detail === detail)) return;
+    const finding = { code, severity };
+    if (detail) finding.detail = detail;
+    result.findings.push(finding);
+    if (severity === 'sensitive') result.hasSensitive = true;
+    if (severity === 'unscannable') result.unscannable = true;
+  }
+  function startsWith(off, str) {
+    if (off < 0 || off + str.length > n) return false;
+    for (let k = 0; k < str.length; k++) if (bytes[off + k] !== str.charCodeAt(k)) return false;
+    return true;
+  }
+  const be16 = o => (bytes[o] << 8) | bytes[o + 1];
+  const be32 = o => bytes[o] * 16777216 + bytes[o + 1] * 65536 + bytes[o + 2] * 256 + bytes[o + 3];
+  const le32 = o => bytes[o] + bytes[o + 1] * 256 + bytes[o + 2] * 65536 + bytes[o + 3] * 16777216;
+
+  // Reads only the *names* of well-known identifying EXIF tags (never
+  // their values), whether a GPS block is present, and whether IFD1
+  // exists (an embedded thumbnail, which can keep a copy of the image
+  // from before any redaction). Every read is bounds-checked, the
+  // number of IFDs and entries is capped, and visited offsets are
+  // remembered, so a hostile or corrupt file cannot loop or overrun.
+  function readTiff(start, end) {
+    const out = { ok: false, names: [], gps: false, thumbnail: false };
+    end = Math.min(end, n);
+    if (start < 0 || end - start < 8) return out;
+    let little;
+    if (bytes[start] === 0x49 && bytes[start + 1] === 0x49) little = true;
+    else if (bytes[start] === 0x4D && bytes[start + 1] === 0x4D) little = false;
+    else return out;
+    const r16 = o => little ? (bytes[o] | (bytes[o + 1] << 8)) : ((bytes[o] << 8) | bytes[o + 1]);
+    const r32 = o => little
+      ? bytes[o] + bytes[o + 1] * 256 + bytes[o + 2] * 65536 + bytes[o + 3] * 16777216
+      : bytes[o] * 16777216 + bytes[o + 1] * 65536 + bytes[o + 2] * 256 + bytes[o + 3];
+    if (r16(start + 2) !== 42) return out;
+    const queue = [{ off: r32(start + 4), primary: true }];
+    const seen = new Set();
+    let ifdCount = 0;
+    while (queue.length && ifdCount < 8) {
+      const { off, primary } = queue.shift();
+      if (off === 0 || seen.has(off)) continue;
+      seen.add(off);
+      ifdCount++;
+      const p = start + off;
+      if (p + 2 > end) continue;
+      const entries = Math.min(r16(p), 512);
+      for (let e = 0; e < entries; e++) {
+        const q = p + 2 + e * 12;
+        if (q + 12 > end) break;
+        const tag = r16(q);
+        const name = TIFF_TAG_NAMES[tag];
+        if (name && !out.names.includes(name)) out.names.push(name);
+        if (tag === 0x8769) queue.push({ off: r32(q + 8), primary: false });
+        else if (tag === 0x8825) out.gps = true;
+      }
+      if (primary) {
+        const nextAt = p + 2 + entries * 12;
+        if (nextAt + 4 <= end && r32(nextAt) !== 0) out.thumbnail = true;
+      }
+    }
+    out.ok = true;
+    return out;
+  }
+
+  function addExif(start, end) {
+    const t = readTiff(start, end);
+    const parts = t.ok ? t.names.slice() : ['unparsed'];
+    if (t.gps) parts.push('GPS');
+    if (t.thumbnail) parts.push('thumbnail');
+    if (t.gps) result.hasGps = true;
+    add('exif', 'sensitive', parts.join(', '));
+  }
+
+  function scanJpeg() {
+    let i = 2;
+    while (i + 4 <= n) {
+      if (bytes[i] !== 0xFF) return;
+      while (i + 1 < n && bytes[i + 1] === 0xFF) i++; // fill bytes
+      const marker = bytes[i + 1];
+      if (marker === 0xD9) return;
+      if (marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)) { i += 2; continue; }
+      if (marker === 0xDA) { // start of scan: metadata segments are all behind us
+        for (let j = i + 2; j + 1 < n; j++) {
+          if (bytes[j] === 0xFF && bytes[j + 1] === 0xD9) {
+            if (n - (j + 2) > 0) add('trailing-data', 'sensitive', (n - (j + 2)) + ' bytes');
+            break;
+          }
+        }
+        return;
+      }
+      const len = be16(i + 2);
+      if (len < 2) return;
+      const segStart = i + 4;
+      const segEnd = Math.min(i + 2 + len, n);
+      if (marker === 0xE1) {
+        if (startsWith(segStart, 'Exif\0\0')) addExif(segStart + 6, segEnd);
+        else if (startsWith(segStart, 'http://ns.adobe.com/xap/1.0/\0') || startsWith(segStart, 'http://ns.adobe.com/xmp/extension/')) add('xmp', 'sensitive');
+      } else if (marker === 0xE2) {
+        if (startsWith(segStart, 'ICC_PROFILE\0')) add('icc', 'info');
+        else if (startsWith(segStart, 'MPF\0')) add('mpf', 'info');
+      } else if (marker === 0xED) {
+        if (startsWith(segStart, 'Photoshop 3.0\0')) add('iptc', 'sensitive');
+      } else if (marker === 0xFE) {
+        add('jpeg-comment', 'sensitive', (len - 2) + ' bytes');
+      }
+      i += 2 + len;
+    }
+  }
+
+  function scanPng() {
+    let pos = 8;
+    while (pos + 12 <= n) {
+      const len = be32(pos);
+      const type = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+      const dataStart = pos + 8;
+      if (type === 'tEXt' || type === 'zTXt' || type === 'iTXt') {
+        let kw = '';
+        const lim = Math.min(dataStart + 79, dataStart + len, n);
+        for (let k = dataStart; k < lim && bytes[k] !== 0; k++) kw += String.fromCharCode(bytes[k]);
+        add('png-text', 'sensitive', type + (kw ? ': ' + kw : ''));
+      } else if (type === 'eXIf') {
+        addExif(dataStart, dataStart + len);
+      } else if (type === 'iCCP') {
+        add('icc', 'info');
+      } else if (type === 'tIME') {
+        add('png-time', 'sensitive');
+      } else if (type === 'IEND') {
+        if (n - (pos + 12) > 0) add('trailing-data', 'sensitive', (n - (pos + 12)) + ' bytes');
+        return;
+      }
+      if (len > n) return;
+      pos += 12 + len;
+    }
+  }
+
+  function scanWebp() {
+    let pos = 12;
+    while (pos + 8 <= n) {
+      const fourcc = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]);
+      const size = le32(pos + 4);
+      const dataStart = pos + 8;
+      if (fourcc === 'EXIF') addExif(startsWith(dataStart, 'Exif\0\0') ? dataStart + 6 : dataStart, dataStart + size);
+      else if (fourcc === 'XMP ') add('xmp', 'sensitive');
+      else if (fourcc === 'ICCP') add('icc', 'info');
+      if (size > n) return;
+      pos += 8 + size + (size & 1);
+    }
+  }
+
+  function scanPdf() {
+    const text = new TextDecoder('latin1').decode(bytes);
+    const re = /\/(Info|Producer|Creator|Author|Title|Subject|Keywords|CreationDate|ModDate|Metadata|ObjStm|Encrypt)(?![A-Za-z0-9])/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const name = m[1];
+      if (name === 'Info') add('pdf-info', 'sensitive');
+      else if (name === 'Metadata') add('pdf-xmp', 'sensitive');
+      else if (name === 'ObjStm') add('pdf-objstm', 'unscannable');
+      else if (name === 'Encrypt') add('pdf-encrypt', 'unscannable');
+      else add('pdf-field', 'sensitive', name);
+    }
+  }
+
+  try {
+    if (n >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+      result.format = 'jpeg';
+      scanJpeg();
+    } else if (startsWith(0, '\x89PNG\r\n\x1a\n')) {
+      result.format = 'png';
+      scanPng();
+    } else if (startsWith(0, 'RIFF') && startsWith(8, 'WEBP')) {
+      result.format = 'webp';
+      scanWebp();
+    } else {
+      let pdfAt = -1;
+      for (let k = 0, lim = Math.min(n - 5, 1024); k <= lim; k++) {
+        if (startsWith(k, '%PDF-')) { pdfAt = k; break; }
+      }
+      if (pdfAt >= 0) {
+        result.format = 'pdf';
+        scanPdf();
+      } else {
+        add('unknown-format', 'unscannable');
+      }
+    }
+  } catch (err) {
+    add('scan-error', 'unscannable', String((err && err.message) || err));
+  }
+  return result;
+}
+// SCAN_METADATA_END
+
+// ============================================================
 // IMAGE / SCREENSHOT REDACTION
 // OCR runs fully offline against the vendored engine + language
 // files under /vendor — nothing is uploaded anywhere. Each OCR word
