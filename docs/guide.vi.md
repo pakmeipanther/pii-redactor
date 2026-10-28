@@ -154,3 +154,4 @@ Hai tính năng xử lý ảnh chụp màn hình và file PDF cần thêm một 
 - Mọi thông tin đã tải xuống và "từ khóa riêng" (ví dụ tên công ty cần che) chỉ được lưu ngay trên máy của bạn, không ai khác xem được.
 - Với ảnh và ảnh chụp màn hình, hãy để nguyên ô "Quét kỹ": chậm hơn nhưng bắt được cả chữ trên nền màu. Chọn ngôn ngữ OCR đúng với ảnh, và nếu có chỗ bị sót, hãy mở khung "Chữ mà OCR đã đọc được" dưới bức ảnh để xem phần mềm có đọc được chữ đó hay không. Khung này cũng cho biết lý do mỗi ô đen được vẽ.
 - Safari khi bật Lockdown Mode sẽ tắt một công nghệ (WebAssembly) mà việc đọc chữ trong ảnh cần đến. Nếu thấy thông báo nhắc đến WebAssembly, hãy dùng Firefox hoặc Chrome cho ảnh; văn bản, file Word và PowerPoint không bị ảnh hưởng.
+- Nếu phần mềm bỏ sót thứ gì trong ảnh (logo, chữ viết tay, mã QR, khuôn mặt), hãy bật "Vẽ vùng che" rồi kéo chuột hoặc ngón tay qua vùng đó. Vùng tự vẽ được tô đen đặc giống vùng tự động, và bạn có thể hoàn tác.

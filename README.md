@@ -249,6 +249,23 @@ colours, such as white on orange or orange on grey. Boxes from those
 passes are mapped back to the original image, a region is never filled
 or counted twice, and the extra passes never add entropy suspects. In those extra passes a pattern-based match (phone or card number) must also look like real digits, because noise such as "1111110)" would otherwise blacken a bogus box. A collapsible box under the image shows what the OCR actually read and lists every blacked-out region with its reason, the pass that read it and the text it saw, so both a miss and an unexpected black box can be explained.
 
+**Regions and hand-drawn areas (v1.3, unreleased):** everything the
+image panel will cover is a region — a box in the original image's
+pixels — in one list. The automatic detectors (OCR, rules, custom terms,
+confirmed entropy suspects) add regions; the person adds more by
+switching on "Draw a covered area" and dragging over anything the OCR
+missed (a logo, handwriting, a QR code, a face). Any region, automatic
+or drawn, can be switched off from the list, drawn ones can be removed,
+and every change can be undone and redone (Ctrl/Cmd+Z). The exported
+image is always rebuilt from the untouched original with every enabled
+region filled solid black, so a drawn area deletes pixels exactly like
+an automatic one; the rubber band and the highlights live on a separate
+overlay canvas that is never part of the export. Drawing needs no OCR,
+so it also works where WebAssembly is unavailable. The model
+(rectangles, coordinate scaling, the undo/redo store, the painter) is
+pure and tested without a browser; the pointer and list code is tested
+against a small fake DOM.
+
 **Metadata report and export verification (v1.2.1):** two checks wrap
 every file, both built on one pure, DOM-free function,
 `scanMetadata(bytes)`.
@@ -395,7 +412,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.2.1: 161 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 184 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -442,6 +459,10 @@ node test/run-tests.mjs
       file carries (with values and a Show/Hide toggle); every export is
       re-scanned and the download is blocked if anything identifying
       remains (EN/FR/DE/VI)
+- [x] **v1.3** (unreleased) Image regions: one editable list of regions
+      (automatic + hand-drawn), a drawing tool with undo/redo, a region
+      list with on/off switches and highlighting; works without OCR
+- [ ] **v1.3** Face detection with irreversible cover modes (next)
 
 ## Versioning
 
@@ -618,6 +639,9 @@ underneath you, even as `main` keeps moving forward.
   Lockdown Mode in Safari — Apple's exclusion has been reported not to
   restore WebAssembly on some iOS versions, and excluding a site weakens
   the protection it was turned on for.
+- **Hand-drawn areas are rectangles made with a pointer.** There is no
+  freehand brush and no keyboard-only way to create one yet, and drawing
+  is for images only (the PDF panel's flattened pages have no editor).
 - **It cannot see inside pixels or page content.** Invisible watermarks,
   steganography and printer tracking dots are out of scope for the
   scanner (and for the tool).

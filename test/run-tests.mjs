@@ -91,14 +91,15 @@ const pptxPureFunctionsCode = extractBetween(
 );
 
 const ocrSupportCode = extractBetween('// OCR_SUPPORT_START', '// OCR_SUPPORT_END', 'OCR_SUPPORT');
+const regionModelCode = extractBetween('// REGION_MODEL_START', '// REGION_MODEL_END', 'REGION_MODEL');
 const redactWordsOnCanvasCode = extractBetween(
-  'function redactWordsOnCanvas(',
-  '\n\n// State kept from the most recent OCR pass',
+  'function findWordRedactions(',
+  '\n\n// REGIONS_UI_START',
   'redactWordsOnCanvas'
 );
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions };`;
-const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions } = new Function(combined)();
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
+const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -1773,7 +1774,7 @@ check('replay of the real noise token: the shipped code no longer fills it, in a
 });
 
 check('guard: the diagnostic box shows the region log with textContent, and the scan tags each pass', () => {
-  if (!html.includes('lastImgRegionsText = formatRegions(regions);')) throw new Error('the region log is not wired into the image render');
+  if (!html.includes('lastImgRegionsText = formatRegions(regions);') && !html.includes('lastImgRegionsText = formatRegions(found.regions);')) throw new Error('the region log is not wired into the image render');
   if (!html.includes('words.passId = p + 1;')) throw new Error('passes are not tagged, so regions cannot name their pass');
   const body = html.slice(html.indexOf('function renderImgOcrText()'), html.indexOf('function buildPassCanvas'));
   if (!body.includes('[lastImgOcrText, lastImgRegionsText]') || /innerHTML/.test(body)) throw new Error('renderImgOcrText must combine both texts via textContent');
@@ -1820,6 +1821,377 @@ check('guard: the OCR text box is filled with textContent (what the engine read 
   if (!body.includes('textContent')) throw new Error('renderImgOcrText should use textContent');
 });
 
+// --- hand-drawn regions and the region model (v1.3) ------------------------
+// The model is pure and tested directly; the drawing/list glue is run from
+// index.html against a small fake DOM (pointer events, keyboard, list).
+
+check('normalizeRect / clampRect / rectIsUsable: any drag direction gives the same box, strokes are kept inside the image, tiny strokes are ignored', () => {
+  const a = normalizeRect({ x: 50, y: 40 }, { x: 10, y: 90 });
+  if (JSON.stringify(a) !== JSON.stringify({ x0: 10, y0: 40, x1: 50, y1: 90 })) throw new Error(JSON.stringify(a));
+  if (JSON.stringify(normalizeRect({ x: 10, y: 90 }, { x: 50, y: 40 })) !== JSON.stringify(a)) throw new Error('direction matters');
+  const c = clampRect({ x0: -20, y0: -5, x1: 300, y1: 80 }, 200, 100);
+  if (JSON.stringify(c) !== JSON.stringify({ x0: 0, y0: 0, x1: 200, y1: 80 })) throw new Error(JSON.stringify(c));
+  if (rectIsUsable({ x0: 0, y0: 0, x1: 3, y1: 50 }) || rectIsUsable({ x0: 0, y0: 0, x1: 50, y1: 3 }) || rectIsUsable({ x0: 5, y0: 5, x1: 5, y1: 5 })) throw new Error('tiny stroke accepted');
+  if (!rectIsUsable({ x0: 0, y0: 0, x1: 4, y1: 4 })) throw new Error('a 4px stroke should be accepted');
+});
+
+check('clientToImagePoint: screen coordinates are scaled to image pixels (the canvas is shown scaled by CSS), offsets are honoured, a hidden canvas is safe', () => {
+  const rect = { left: 100, top: 50, width: 400, height: 200 };       // shown at 400x200
+  const p = clientToImagePoint(300, 150, rect, 1600, 800);              // image is 1600x800
+  if (p.x !== 800 || p.y !== 400) throw new Error(JSON.stringify(p));
+  const q = clientToImagePoint(100, 50, rect, 1600, 800);
+  if (q.x !== 0 || q.y !== 0) throw new Error('origin: ' + JSON.stringify(q));
+  const none = clientToImagePoint(5, 5, { left: 0, top: 0, width: 0, height: 0 }, 100, 100);
+  if (none.x !== 0 || none.y !== 0 || clientToImagePoint(5, 5, null, 100, 100).x !== 0) throw new Error('degenerate rect');
+});
+
+check('regionKey: stable and rounded, so "switched off" survives a re-render', () => {
+  if (regionKey({ x0: 10.2, y0: 20.4, x1: 30.6, y1: 40.5 }) !== '10,20,31,41') throw new Error(regionKey({ x0: 10.2, y0: 20.4, x1: 30.6, y1: 40.5 }));
+});
+
+check('region store: add / remove / toggle / clear, with undo and redo, and a new change drops the redo history', () => {
+  const s = createRegionStore();
+  const box = { x0: 1, y0: 2, x1: 30, y1: 40 };
+  const a = s.addManual(box), b = s.addManual({ x0: 5, y0: 5, x1: 50, y1: 50 });
+  if (s.manualRegions().length !== 2 || a === b) throw new Error('add');
+  s.toggleManual(a);
+  if (s.manualRegions().find(r => r.id === a).enabled !== false) throw new Error('toggle');
+  s.removeManual(b);
+  if (s.manualRegions().length !== 1) throw new Error('remove');
+  s.undo(); if (s.manualRegions().length !== 2) throw new Error('undo remove');
+  s.undo(); if (s.manualRegions().find(r => r.id === a).enabled !== true) throw new Error('undo toggle');
+  s.redo(); if (s.manualRegions().find(r => r.id === a).enabled !== false) throw new Error('redo toggle');
+  s.addManual({ x0: 9, y0: 9, x1: 90, y1: 90 });
+  if (s.canRedo()) throw new Error('a new change must drop the redo history');
+  const ids = s.manualRegions().map(r => r.id);
+  if (new Set(ids).size !== ids.length) throw new Error('ids collided after undo/redo: ' + ids);
+  const before = s.manualRegions().length;
+  if (!s.clearManual() || s.manualRegions().length !== 0 || s.clearManual()) throw new Error('clear');
+  s.undo(); if (s.manualRegions().length !== before) throw new Error('undo clear');
+  if (s.removeManual(999) || s.toggleManual(999)) throw new Error('unknown ids must be rejected');
+});
+
+check('region store: undo/redo on an empty history is a no-op, manualRegions() returns copies, history is bounded', () => {
+  const s = createRegionStore();
+  if (s.undo() || s.redo() || s.canUndo() || s.canRedo()) throw new Error('empty history');
+  s.addManual({ x0: 1, y0: 1, x1: 20, y1: 20 });
+  const copy = s.manualRegions(); copy[0].box.x0 = 999; copy.push({});
+  if (s.manualRegions()[0].box.x0 !== 1 || s.manualRegions().length !== 1) throw new Error('the store leaked its internals');
+  for (let i = 0; i < 500; i++) s.addManual({ x0: i, y0: 0, x1: i + 10, y1: 10 });
+  let undone = 0; while (s.undo()) undone++;
+  if (undone > 200) throw new Error('history is not bounded: ' + undone);
+});
+
+check('region store: automatic regions can be switched off by key; a new scan (resetAuto) forgets that and the history, drawn regions stay; reset clears everything', () => {
+  const s = createRegionStore();
+  s.addManual({ x0: 0, y0: 0, x1: 10, y1: 10 });
+  s.toggleAuto('1,2,3,4');
+  if (s.isAutoEnabled('1,2,3,4')) throw new Error('toggleAuto');
+  s.toggleAuto('1,2,3,4');
+  if (!s.isAutoEnabled('1,2,3,4')) throw new Error('toggle back');
+  s.toggleAuto('1,2,3,4');
+  s.resetAuto();
+  if (!s.isAutoEnabled('1,2,3,4') || s.canUndo() || s.manualRegions().length !== 1) throw new Error('resetAuto');
+  s.reset();
+  if (s.manualRegions().length !== 0 || s.canUndo()) throw new Error('reset');
+});
+
+check('combineRegions / boxesToPaint: automatic first, then drawn; switched-off regions are not painted', () => {
+  const s = createRegionStore();
+  const auto = [{ box: { x0: 0, y0: 0, x1: 10, y1: 10 }, text: 'a', why: 'custom', pass: 1 }, { box: { x0: 20, y0: 20, x1: 30, y1: 30 }, text: 'b', why: 'phone', pass: 1 }];
+  s.toggleAuto(regionKey(auto[1].box));
+  const id = s.addManual({ x0: 50, y0: 50, x1: 80, y1: 90 });
+  const list = combineRegions(auto, s);
+  if (list.map(r => r.source).join() !== 'auto,auto,manual' || list[2].id !== id) throw new Error(JSON.stringify(list.map(r => r.source)));
+  const boxes = boxesToPaint(list);
+  if (boxes.length !== 2 || boxes[0].x0 !== 0 || boxes[1].x0 !== 50) throw new Error('painted: ' + JSON.stringify(boxes));
+  s.toggleManual(id);
+  if (boxesToPaint(combineRegions(auto, s)).length !== 1) throw new Error('a disabled drawn region was painted');
+});
+
+check('paintRedactionBoxes: solid opaque black rectangles at exactly the given boxes', () => {
+  const ctx = recordingCtx();
+  paintRedactionBoxes(ctx, [{ x0: 10, y0: 20, x1: 60, y1: 50 }, { x0: 0, y0: 0, x1: 5, y1: 5 }]);
+  if (ctx.fillStyle !== '#000000') throw new Error('not opaque black: ' + ctx.fillStyle);
+  if (JSON.stringify(ctx.fills) !== JSON.stringify([[10, 20, 50, 30], [0, 0, 5, 5]])) throw new Error(JSON.stringify(ctx.fills));
+});
+
+check('drawing tool: press-drag-release gives a normalized box, with a live preview; cancel and stray events are safe', () => {
+  const t = createDrawingTool();
+  if (t.active() || t.preview() !== null || t.up({ x: 1, y: 1 }) !== null) throw new Error('idle state');
+  t.down({ x: 80, y: 70 });
+  t.move({ x: 20, y: 10 });
+  if (!t.active() || JSON.stringify(t.preview()) !== JSON.stringify({ x0: 20, y0: 10, x1: 80, y1: 70 })) throw new Error(JSON.stringify(t.preview()));
+  const r = t.up({ x: 10, y: 5 });
+  if (JSON.stringify(r) !== JSON.stringify({ x0: 10, y0: 5, x1: 80, y1: 70 }) || t.active()) throw new Error(JSON.stringify(r));
+  t.down({ x: 1, y: 1 }); t.cancel();
+  if (t.active() || t.preview() !== null) throw new Error('cancel');
+  t.move({ x: 5, y: 5 }); // a move with no press does nothing
+  if (t.active()) throw new Error('move without press');
+});
+
+check('findWordRedactions: pure -- boxes are padded by 2px, suspects carry their box, unconfirmed suspects are not regions; the canvas wrapper paints the same boxes', () => {
+  const found = findWordRedactions([REAL_LINE_1, REAL_LINE_2], [], ['an toàn'], false, false);
+  const an = found.regions.find(r => r.text === 'an');
+  if (!an || JSON.stringify(an.box) !== JSON.stringify({ x0: 724, y0: 447, x1: 752, y1: 463 })) throw new Error('padded box: ' + JSON.stringify(an));
+  if (found.redactedCount !== found.regions.length) throw new Error('count');
+  const ctx = recordingCtx();
+  const viaCanvas = redactWordsOnCanvas(ctx, [REAL_LINE_1, REAL_LINE_2], [], ['an toàn'], false, false);
+  const expected = found.regions.map(r => [r.box.x0, r.box.y0, r.box.x1 - r.box.x0, r.box.y1 - r.box.y0]);
+  if (JSON.stringify(ctx.fills) !== JSON.stringify(expected) || viaCanvas.redactedCount !== found.redactedCount) throw new Error('the wrapper paints something else');
+  const secret = [W('Zk9qLm3VxQ7rTb2Np', 10, 600, 200, 620)];
+  const unconfirmed = findWordRedactions([secret], [], [], false, true, new Set());
+  if (unconfirmed.suspects.length !== 1 || unconfirmed.suspects[0].confirmed || unconfirmed.regions.length !== 0 || !unconfirmed.suspects[0].box) throw new Error(JSON.stringify(unconfirmed));
+  const confirmed = findWordRedactions([secret], [], [], false, true, new Set([unconfirmed.suspects[0].id]));
+  if (confirmed.regions.length !== 1 || confirmed.regions[0].why !== 'entropy (confirmed)') throw new Error(JSON.stringify(confirmed.regions));
+});
+
+check('the whole flow on the model: detector regions + a drawn region, switch one detector region off, undo it -- the painted boxes follow', () => {
+  const s = createRegionStore();
+  const auto = findWordRedactions([REAL_LINE_1, REAL_LINE_2], [], ['an toàn'], false, false).regions;
+  const base = boxesToPaint(combineRegions(auto, s)).length;
+  if (base !== auto.length || base < 2) throw new Error('baseline');
+  s.addManual({ x0: 300, y0: 600, x1: 360, y1: 640 });
+  if (boxesToPaint(combineRegions(auto, s)).length !== base + 1) throw new Error('drawn region not painted');
+  s.toggleAuto(regionKey(auto[0].box));
+  if (boxesToPaint(combineRegions(auto, s)).length !== base) throw new Error('switching a detector region off');
+  s.undo();
+  if (boxesToPaint(combineRegions(auto, s)).length !== base + 1) throw new Error('undo');
+});
+
+check('paintSuspectOutlines: an unconfirmed suspect is only OUTLINED in yellow (nothing is filled); a confirmed one is left to the regions; the PDF wrapper outlines too', () => {
+  const strokes = [], fills = [];
+  const ctx = { strokeStyle: '', lineWidth: 0, fillStyle: '', save() {}, restore() {}, strokeRect(...a) { strokes.push([this.strokeStyle, this.lineWidth, ...a]); }, fillRect(...a) { fills.push(a); } };
+  paintSuspectOutlines(ctx, [{ confirmed: false, box: { x0: 10, y0: 20, x1: 60, y1: 50 } }, { confirmed: true, box: { x0: 0, y0: 0, x1: 5, y1: 5 } }]);
+  if (JSON.stringify(strokes) !== JSON.stringify([['#facf6f', 2, 10, 20, 50, 30]]) || fills.length) throw new Error(JSON.stringify({ strokes, fills }));
+  const strokes2 = [];
+  const ctx2 = { ...recordingCtx(), strokeRect(...a) { strokes2.push(a); } };
+  const secret = [W('Zk9qLm3VxQ7rTb2Np', 10, 600, 200, 620)];
+  redactWordsOnCanvas(ctx2, [secret], [], [], false, true);
+  if (strokes2.length !== 1 || ctx2.fills.length !== 0) throw new Error('wrapper: ' + JSON.stringify({ strokes2, fills: ctx2.fills }));
+});
+
+check('regionToolbarState: export needs a scan or a region; undo/redo/clear follow the store', () => {
+  const s = createRegionStore();
+  const idle = regionToolbarState(s, false, 0);
+  if (idle.canExport || !idle.undoDisabled || !idle.redoDisabled || !idle.clearDisabled) throw new Error(JSON.stringify(idle));
+  if (!regionToolbarState(s, true, 0).canExport) throw new Error('a finished scan allows export');
+  s.addManual({ x0: 0, y0: 0, x1: 10, y1: 10 });
+  const drawn = regionToolbarState(s, false, 1);
+  if (!drawn.canExport || drawn.undoDisabled || !drawn.redoDisabled || drawn.clearDisabled) throw new Error('after drawing: ' + JSON.stringify(drawn));
+  s.undo();
+  const undone = regionToolbarState(s, false, 0);
+  if (undone.canExport || undone.redoDisabled || !undone.undoDisabled) throw new Error('after undo: ' + JSON.stringify(undone));
+});
+
+check('guard: every element id the script looks up at load time exists in the HTML (one missing id would stop the whole page)', () => {
+  const ids = new Set([...html.matchAll(/getElementById\('([A-Za-z0-9_-]+)'\)/g)].map(m => m[1]));
+  const createdInScript = new Set([...html.matchAll(/\.id = '([A-Za-z0-9_-]+)'/g)].map(m => m[1])); // e.g. checkboxes built at runtime
+  const missing = [...ids].filter(id => !html.includes(`id="${id}"`) && !createdInScript.has(id));
+  if (missing.length) throw new Error('getElementById for ids that are not in the HTML: ' + missing.join(', '));
+  if (ids.size < 40) throw new Error('suspiciously few ids found: ' + ids.size);
+});
+
+// ---- the UI glue, run from index.html against a fake DOM ----
+const regionsUiCode = extractBetween('// REGIONS_UI_START', '// REGIONS_UI_END', 'REGIONS_UI');
+const i18nRegionsCode = extractBetween('// I18N_REGIONS_START', '// I18N_REGIONS_END', 'I18N_REGIONS');
+const { I18N_REGIONS } = new Function(`${i18nRegionsCode}\nreturn { I18N_REGIONS };`)();
+
+function makeRegionsUiHarness() {
+  const byId = new Map();
+  const docListeners = {};
+  const overlayCalls = [];
+  const makeEl = (tag, id) => ({
+    tag, id, tagName: String(tag).toUpperCase(), style: {}, children: [], listeners: {}, attrs: {}, className: '', _text: '', disabled: false, type: '', checked: false,
+    width: 200, height: 100, displayW: null, displayH: null,
+    classList: { set: new Set(), toggle(c, on) { if (on) this.set.add(c); else this.set.delete(c); }, contains(c) { return this.set.has(c); } },
+    get textContent() { return this._text + this.children.map(c => c.textContent).join(''); },
+    set textContent(v) { this._text = String(v); this.children = []; },
+    appendChild(c) { this.children.push(c); return c; },
+    addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
+    setAttribute(k, v) { this.attrs[k] = v; },
+    setPointerCapture() {},
+    getBoundingClientRect() { return { left: 0, top: 0, width: this.displayW ?? this.width, height: this.displayH ?? this.height }; },
+    getContext() { return { clearRect() {}, strokeRect(...a) { overlayCalls.push(['strokeRect', ...a]); }, fillRect(...a) { overlayCalls.push(['fillRect', ...a]); }, setLineDash() {}, set lineWidth(v) {}, set strokeStyle(v) {}, set fillStyle(v) {} }; }
+  });
+  const doc = {
+    getElementById(id) { if (!byId.has(id)) byId.set(id, makeEl('div', id)); return byId.get(id); },
+    createElement(tag) { return makeEl(tag); },
+    addEventListener(type, fn) { (docListeners[type] = docListeners[type] || []).push(fn); }
+  };
+  doc.getElementById('imagePanel').style.display = 'block';
+  const source = `
+    let currentLang = 'en';
+    const I18N = { en: I18N_REGIONS.en, de: I18N_REGIONS.de };
+    const imgCanvas = { width: 200, height: 100 };
+    let originalImageBitmap = {};
+    const calls = { render: 0 };
+    let autoRegions = [];
+    function renderImageRedactions() { calls.render++; lastImgEffective = combineRegions(autoRegions, imgRegionStore); renderRegionList(); drawOverlay(); }
+    ${regionModelCode}
+    ${regionsUiCode}
+    return {
+      store: imgRegionStore, calls, drawOverlay, renderRegionList, setImgDrawMode, resetImageRegionsUi, rerenderRegionsUi,
+      setAuto: (a) => { autoRegions = a; }, effective: () => lastImgEffective, drawMode: () => imgDrawMode, setLang: (l) => { currentLang = l; },
+      setBitmap: (b) => { originalImageBitmap = b; }, renderNow: () => renderImageRedactions()
+    };
+  `;
+  const api = new Function('document', 'I18N_REGIONS', source)(doc, I18N_REGIONS);
+  const fire = (id, type, e = {}) => (doc.getElementById(id).listeners[type] || []).forEach(fn => fn({ preventDefault() {}, pointerId: 1, button: 0, ...e }));
+  const fireDoc = (type, e = {}) => (docListeners[type] || []).forEach(fn => fn({ preventDefault() {}, target: doc.getElementById('body'), ...e }));
+  return { api, doc, fire, fireDoc, overlayCalls, el: id => doc.getElementById(id) };
+}
+const dragOverlay = (h, from, to) => { h.fire('imgOverlay', 'pointerdown', { clientX: from[0], clientY: from[1] }); h.fire('imgOverlay', 'pointermove', { clientX: to[0], clientY: to[1] }); h.fire('imgOverlay', 'pointerup', { clientX: to[0], clientY: to[1] }); };
+const walkNodes = n => [n, ...n.children.flatMap(walkNodes)];
+
+check('regions UI: drawing is ignored until the tool is switched on; then a drag becomes a region in IMAGE pixels, however the canvas is scaled on screen', () => {
+  const h = makeRegionsUiHarness();
+  h.el('imgOverlay').displayW = 100; h.el('imgOverlay').displayH = 50;      // 200x100 image shown at half size
+  dragOverlay(h, [10, 10], [60, 40]);
+  if (h.api.store.manualRegions().length !== 0 || h.api.calls.render !== 0) throw new Error('drew while the tool was off');
+  h.api.setImgDrawMode(true);
+  if (h.el('imgDrawToggle').attrs['aria-pressed'] !== 'true' || !h.el('imgOverlay').classList.contains('drawing') || !h.el('imgDrawToggle').classList.contains('active')) throw new Error('toggle state');
+  dragOverlay(h, [10, 10], [60, 40]);
+  const r = h.api.store.manualRegions();
+  if (r.length !== 1 || JSON.stringify(r[0].box) !== JSON.stringify({ x0: 20, y0: 20, x1: 120, y1: 80 })) throw new Error(JSON.stringify(r));
+  if (h.api.calls.render !== 1) throw new Error('the image was not re-rendered');
+});
+
+check('regions UI: a click or twitch is ignored, a stroke past the edge is clamped, right-click and cancel do nothing', () => {
+  const h = makeRegionsUiHarness();
+  h.api.setImgDrawMode(true);
+  dragOverlay(h, [30, 30], [32, 33]);
+  if (h.api.store.manualRegions().length !== 0) throw new Error('a tiny stroke became a region');
+  dragOverlay(h, [150, 60], [900, 900]);
+  const r = h.api.store.manualRegions();
+  if (r.length !== 1 || r[0].box.x1 !== 200 || r[0].box.y1 !== 100) throw new Error('not clamped: ' + JSON.stringify(r));
+  h.fire('imgOverlay', 'pointerdown', { clientX: 5, clientY: 5, button: 2 });
+  h.fire('imgOverlay', 'pointerup', { clientX: 90, clientY: 90 });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('a right-click drew');
+  h.fire('imgOverlay', 'pointerdown', { clientX: 5, clientY: 5 }); h.fire('imgOverlay', 'pointercancel');
+  h.fire('imgOverlay', 'pointerup', { clientX: 90, clientY: 90 });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('a cancelled stroke committed');
+  h.fire('imgOverlay', 'pointerdown', { clientX: 5, clientY: 5 }); h.fireDoc('keydown', { key: 'Escape' });
+  h.fire('imgOverlay', 'pointerup', { clientX: 90, clientY: 90 });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('Escape did not cancel the stroke');
+});
+
+check('regions UI: the live preview goes on the overlay only', () => {
+  const h = makeRegionsUiHarness();
+  h.api.setImgDrawMode(true);
+  h.fire('imgOverlay', 'pointerdown', { clientX: 10, clientY: 10 });
+  h.fire('imgOverlay', 'pointermove', { clientX: 60, clientY: 40 });
+  if (!h.overlayCalls.some(c => c[0] === 'strokeRect' && c[1] === 10 && c[3] === 50)) throw new Error('no rubber band drawn: ' + JSON.stringify(h.overlayCalls));
+});
+
+check('regions UI: Ctrl/Cmd+Z undoes, Shift+Ctrl+Z and Ctrl+Y redo; typing in a text field and a hidden panel are left alone', () => {
+  const h = makeRegionsUiHarness();
+  h.api.setImgDrawMode(true);
+  dragOverlay(h, [10, 10], [60, 40]);
+  const rendersAfterDraw = h.api.calls.render;
+  h.fireDoc('keydown', { key: 'z', ctrlKey: true });
+  if (h.api.store.manualRegions().length !== 0 || h.api.calls.render !== rendersAfterDraw + 1) throw new Error('undo');
+  h.fireDoc('keydown', { key: 'Z', ctrlKey: true, shiftKey: true });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('redo with shift');
+  h.fireDoc('keydown', { key: 'z', metaKey: true });
+  h.fireDoc('keydown', { key: 'y', ctrlKey: true });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('cmd+z then ctrl+y');
+  h.fireDoc('keydown', { key: 'z', ctrlKey: true, target: { tagName: 'TEXTAREA' } });
+  h.fireDoc('keydown', { key: 'z', ctrlKey: true, target: { tagName: 'INPUT', type: 'text' } });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('undo fired while typing');
+  h.el('imagePanel').style.display = 'none';
+  h.fireDoc('keydown', { key: 'z', ctrlKey: true });
+  if (h.api.store.manualRegions().length !== 1) throw new Error('undo fired while the image panel was hidden');
+  h.el('imagePanel').style.display = 'block';
+  h.fireDoc('keydown', { key: 'z' });                 // no modifier
+  if (h.api.store.manualRegions().length !== 1) throw new Error('a bare "z" undid something');
+  h.fire('imgUndoBtn', 'click');
+  if (h.api.store.manualRegions().length !== 0) throw new Error('undo button');
+  h.fire('imgRedoBtn', 'click');
+  h.fire('imgClearManualBtn', 'click');
+  if (h.api.store.manualRegions().length !== 0) throw new Error('clear button');
+});
+
+check('regions UI: the region list shows automatic and drawn regions as text only, switches them on/off, removes drawn ones and numbers them', () => {
+  const h = makeRegionsUiHarness();
+  const evil = '<img src=x onerror=alert(1)>';
+  h.api.setAuto([{ box: { x0: 10, y0: 10, x1: 40, y1: 30 }, text: evil, why: 'custom', pass: 1 }]);
+  h.api.store.addManual({ x0: 50, y0: 50, x1: 90, y1: 80 });
+  h.api.store.addManual({ x0: 100, y0: 10, x1: 150, y1: 40 });
+  h.api.renderNow();
+  const list = h.el('imgRegionList');
+  if (walkNodes(list).some(n => n.tag === 'img')) throw new Error('hostile OCR text became an element');
+  const text = list.textContent;
+  for (const needle of ['Areas that will be covered: 3 (2 drawn by you)', 'Automatic: custom — ' + evil, 'Drawn area #1', 'Drawn area #2']) if (!text.includes(needle)) throw new Error(`"${needle}" missing: ${text}`);
+  const boxes = walkNodes(list).filter(n => n.tag === 'input');
+  boxes[0].listeners.change.forEach(fn => fn());                                   // switch the automatic one off
+  if (h.api.store.isAutoEnabled('10,10,40,30')) throw new Error('auto toggle');
+  const removeButtons = walkNodes(h.el('imgRegionList')).filter(n => n.tag === 'button');
+  if (removeButtons.length !== 2) throw new Error('one remove button per drawn region, none for automatic ones: ' + removeButtons.length);
+  removeButtons[0].listeners.click.forEach(fn => fn());
+  if (h.api.store.manualRegions().length !== 1) throw new Error('remove');
+  walkNodes(h.el('imgRegionList')).filter(n => n.tag === 'input')[1].listeners.change.forEach(fn => fn());
+  if (h.api.store.manualRegions()[0].enabled !== false) throw new Error('drawn toggle');
+});
+
+check('regions UI: hovering a list item outlines that region on the overlay; the hint follows the mode and the language; clear-all hides the tools', () => {
+  const h = makeRegionsUiHarness();
+  h.api.setAuto([{ box: { x0: 10, y0: 10, x1: 40, y1: 30 }, text: 'x', why: 'phone', pass: 1 }]);
+  h.api.renderNow();
+  const li = h.el('imgRegionList').children.find(c => c.tag === 'ul').children[0];
+  h.overlayCalls.length = 0;
+  li.listeners.mouseenter.forEach(fn => fn());
+  if (!h.overlayCalls.some(c => c[0] === 'strokeRect' && c[1] === 10 && c[2] === 10 && c[3] === 30)) throw new Error('no highlight: ' + JSON.stringify(h.overlayCalls));
+  li.listeners.mouseleave.forEach(fn => fn());
+  h.overlayCalls.length = 0; h.api.drawOverlay();
+  if (h.overlayCalls.length) throw new Error('highlight not cleared');
+  h.api.setImgDrawMode(false);
+  if (!h.el('imgDrawHint').textContent.includes('Missed something')) throw new Error('hint (off): ' + h.el('imgDrawHint').textContent);
+  h.api.setImgDrawMode(true);
+  if (!h.el('imgDrawHint').textContent.includes('Drag on the image')) throw new Error('hint (on)');
+  h.api.setLang('de'); h.api.rerenderRegionsUi();
+  if (!h.el('imgDrawHint').textContent.includes('Ziehe auf dem Bild')) throw new Error('hint did not follow the language: ' + h.el('imgDrawHint').textContent);
+  h.api.resetImageRegionsUi(true);
+  if (h.el('imgDrawBar').style.display !== 'flex' || h.api.drawMode() || h.api.store.manualRegions().length) throw new Error('reset for a new image');
+  h.api.setBitmap(null); h.api.resetImageRegionsUi(false);
+  if (h.el('imgDrawBar').style.display !== 'none' || h.el('imgRegionList').style.display !== 'none') throw new Error('clear-all should hide the tools');
+});
+
+check('i18n: the drawing-tool strings exist in all four languages with the same shape and real translations', () => {
+  const ref = Object.keys(I18N_REGIONS.en).sort();
+  for (const l of LANGS) {
+    if (JSON.stringify(Object.keys(I18N_REGIONS[l]).sort()) !== JSON.stringify(ref)) throw new Error(`${l} keys differ`);
+    for (const k of ref) {
+      if (typeof I18N_REGIONS[l][k] !== typeof I18N_REGIONS.en[k]) throw new Error(`${l}.${k} type differs`);
+      if (l !== 'en' && typeof I18N_REGIONS[l][k] === 'string' && I18N_REGIONS[l][k] === I18N_REGIONS.en[k]) throw new Error(`${l}.${k} identical to English`);
+    }
+    const title = I18N_REGIONS[l].regionsTitle(7, 3), name = I18N_REGIONS[l].regionManual(5);
+    if (!title.includes('7') || !title.includes('3') || !name.includes('5')) throw new Error(`${l}: counts missing: ${title} / ${name}`);
+  }
+});
+
+check('guard: the overlay never touches the export canvas, the export is rebuilt from the original plus enabled regions, and pointer handling is touch-safe', () => {
+  const overlayBody = html.slice(html.indexOf('function drawOverlay()'), html.indexOf('function imgPointFromEvent'));
+  if (/\bimgCtx\b|imgCanvas\.getContext/.test(overlayBody)) throw new Error('drawOverlay draws on the export canvas');
+  if (!overlayBody.includes('imgOverlayCtx')) throw new Error('drawOverlay should use the overlay context');
+  const render = html.slice(html.indexOf('function renderImageRedactions()'), html.indexOf("imgScanBtn.addEventListener('click'"));
+  if (!render.includes('imgCtx.drawImage(originalImageBitmap, 0, 0);') || !render.includes('paintRedactionBoxes(imgCtx, boxesToPaint(lastImgEffective));')) throw new Error('the export is not rebuilt from the original + enabled regions');
+  for (const needle of ["'pointerdown'", "'pointermove'", "'pointerup'", "'pointercancel'", 'setPointerCapture']) if (!html.includes(needle)) throw new Error('missing ' + needle);
+  if (!/#imgCanvasWrap #imgOverlay\.drawing \{[^}]*touch-action: none/.test(html)) throw new Error('touch-action: none is needed while drawing, or the page scrolls instead');
+  if (!/<div id="imgStage"><canvas id="imgCanvas"><\/canvas><canvas id="imgOverlay"><\/canvas><\/div>/.test(html)) throw new Error('the overlay must be a separate canvas inside the stage');
+  if (!html.includes('imgRegionStore.resetAuto();')) throw new Error('a new scan must reset the automatic-region state');
+  const list = html.slice(html.indexOf('function renderRegionList()'), html.indexOf('// A new image (or "clear all")'));
+  if (/innerHTML|insertAdjacentHTML|outerHTML/.test(list)) throw new Error('renderRegionList writes markup');
+});
+
+check('guard: drawing works without OCR -- exporting is allowed as soon as a region exists, and a new image resets the tools', () => {
+  if (!html.includes('regionToolbarState(imgRegionStore, imgScanned, covered)')) throw new Error('the image panel does not use the toolbar state');
+  if (!html.includes('imgDownloadBtn.disabled = !toolbar.canExport;')) throw new Error('export availability is not driven by the toolbar state');
+  if (!html.includes('resetImageRegionsUi(true);')) throw new Error('loading an image does not reset the regions');
+  if (!html.includes('resetImageRegionsUi(false);')) throw new Error('clear-all does not reset the regions');
+  if (!html.includes('rerenderRegionsUi();')) throw new Error('a language switch does not refresh the region list');
+});
+
 // --- release consistency (v1.2.1, step 4) --------------------------------
 // Small guards so the things a reader sees -- version labels, quoted UI
 // strings in the guides, test counts -- cannot silently drift from the code.
@@ -1848,6 +2220,7 @@ check('release: the four user guides have the same structure and quote the exact
     }
     if (!/ICC/.test(text)) throw new Error(`docs/guide.${l}.md does not mention the ICC note`);
     if (!/WebAssembly/.test(text) || !/Lockdown/.test(text)) throw new Error(`docs/guide.${l}.md does not mention WebAssembly / Lockdown Mode`);
+    if (!text.includes(I18N_REGIONS[l].drawToggle)) throw new Error(`docs/guide.${l}.md does not quote the drawing tool label: "${I18N_REGIONS[l].drawToggle}"`);
     for (const [what, label] of [['thorough scan label', I18N_OCR[l].imgThoroughLabel], ['OCR text box title', I18N_OCR[l].imgOcrTextTitle]]) {
       const quoted = label.split(' (')[0];
       if (!text.includes(quoted)) throw new Error(`docs/guide.${l}.md does not quote the ${what}: "${quoted}"`);
@@ -1858,7 +2231,7 @@ check('release: the four user guides have the same structure and quote the exact
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
-  const readmeClaim = Number((readmeText.match(/As of v\d+\.\d+\.\d+:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);
+  const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);
   const changelogClaim = Number((changelogText.match(/grown from \d+ to (\d+) tests/) || [])[1]);
   if (readmeClaim !== total) throw new Error(`README says ${readmeClaim} tests, the suite has ${total}`);
   if (changelogClaim !== total) throw new Error(`CHANGELOG says ${changelogClaim} tests, the suite has ${total}`);

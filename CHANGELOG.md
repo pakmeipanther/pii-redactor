@@ -8,6 +8,41 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [Unreleased]
+
+### Added
+
+- **Hand-drawn regions** in the image panel. "Draw a covered area"
+  switches on a drawing tool: drag (mouse, finger or pen) over anything
+  the OCR missed, such as a logo, handwriting, a QR code or a face. Drawn
+  areas are filled solid black like the automatic ones, kept inside the
+  image, and ignored when they are only a click. Undo and redo (buttons,
+  Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z, Ctrl+Y), "remove my drawn areas", and
+  Esc cancels a stroke in progress.
+- A **region list** under the image: every area that will be covered,
+  automatic and drawn, each with an on/off switch (so a false positive
+  can be switched off) and a highlight on the image when hovered or
+  focused; drawn areas can be removed.
+- Drawing works **without OCR**, so an image can be redacted by hand where
+  WebAssembly is unavailable (for example Safari in Lockdown Mode).
+- Hand-drawn regions in the four languages and in the four user guides.
+
+### Changed
+
+- The image panel now works from **one list of regions** (a box in the
+  original image's pixels). The export is always rebuilt from the
+  untouched original with every enabled region filled solid black; the
+  drawing preview and highlights live on a separate overlay canvas that
+  is never part of an export.
+- `redactWordsOnCanvas` is split into a pure `findWordRedactions` (what to
+  cover) and a painter; the PDF panel's OCR pass behaves as before.
+
+### Testing
+
+- Test suite grown from 161 to 184 tests: the pure region model (geometry,
+  the undo/redo store, the painter, the drawing tool), and the pointer,
+  keyboard and region-list code run against a fake DOM.
+
 ## [1.2.1] — 2026-10-28
 
 ### Added

@@ -245,6 +245,20 @@
     display: none;
   }
   #imgCanvasWrap canvas { display: block; max-width: 100%; }
+  /* The overlay (drawing preview, highlight) sits exactly over the image
+     canvas and is never part of an export. */
+  #imgStage { position: relative; width: fit-content; max-width: 100%; }
+  #imgCanvasWrap #imgOverlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; }
+  #imgCanvasWrap #imgOverlay.drawing { pointer-events: auto; cursor: crosshair; touch-action: none; }
+  #imgDrawToggle::before { content: '\270E  '; }
+  #imgDrawToggle.active { outline: 2px solid var(--accent); background: rgba(79, 140, 255, 0.18); }
+  .region-list { font-size: 12px; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .region-list-title { font-weight: 600; margin-bottom: 6px; }
+  .region-list-empty { color: var(--muted); }
+  .region-list ul { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+  .region-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; overflow-wrap: anywhere; }
+  .region-list li label { display: flex; align-items: center; gap: 6px; }
+  .region-list .region-remove { font-size: 11px; padding: 2px 8px; }
   .img-progress {
     font-size: 12px;
     color: var(--muted);
@@ -457,7 +471,15 @@
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="imgProgress"></div>
   <div class="export-verify" id="imgVerify" style="display:none;" role="status"></div>
-  <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
+  <div class="img-row" id="imgDrawBar" style="display:none;">
+    <button id="imgDrawToggle" class="secondary" aria-pressed="false" data-i18n="drawToggle">Draw a covered area</button>
+    <button id="imgUndoBtn" class="secondary" data-i18n="undoBtn" disabled>Undo</button>
+    <button id="imgRedoBtn" class="secondary" data-i18n="redoBtn" disabled>Redo</button>
+    <button id="imgClearManualBtn" class="secondary" data-i18n="clearManualBtn" disabled>Remove my drawn areas</button>
+  </div>
+  <div class="subtitle" id="imgDrawHint" style="display:none;font-size:12px;margin-top:4px;"></div>
+  <div id="imgCanvasWrap"><div id="imgStage"><canvas id="imgCanvas"></canvas><canvas id="imgOverlay"></canvas></div></div>
+  <div id="imgRegionList" class="region-list" style="display:none;"></div>
   <details class="meta-report" id="imgOcrTextDetails" style="display:none;">
     <summary data-i18n="imgOcrTextTitle">What the OCR read</summary>
     <pre id="imgOcrText"></pre>
@@ -1234,32 +1256,91 @@ const I18N_OCR = {
     imgPassProgress: (n, total, pct) => `Lượt ${n}/${total} — đang nhận diện chữ… ${pct}%`,
     imgLangMismatchHint: 'Từ khóa riêng của bạn có chữ có dấu nhưng ngôn ngữ OCR đang là English — hãy chọn đúng ngôn ngữ của ảnh để không bị sót.',
     imgOcrTextTitle: 'Chữ mà OCR đã đọc được (và lý do mỗi vùng bị đè đen)',
-    wasmUnavailable: 'OCR ảnh cần WebAssembly, nhưng trình duyệt này đang tắt nó (ví dụ Safari khi bật Lockdown Mode). Hãy dùng trình duyệt khác như Firefox hoặc Chrome, hoặc loại trừ trang này khỏi Lockdown Mode (trong Safari: Settings for this website). Văn bản, báo cáo metadata, Word và PowerPoint không cần WebAssembly nên vẫn dùng được.'
+    wasmUnavailable: 'OCR ảnh cần WebAssembly, nhưng trình duyệt này đang tắt nó (ví dụ Safari khi bật Lockdown Mode). Hãy dùng trình duyệt khác như Firefox hoặc Chrome, hoặc loại trừ trang này khỏi Lockdown Mode (trong Safari: Settings for this website). Văn bản, báo cáo metadata, Word và PowerPoint không cần WebAssembly nên vẫn dùng được. Bạn vẫn có thể tự vẽ vùng che bằng công cụ vẽ.'
   },
   en: {
     imgThoroughLabel: 'Thorough scan (slower) — reads the image a few more times with different colour handling, to catch text on coloured backgrounds, light-on-dark headings and stylised fonts',
     imgPassProgress: (n, total, pct) => `Pass ${n}/${total} — recognizing text… ${pct}%`,
     imgLangMismatchHint: 'Your custom terms contain accented letters but the OCR language is English — pick the language of the image so nothing is missed.',
     imgOcrTextTitle: 'What the OCR read (and why each region was blacked out)',
-    wasmUnavailable: 'Image OCR needs WebAssembly, which this browser has switched off (for example Safari in Lockdown Mode). Use another browser such as Firefox or Chrome, or exclude this site from Lockdown Mode (in Safari: Settings for this website). Text, the metadata report, Word and PowerPoint do not need WebAssembly and still work.'
+    wasmUnavailable: 'Image OCR needs WebAssembly, which this browser has switched off (for example Safari in Lockdown Mode). Use another browser such as Firefox or Chrome, or exclude this site from Lockdown Mode (in Safari: Settings for this website). Text, the metadata report, Word and PowerPoint do not need WebAssembly and still work. You can still cover areas by hand with the drawing tool.'
   },
   fr: {
     imgThoroughLabel: "Analyse approfondie (plus lente) — relit l'image plusieurs fois avec un traitement des couleurs différent, pour repérer le texte sur fond coloré, les titres clairs sur fond foncé et les polices stylisées",
     imgPassProgress: (n, total, pct) => `Passe ${n}/${total} — reconnaissance du texte… ${pct} %`,
     imgLangMismatchHint: "Vos termes personnalisés contiennent des lettres accentuées alors que la langue OCR est l'anglais — choisissez la langue de l'image pour ne rien manquer.",
     imgOcrTextTitle: "Ce que l'OCR a lu (et pourquoi chaque zone a été noircie)",
-    wasmUnavailable: "L'OCR des images nécessite WebAssembly, que ce navigateur a désactivé (par exemple Safari en mode Isolement / Lockdown Mode). Utilisez un autre navigateur comme Firefox ou Chrome, ou excluez ce site du mode Isolement (dans Safari : réglages du site web). Le texte, le rapport de métadonnées, Word et PowerPoint n'en ont pas besoin et restent utilisables."
+    wasmUnavailable: "L'OCR des images nécessite WebAssembly, que ce navigateur a désactivé (par exemple Safari en mode Isolement / Lockdown Mode). Utilisez un autre navigateur comme Firefox ou Chrome, ou excluez ce site du mode Isolement (dans Safari : réglages du site web). Le texte, le rapport de métadonnées, Word et PowerPoint n'en ont pas besoin et restent utilisables. Vous pouvez toujours masquer des zones à la main avec l'outil de dessin."
   },
   de: {
     imgThoroughLabel: 'Gründliche Analyse (langsamer) — liest das Bild mehrfach mit unterschiedlicher Farbverarbeitung, um Text auf farbigem Hintergrund, helle Überschriften auf dunklem Grund und Zierschriften zu erfassen',
     imgPassProgress: (n, total, pct) => `Durchgang ${n}/${total} — Text wird erkannt… ${pct} %`,
     imgLangMismatchHint: 'Deine eigenen Begriffe enthalten Buchstaben mit Akzenten, die OCR-Sprache ist aber Englisch — wähle die Sprache des Bildes, damit nichts übersehen wird.',
     imgOcrTextTitle: 'Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)',
-    wasmUnavailable: 'Die Bilderkennung (OCR) benötigt WebAssembly, das dieser Browser abgeschaltet hat (z. B. Safari im Blockierungsmodus / Lockdown Mode). Nutze einen anderen Browser wie Firefox oder Chrome oder nimm diese Website vom Blockierungsmodus aus (in Safari: Einstellungen für diese Website). Text, Metadaten-Bericht, Word und PowerPoint brauchen WebAssembly nicht und funktionieren weiterhin.'
+    wasmUnavailable: 'Die Bilderkennung (OCR) benötigt WebAssembly, das dieser Browser abgeschaltet hat (z. B. Safari im Blockierungsmodus / Lockdown Mode). Nutze einen anderen Browser wie Firefox oder Chrome oder nimm diese Website vom Blockierungsmodus aus (in Safari: Einstellungen für diese Website). Text, Metadaten-Bericht, Word und PowerPoint brauchen WebAssembly nicht und funktionieren weiterhin. Du kannst Bereiche weiterhin von Hand mit dem Zeichenwerkzeug abdecken.'
   }
 };
 // I18N_OCR_END
 for (const lang of Object.keys(I18N_OCR)) Object.assign(I18N[lang], I18N_OCR[lang]);
+
+// ---- Hand-drawn regions: drawing tool and region list (v1.3) ----
+// I18N_REGIONS_START
+const I18N_REGIONS = {
+  vi: {
+    drawToggle: 'Vẽ vùng che',
+    undoBtn: 'Hoàn tác',
+    redoBtn: 'Làm lại',
+    clearManualBtn: 'Xóa các vùng tự vẽ',
+    drawHintOff: 'Phần mềm bỏ sót thứ gì — logo, chữ viết tay, mã QR, khuôn mặt? Bật "Vẽ vùng che" rồi kéo chuột qua vùng đó. Vùng tự vẽ được tô đen đặc như vùng tự động.',
+    drawHintOn: 'Kéo trên ảnh (chuột, ngón tay hoặc bút) để che một vùng. Nhấn Esc để hủy nét đang vẽ.',
+    regionsTitle: (n, manual) => `Các vùng sẽ bị che: ${n} (${manual} do bạn vẽ)`,
+    regionAuto: 'Tự động',
+    regionManual: (n) => `Vùng tự vẽ #${n}`,
+    regionRemove: 'Xóa',
+    regionsEmpty: 'Chưa có vùng nào.'
+  },
+  en: {
+    drawToggle: 'Draw a covered area',
+    undoBtn: 'Undo',
+    redoBtn: 'Redo',
+    clearManualBtn: 'Remove my drawn areas',
+    drawHintOff: 'Missed something — a logo, handwriting, a QR code, a face? Switch on "Draw a covered area", then drag over it. Drawn areas are filled with solid black, like the automatic ones.',
+    drawHintOn: 'Drag on the image (mouse, finger or pen) to cover an area. Press Esc to cancel a stroke.',
+    regionsTitle: (n, manual) => `Areas that will be covered: ${n} (${manual} drawn by you)`,
+    regionAuto: 'Automatic',
+    regionManual: (n) => `Drawn area #${n}`,
+    regionRemove: 'Remove',
+    regionsEmpty: 'No areas yet.'
+  },
+  fr: {
+    drawToggle: 'Dessiner une zone à masquer',
+    undoBtn: 'Annuler',
+    redoBtn: 'Rétablir',
+    clearManualBtn: 'Supprimer mes zones dessinées',
+    drawHintOff: "Quelque chose a échappé à l'outil — un logo, une écriture manuscrite, un QR code, un visage ? Activez « Dessiner une zone à masquer », puis faites glisser sur la zone. Les zones dessinées sont remplies de noir uni, comme les zones automatiques.",
+    drawHintOn: "Faites glisser sur l'image (souris, doigt ou stylet) pour masquer une zone. Appuyez sur Échap pour annuler le tracé.",
+    regionsTitle: (n, manual) => `Zones qui seront masquées : ${n} (${manual} dessinées par vous)`,
+    regionAuto: 'Automatique',
+    regionManual: (n) => `Zone dessinée n° ${n}`,
+    regionRemove: 'Supprimer',
+    regionsEmpty: "Aucune zone pour l'instant."
+  },
+  de: {
+    drawToggle: 'Bereich zum Abdecken zeichnen',
+    undoBtn: 'Rückgängig',
+    redoBtn: 'Wiederholen',
+    clearManualBtn: 'Meine gezeichneten Bereiche entfernen',
+    drawHintOff: 'Etwas übersehen — ein Logo, Handschrift, ein QR-Code, ein Gesicht? Schalte „Bereich zum Abdecken zeichnen" ein und ziehe dann darüber. Gezeichnete Bereiche werden wie die automatischen vollständig schwarz gefüllt.',
+    drawHintOn: 'Ziehe auf dem Bild (Maus, Finger oder Stift), um einen Bereich abzudecken. Esc bricht den Strich ab.',
+    regionsTitle: (n, manual) => `Bereiche, die abgedeckt werden: ${n} (${manual} von dir gezeichnet)`,
+    regionAuto: 'Automatisch',
+    regionManual: (n) => `Gezeichneter Bereich Nr. ${n}`,
+    regionRemove: 'Entfernen',
+    regionsEmpty: 'Noch keine Bereiche.'
+  }
+};
+// I18N_REGIONS_END
+for (const lang of Object.keys(I18N_REGIONS)) Object.assign(I18N[lang], I18N_REGIONS[lang]);
 
 let currentLang = 'en';
 
@@ -1779,6 +1860,7 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   buildRuleCheckboxes();
   updateImgDownloadBtnLabel();
   rerenderMetadataUi();
+  rerenderRegionsUi();
 });
 
 // ============================================================
@@ -2574,6 +2656,10 @@ function loadImageFile(file) {
     imgDownloadPdfBtn.disabled = true;
     // Say so as soon as an image is loaded if OCR cannot run here (e.g. Lockdown Mode).
     imgProgressEl.textContent = wasmAvailable(window) ? '' : I18N[currentLang].wasmUnavailable;
+    lastImgLines = [];
+    confirmedImgSuspects = new Set();
+    resetImageRegionsUi(true);
+    renderImageRedactions();
     URL.revokeObjectURL(img.src);
   };
   img.src = URL.createObjectURL(file);
@@ -2948,6 +3034,138 @@ function formatRegions(regions) {
 }
 // OCR_SUPPORT_END
 
+// ============================================================
+// REGION MODEL (v1.3)
+// Every area of an image that will be covered is a "region": a box in
+// the ORIGINAL image's pixel coordinates. Regions come from two places --
+// the automatic detectors (OCR + rules + custom terms) and the person
+// drawing by hand -- and live in one list, so both are shown, toggled,
+// undone and painted the same way. The exported pixels are always rebuilt
+// from the untouched original: draw the image, fill every enabled
+// region with solid black. Nothing is ever painted "on top" of an
+// export; the drawing preview lives on a separate overlay canvas.
+//
+// All of it is pure (no DOM), so it is tested directly.
+// ============================================================
+// REGION_MODEL_START
+const MIN_MANUAL_REGION = 4; // smaller strokes (a click, a twitch) are ignored; image pixels
+
+function normalizeRect(a, b) {
+  return { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+}
+function clampRect(r, width, height) {
+  const clamp = (v, max) => Math.min(Math.max(v, 0), max);
+  return { x0: clamp(r.x0, width), y0: clamp(r.y0, height), x1: clamp(r.x1, width), y1: clamp(r.y1, height) };
+}
+function rectIsUsable(r) {
+  return (r.x1 - r.x0) >= MIN_MANUAL_REGION && (r.y1 - r.y0) >= MIN_MANUAL_REGION;
+}
+
+// Pointer position on screen -> pixel in the image. The canvas is shown
+// scaled by CSS, so the two coordinate systems differ by rect.width / imageWidth.
+function clientToImagePoint(clientX, clientY, rect, imageWidth, imageHeight) {
+  if (!rect || !(rect.width > 0) || !(rect.height > 0)) return { x: 0, y: 0 };
+  return { x: (clientX - rect.left) * imageWidth / rect.width, y: (clientY - rect.top) * imageHeight / rect.height };
+}
+
+// A stable name for an automatic region, so "switched off" survives re-renders.
+function regionKey(box) {
+  return [box.x0, box.y0, box.x1, box.y1].map(v => Math.round(v)).join(',');
+}
+
+// The hand-drawn regions plus which automatic ones the person switched
+// off, with undo/redo (snapshots; ids stay unique across undo/redo).
+function createRegionStore() {
+  let manual = [];            // { id, box, enabled }
+  let disabledAuto = new Set();
+  let nextId = 1;
+  let undoStack = [];
+  let redoStack = [];
+  const snapshot = () => JSON.stringify({ manual, disabledAuto: [...disabledAuto] });
+  const restore = (text) => { const s = JSON.parse(text); manual = s.manual; disabledAuto = new Set(s.disabledAuto); };
+  const mutate = (change) => {
+    undoStack.push(snapshot());
+    if (undoStack.length > 200) undoStack.shift();
+    redoStack = [];
+    change();
+  };
+  return {
+    addManual(box) { let id; mutate(() => { id = nextId++; manual.push({ id, box: { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 }, enabled: true }); }); return id; },
+    removeManual(id) { if (!manual.some(r => r.id === id)) return false; mutate(() => { manual = manual.filter(r => r.id !== id); }); return true; },
+    toggleManual(id) { if (!manual.some(r => r.id === id)) return false; mutate(() => { manual = manual.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r); }); return true; },
+    toggleAuto(key) { mutate(() => { if (disabledAuto.has(key)) disabledAuto.delete(key); else disabledAuto.add(key); }); return true; },
+    clearManual() { if (!manual.length) return false; mutate(() => { manual = []; }); return true; },
+    undo() { if (!undoStack.length) return false; redoStack.push(snapshot()); restore(undoStack.pop()); return true; },
+    redo() { if (!redoStack.length) return false; undoStack.push(snapshot()); restore(redoStack.pop()); return true; },
+    canUndo() { return undoStack.length > 0; },
+    canRedo() { return redoStack.length > 0; },
+    manualRegions() { return manual.map(r => ({ id: r.id, enabled: r.enabled, box: { ...r.box } })); },
+    isAutoEnabled(key) { return !disabledAuto.has(key); },
+    // A new scan produces new automatic regions: forget which old ones were
+    // switched off, and the history that refers to them. Drawn regions stay.
+    resetAuto() { disabledAuto = new Set(); undoStack = []; redoStack = []; },
+    reset() { manual = []; disabledAuto = new Set(); undoStack = []; redoStack = []; }
+  };
+}
+
+// The single list the UI shows and the painter uses: automatic regions
+// first, then the hand-drawn ones.
+function combineRegions(autoRegions, store) {
+  const list = autoRegions.map(r => {
+    const key = regionKey(r.box);
+    return { source: 'auto', key, box: r.box, text: r.text, why: r.why, pass: r.pass, enabled: store.isAutoEnabled(key) };
+  });
+  store.manualRegions().forEach(r => list.push({ source: 'manual', key: 'm' + r.id, id: r.id, box: r.box, enabled: r.enabled }));
+  return list;
+}
+function boxesToPaint(list) {
+  return list.filter(r => r.enabled).map(r => r.box);
+}
+// Real redaction: opaque black pixels, no transparency.
+function paintRedactionBoxes(ctx, boxes) {
+  ctx.fillStyle = '#000000';
+  boxes.forEach(b => ctx.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0));
+}
+
+// Press-drag-release as a tiny state machine (points are in image pixels).
+function createDrawingTool() {
+  let start = null;
+  let current = null;
+  return {
+    down(p) { start = p; current = p; },
+    move(p) { if (start) current = p; },
+    up(p) { if (!start) return null; const r = normalizeRect(start, p); start = null; current = null; return r; },
+    cancel() { start = null; current = null; },
+    active() { return start !== null; },
+    preview() { return start ? normalizeRect(start, current) : null; }
+  };
+}
+// Unconfirmed entropy suspects get a yellow OUTLINE only: the pixels
+// underneath are not touched (they are filled only once the person
+// confirms the suspect, which turns it into a region).
+function paintSuspectOutlines(ctx, suspects) {
+  suspects.filter(s => !s.confirmed).forEach(s => {
+    ctx.save();
+    ctx.strokeStyle = '#facf6f';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(s.box.x0, s.box.y0, s.box.x1 - s.box.x0, s.box.y1 - s.box.y0);
+    ctx.restore();
+  });
+}
+
+// Which toolbar buttons are available. Export is possible once something
+// is covered -- a scan was run, or at least one region exists -- so drawing
+// by hand works without OCR at all.
+function regionToolbarState(store, scanned, covered) {
+  return {
+    canExport: scanned || covered > 0,
+    undoDisabled: !store.canUndo(),
+    redoDisabled: !store.canRedo(),
+    clearDisabled: store.manualRegions().length === 0
+  };
+}
+// REGION_MODEL_END
+
 // Walks tesseract.js's nested blocks → paragraphs → lines → words
 // structure and returns each OCR line as its own array of words (with
 // bounding boxes), rather than one flat list. Keeping the line
@@ -3068,42 +3286,35 @@ async function createTesseractWorker(lang, onProgress) {
 }
 
 // Runs each OCR line through the shared detection pipeline (see
-// wordsToRedact) and applies two DIFFERENT treatments on the given
-// canvas context — this is the actual "real deletion vs. visual
-// overlay" line the project cares about:
-//  - a certain match (custom term or regex rule), OR a suspect whose
-//    id is already in confirmedIds — pixels are overwritten with a
-//    solid black fill. From this point on the original pixels are
-//    gone from the canvas; this is real redaction.
-//  - an UNconfirmed entropy suspect — only a yellow OUTLINE is
-//    stroked around it. The pixels underneath are left completely
-//    untouched. It only gets filled on a later call, once the user
-//    has ticked it in the suspect checklist and its id lands in
-//    confirmedIds (see renderImageRedactions, which always redraws
-//    from the clean original first — see loadImageFile).
-// Returns how many regions were actually filled, plus every suspect
-// found (confirmed or not), so the caller can build/update a
-// checklist. Shared by the image panel and the PDF panel (used there
-// as an optional fallback pass for scanned/image-only pages).
-function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds) {
+// wordsToRedact) and decides what to cover. Pure: it draws nothing and
+// returns
+//  - regions:  every area to fill with solid black (a certain match --
+//    custom term or regex rule -- or an entropy suspect the person has
+//    already confirmed), each with its padded box, the text the OCR
+//    read, why it matched and which OCR pass read it;
+//  - suspects: every entropy suspect, confirmed or not. An unconfirmed
+//    one only gets a yellow OUTLINE (pixels untouched) until the person
+//    ticks it in the suspect checklist -- the project's line between
+//    real deletion and a visual overlay: a filled region overwrites the
+//    pixels for good, an outline does not.
+// The image panel turns these into its editable list of regions (see
+// renderImageRedactions); the PDF panel's optional OCR pass paints them
+// directly (redactWordsOnCanvas, below).
+function findWordRedactions(lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds) {
   confirmedIds = confirmedIds || new Set();
-  let redactedCount = 0;
-  const suspects = [];
   const pad = 2;
+  const padBox = b => ({ x0: b.x0 - pad, y0: b.y0 - pad, x1: b.x1 + pad, y1: b.y1 + pad });
   // A word can be found by several routes (its own line, the phrase
-  // matcher, another OCR pass). A region that is already filled is not
-  // filled -- or counted -- again, even when the second finding is a
+  // matcher, another OCR pass). A region that is already covered is not
+  // added -- or counted -- again, even when the second finding is a
   // different word object covering the same spot (another pass).
-  const drawnBoxes = [];
-  const regions = []; // why / which pass / what the OCR read, for every filled region
-  const fillWord = (word, why, pass) => {
-    if (drawnBoxes.some(box => boxOverlapFraction(word.bbox, box) > 0.7)) return;
-    drawnBoxes.push(word.bbox);
-    regions.push({ text: word.text, why, pass });
-    const { x0, y0, x1, y1 } = word.bbox;
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
-    redactedCount++;
+  const seenBoxes = [];
+  const regions = []; // { box, text, why, pass } for every region to cover
+  const suspects = []; // { id, text, box, confirmed } for every entropy suspect
+  const addRegion = (word, why, pass) => {
+    if (seenBoxes.some(box => boxOverlapFraction(word.bbox, box) > 0.7)) return;
+    seenBoxes.push(word.bbox);
+    regions.push({ box: padBox(word.bbox), text: word.text, why, pass });
   };
   lines.forEach((lineWords, lineIdx) => {
     // Lines from the extra "thorough" passes (see planOcrPasses) never
@@ -3111,7 +3322,7 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
     // first pass, and noisy re-reads would only add duplicate or bogus ones.
     const { flagged, suspects: lineSuspects, reasons } = wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled && !lineWords.extraPass, lineWords.extraPass ? 'low' : 'full');
 
-    flagged.forEach(i => fillWord(lineWords[i], reasons.get(i), lineWords.passId));
+    flagged.forEach(i => addRegion(lineWords[i], reasons.get(i), lineWords.passId));
 
     lineSuspects.forEach(s => {
       // Stable across re-renders of the SAME scan (line index + word
@@ -3120,23 +3331,13 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
       const idxs = [...s.wordIndices];
       const id = `${lineIdx}:${idxs.join(',')}`;
       const boxes = idxs.map(i => lineWords[i].bbox);
-      const x0 = Math.min(...boxes.map(b => b.x0));
-      const y0 = Math.min(...boxes.map(b => b.y0));
-      const x1 = Math.max(...boxes.map(b => b.x1));
-      const y1 = Math.max(...boxes.map(b => b.y1));
-      if (confirmedIds.has(id)) {
-        regions.push({ text: s.text, why: 'entropy (confirmed)', pass: lineWords.passId });
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
-        redactedCount++;
-      } else {
-        ctx.save();
-        ctx.strokeStyle = '#facf6f';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
-        ctx.restore();
-      }
-      suspects.push({ id, text: s.text });
+      const box = padBox({
+        x0: Math.min(...boxes.map(b => b.x0)), y0: Math.min(...boxes.map(b => b.y0)),
+        x1: Math.max(...boxes.map(b => b.x1)), y1: Math.max(...boxes.map(b => b.y1))
+      });
+      const confirmed = confirmedIds.has(id);
+      if (confirmed) regions.push({ box, text: s.text, why: 'entropy (confirmed)', pass: lineWords.passId });
+      suspects.push({ id, text: s.text, box, confirmed });
     });
   });
   // Multi-word custom terms can be split across a line break or have
@@ -3145,9 +3346,202 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
   const flat = [];
   const flatPass = [];
   lines.forEach(lineWords => lineWords.forEach(word => { flat.push(word); flatPass.push(lineWords.passId); }));
-  findPhraseWordMatches(flat, terms, caseSensitive).forEach(i => fillWord(flat[i], 'custom (phrase)', flatPass[i]));
-  return { redactedCount, suspects, regions };
+  findPhraseWordMatches(flat, terms, caseSensitive).forEach(i => addRegion(flat[i], 'custom (phrase)', flatPass[i]));
+  return { regions, suspects, redactedCount: regions.length };
 }
+
+// Paints the result of findWordRedactions onto a canvas: opaque black for
+// every region, and only a yellow OUTLINE (pixels untouched) around each
+// unconfirmed entropy suspect. Used where there is no region list to
+// edit -- the PDF panel's OCR pass; the image panel paints from its own
+// editable list of regions (see renderImageRedactions).
+function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds) {
+  const found = findWordRedactions(lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds);
+  paintRedactionBoxes(ctx, found.regions.map(r => r.box));
+  paintSuspectOutlines(ctx, found.suspects);
+  return { redactedCount: found.redactedCount, suspects: found.suspects, regions: found.regions };
+}
+
+// REGIONS_UI_START
+// ---- Hand-drawn regions: state, drawing tool, region list (v1.3) ----
+// The image's regions (automatic + drawn) live in imgRegionStore and
+// lastImgEffective; renderImageRedactions() rebuilds the canvas from the
+// untouched original every time. The overlay canvas (rubber band,
+// highlight) sits ABOVE imgCanvas and is never part of an export.
+const imgRegionStore = createRegionStore();
+const imgDrawTool = createDrawingTool();
+let imgScanned = false;      // has OCR run on the current image?
+let imgDrawMode = false;
+let imgHighlightKey = null;  // region hovered or focused in the list
+let lastImgEffective = [];   // every region (automatic + drawn) from the latest render
+const imgOverlay = document.getElementById('imgOverlay');
+const imgOverlayCtx = imgOverlay.getContext('2d');
+const imgDrawBar = document.getElementById('imgDrawBar');
+const imgDrawToggle = document.getElementById('imgDrawToggle');
+const imgUndoBtn = document.getElementById('imgUndoBtn');
+const imgRedoBtn = document.getElementById('imgRedoBtn');
+const imgClearManualBtn = document.getElementById('imgClearManualBtn');
+const imgDrawHint = document.getElementById('imgDrawHint');
+const imgRegionListEl = document.getElementById('imgRegionList');
+
+function updateImgDrawHint() {
+  imgDrawHint.textContent = I18N[currentLang][imgDrawMode ? 'drawHintOn' : 'drawHintOff'];
+}
+function setImgDrawMode(on) {
+  imgDrawMode = on;
+  imgDrawTool.cancel();
+  imgDrawToggle.classList.toggle('active', on);
+  imgDrawToggle.setAttribute('aria-pressed', String(on));
+  imgOverlay.classList.toggle('drawing', on);
+  updateImgDrawHint();
+  drawOverlay();
+}
+
+// Rubber band and highlight, on the overlay only (never on imgCanvas).
+function drawOverlay() {
+  if (imgOverlay.width !== imgCanvas.width || imgOverlay.height !== imgCanvas.height) {
+    imgOverlay.width = imgCanvas.width;
+    imgOverlay.height = imgCanvas.height;
+  }
+  const c = imgOverlayCtx;
+  c.clearRect(0, 0, imgOverlay.width, imgOverlay.height);
+  const line = Math.max(2, imgOverlay.width / 350);
+  c.lineWidth = line;
+  c.strokeStyle = '#33d6ff';
+  c.setLineDash([line * 3, line * 2]);
+  const highlighted = imgHighlightKey && lastImgEffective.find(r => r.key === imgHighlightKey);
+  if (highlighted) c.strokeRect(highlighted.box.x0, highlighted.box.y0, highlighted.box.x1 - highlighted.box.x0, highlighted.box.y1 - highlighted.box.y0);
+  const preview = imgDrawTool.preview();
+  if (preview) {
+    c.fillStyle = 'rgba(51, 214, 255, 0.18)';
+    c.fillRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
+    c.strokeRect(preview.x0, preview.y0, preview.x1 - preview.x0, preview.y1 - preview.y0);
+  }
+  c.setLineDash([]);
+}
+
+function imgPointFromEvent(e) {
+  return clientToImagePoint(e.clientX, e.clientY, imgOverlay.getBoundingClientRect(), imgCanvas.width, imgCanvas.height);
+}
+imgOverlay.addEventListener('pointerdown', (e) => {
+  if (!imgDrawMode || !originalImageBitmap || e.button > 0) return;
+  e.preventDefault();
+  imgOverlay.setPointerCapture(e.pointerId);
+  imgDrawTool.down(imgPointFromEvent(e));
+  drawOverlay();
+});
+imgOverlay.addEventListener('pointermove', (e) => {
+  if (!imgDrawTool.active()) return;
+  imgDrawTool.move(imgPointFromEvent(e));
+  drawOverlay();
+});
+imgOverlay.addEventListener('pointerup', (e) => {
+  if (!imgDrawTool.active()) return;
+  const rect = clampRect(imgDrawTool.up(imgPointFromEvent(e)), imgCanvas.width, imgCanvas.height);
+  if (rectIsUsable(rect)) {
+    imgRegionStore.addManual(rect);
+    renderImageRedactions();
+  } else {
+    drawOverlay();
+  }
+});
+imgOverlay.addEventListener('pointercancel', () => { imgDrawTool.cancel(); drawOverlay(); });
+
+function undoRedoImageRegions(redo) {
+  const changed = redo ? imgRegionStore.redo() : imgRegionStore.undo();
+  if (changed && originalImageBitmap) renderImageRedactions();
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && imgDrawTool.active()) { imgDrawTool.cancel(); drawOverlay(); return; }
+  if (!originalImageBitmap || document.getElementById('imagePanel').style.display === 'none') return;
+  const target = e.target || {};
+  const typing = target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
+    || (target.tagName === 'INPUT' && target.type !== 'checkbox' && target.type !== 'button');
+  if (typing || !(e.metaKey || e.ctrlKey)) return;
+  const key = String(e.key).toLowerCase();
+  if (key === 'z') { e.preventDefault(); undoRedoImageRegions(e.shiftKey); }
+  else if (key === 'y') { e.preventDefault(); undoRedoImageRegions(true); }
+});
+imgDrawToggle.addEventListener('click', () => setImgDrawMode(!imgDrawMode));
+imgUndoBtn.addEventListener('click', () => undoRedoImageRegions(false));
+imgRedoBtn.addEventListener('click', () => undoRedoImageRegions(true));
+imgClearManualBtn.addEventListener('click', () => { if (imgRegionStore.clearManual()) renderImageRedactions(); });
+
+// The list of every region that will be covered: switch any of them off,
+// remove drawn ones; hovering or focusing an item outlines it on the image.
+// (Everything shown here may come from OCR: text only, never markup.)
+function renderRegionList() {
+  const t = I18N[currentLang];
+  imgRegionListEl.textContent = '';
+  if (!originalImageBitmap) { imgRegionListEl.style.display = 'none'; return; }
+  imgRegionListEl.style.display = 'block';
+  const manualCount = lastImgEffective.filter(r => r.source === 'manual').length;
+  const title = document.createElement('div');
+  title.className = 'region-list-title';
+  title.textContent = t.regionsTitle(lastImgEffective.filter(r => r.enabled).length, manualCount);
+  imgRegionListEl.appendChild(title);
+  if (!lastImgEffective.length) {
+    const empty = document.createElement('div');
+    empty.className = 'region-list-empty';
+    empty.textContent = t.regionsEmpty;
+    imgRegionListEl.appendChild(empty);
+    return;
+  }
+  const ul = document.createElement('ul');
+  let manualIndex = 0;
+  lastImgEffective.forEach(region => {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = region.enabled;
+    checkbox.addEventListener('change', () => {
+      if (region.source === 'manual') imgRegionStore.toggleManual(region.id); else imgRegionStore.toggleAuto(region.key);
+      renderImageRedactions();
+    });
+    const text = document.createElement('span');
+    text.textContent = region.source === 'manual'
+      ? t.regionManual(++manualIndex)
+      : t.regionAuto + ': ' + (region.why || '?') + (region.text ? ' — ' + region.text : '');
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    li.appendChild(label);
+    if (region.source === 'manual') {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'secondary region-remove';
+      remove.textContent = t.regionRemove;
+      remove.addEventListener('click', () => { imgRegionStore.removeManual(region.id); renderImageRedactions(); });
+      li.appendChild(remove);
+    }
+    const show = () => { imgHighlightKey = region.key; drawOverlay(); };
+    const hide = () => { imgHighlightKey = null; drawOverlay(); };
+    li.addEventListener('mouseenter', show);
+    li.addEventListener('mouseleave', hide);
+    li.addEventListener('focusin', show);
+    li.addEventListener('focusout', hide);
+    ul.appendChild(li);
+  });
+  imgRegionListEl.appendChild(ul);
+}
+
+// A new image (or "clear all"): forget regions, history and the scan.
+function resetImageRegionsUi(imageLoaded) {
+  imgRegionStore.reset();
+  imgScanned = false;
+  lastImgEffective = [];
+  imgHighlightKey = null;
+  setImgDrawMode(false);
+  imgDrawBar.style.display = imageLoaded ? 'flex' : 'none';
+  imgDrawHint.style.display = imageLoaded ? 'block' : 'none';
+  renderRegionList();
+}
+function rerenderRegionsUi() {
+  updateImgDrawHint();
+  renderRegionList();
+}
+
+// REGIONS_UI_END
 
 // State kept from the most recent OCR pass, so a checklist toggle can
 // redraw the image (certain matches + whichever suspects are now
@@ -3171,21 +3565,40 @@ function renderImageRedactions() {
   imgCanvas.height = originalImageBitmap.naturalHeight;
   imgCtx.drawImage(originalImageBitmap, 0, 0);
 
-  const { redactedCount, suspects, regions } = redactWordsOnCanvas(
-    imgCtx, lastImgLines, lastImgActiveRules, customTerms, customCaseSensitiveEl.checked,
+  // One list of regions: what the detectors found plus what the person
+  // drew, minus whatever they switched off. The canvas is the untouched
+  // original with every enabled region filled solid black.
+  const found = findWordRedactions(
+    lastImgLines, lastImgActiveRules, customTerms, customCaseSensitiveEl.checked,
     lastImgEntropyEnabled, confirmedImgSuspects
   );
-  lastImgRegionsText = formatRegions(regions);
+  lastImgEffective = combineRegions(found.regions, imgRegionStore);
+  paintRedactionBoxes(imgCtx, boxesToPaint(lastImgEffective));
+  paintSuspectOutlines(imgCtx, found.suspects);
+  lastImgRegionsText = formatRegions(found.regions);
   renderImgOcrText();
-  renderImgSuspectChecklist(suspects);
+  renderImgSuspectChecklist(found.suspects);
+  renderRegionList();
+  drawOverlay();
 
-  const unconfirmed = suspects.length - confirmedImgSuspects.size;
-  let msg = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
-  if (unconfirmed > 0) msg += ' · ' + t.statsSuspects(unconfirmed);
-  if (ocrLangMismatch(customTerms, ocrLangSelect.value)) msg += ' · ' + t.imgLangMismatchHint;
-  imgProgressEl.textContent = msg;
-  imgDownloadBtn.disabled = false;
-  imgDownloadPdfBtn.disabled = false;
+  const covered = boxesToPaint(lastImgEffective).length;
+  const unconfirmed = found.suspects.length - confirmedImgSuspects.size;
+  if (imgScanned) {
+    let msg = covered > 0 ? t.imgProgressDone(covered) : t.imgProgressNone;
+    if (unconfirmed > 0) msg += ' · ' + t.statsSuspects(unconfirmed);
+    if (ocrLangMismatch(customTerms, ocrLangSelect.value)) msg += ' · ' + t.imgLangMismatchHint;
+    imgProgressEl.textContent = msg;
+  } else {
+    imgProgressEl.textContent = covered > 0 ? t.imgProgressDone(covered) : (wasmAvailable(window) ? '' : t.wasmUnavailable);
+  }
+  // Export is possible once something has been covered: a scan was run,
+  // or at least one region exists (drawing works without OCR at all).
+  const toolbar = regionToolbarState(imgRegionStore, imgScanned, covered);
+  imgDownloadBtn.disabled = !toolbar.canExport;
+  imgDownloadPdfBtn.disabled = !toolbar.canExport;
+  imgUndoBtn.disabled = toolbar.undoDisabled;
+  imgRedoBtn.disabled = toolbar.redoDisabled;
+  imgClearManualBtn.disabled = toolbar.clearDisabled;
 }
 
 // Builds the checklist of entropy suspects below the canvas. Ticking a
@@ -3316,6 +3729,8 @@ imgScanBtn.addEventListener('click', async () => {
     lastImgLines = allLines;
     lastImgActiveRules = getActiveRules();
     lastImgEntropyEnabled = isEntropyEnabled();
+    imgScanned = true;
+    imgRegionStore.resetAuto(); // a new scan: new automatic regions (drawn regions stay)
     renderImageRedactions();
   } catch (err) {
     // Log the real error to the DevTools console and append its message
@@ -3369,6 +3784,7 @@ imgClearBtn.addEventListener('click', () => {
   originalImageBitmap = null;
   originalImageMimeType = 'image/png';
   imgCanvasWrap.style.display = 'none';
+  resetImageRegionsUi(false);
   imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;
