@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="PII Redactor: Share documents. Not identities.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d2547"/>
+      <stop offset="1" stop-color="#183a6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <!-- logo -->
+  <svg x="90" y="120" width="400" height="400" viewBox="66 66 1800 1800">
+    <rect x="66" y="66" width="1800" height="1800" rx="280" fill="#fff"/>
+    <path fill="#183a6e" d="M619 320 L965 192 L1585 382 V1050 C1585 1400 1280 1630 965 1740 C650 1630 347 1400 347 1050 V618 H483 V1030 C483 1300 700 1480 965 1596 C1230 1480 1449 1300 1449 1030 V492 L965 339 L619 459 Z"/>
+    <path fill="#ffaa28" d="M347 382 L579 331 V468 L483 490 V580 H347 Z"/>
+    <path fill="#fff" stroke="#183a6e" stroke-width="57" stroke-linejoin="miter" d="M647 595 H1140 L1283 738 V1362 H647 Z"/>
+    <path fill="none" stroke="#183a6e" stroke-width="57" d="M1140 595 V725 H1283"/>
+    <rect x="773" y="811" width="259" height="59" fill="#183a6e"/>
+    <rect x="773" y="946" width="386" height="116" fill="#000"/>
+    <rect x="773" y="1130" width="259" height="58" fill="#183a6e"/>
+  </svg>
+  <g font-family="Inter, 'Helvetica Neue', Arial, sans-serif">
+    <text x="560" y="262" font-size="92" font-weight="800" fill="#fff" letter-spacing="-2">PII Redactor</text>
+    <rect x="560" y="290" width="120" height="8" rx="4" fill="#ffaa28"/>
+    <text x="560" y="365" font-size="42" font-weight="500" fill="#dbe6f7">Share documents. Not identities.</text>
+    <text x="560" y="425" font-size="27" fill="#9db4d6">Remove personal data and secrets from text, images,</text>
+    <text x="560" y="462" font-size="27" fill="#9db4d6">PDFs, Word and PowerPoint, entirely in your browser.</text>
+    <g font-size="23" font-weight="600" fill="#0d2547">
+      <rect x="560" y="505" width="186" height="46" rx="23" fill="#ffaa28"/>
+      <text x="653" y="536" text-anchor="middle">100% local</text>
+      <rect x="762" y="505" width="232" height="46" rx="23" fill="#fff"/>
+      <text x="878" y="536" text-anchor="middle">No network (CSP)</text>
+      <rect x="1010" y="505" width="190" height="46" rx="23" fill="#fff"/>
+      <text x="1105" y="536" text-anchor="middle">Open source</text>
+    </g>
+  </g>
+</svg>

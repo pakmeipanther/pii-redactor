@@ -2642,6 +2642,31 @@ check('csp: the policy blocks every outbound route, and the page references no e
   if (bad.length) throw new Error('external resources referenced: ' + bad.join(', '));
 });
 
+// --- social preview and demo GIF (v1.3.2) ------------------------------------
+check('social preview: same logo drawing and tagline as the app, nothing external, and a 1280x640 PNG next to it', () => {
+  const svg = readRepoFile('docs/images/social-preview.svg');
+  if (!/viewBox="0 0 1280 640"/.test(svg)) throw new Error('social-preview.svg must be 1280x640');
+  const inner = (svg.match(/<svg x="90"[\s\S]*?<\/svg>/) || [])[0];
+  if (!inner) throw new Error('the logo is missing from the social preview');
+  const pathsOf = (t) => (t.match(/<(?:path|rect)\b[^>]*>/g) || []).join('').replace(/\s+/g, ' ');
+  if (pathsOf(inner) !== pathsOf(logoSvgFile)) throw new Error('the logo in the social preview differs from docs/images/logo.svg');
+  if (!svg.includes('Share documents. Not identities.')) throw new Error('the tagline is missing from the social preview');
+  if (/<script|<foreignObject|<image|xlink:href|\bhref=|url\((?!#)|@import|\son\w+=/i.test(svg)) throw new Error('the social preview SVG must be pure shapes and text');
+  const png = readFileSync(path.join(__dirname, '..', 'docs', 'images', 'social-preview.png'));
+  if (png.subarray(1, 4).toString() !== 'PNG') throw new Error('social-preview.png is not a PNG');
+  if (png.readUInt32BE(16) !== 1280 || png.readUInt32BE(20) !== 640) throw new Error('social-preview.png must be 1280x640');
+  if (png.length > 1024 * 1024) throw new Error('GitHub accepts social preview images up to 1 MB');
+});
+
+check('demo: docs/images/demo.gif is a real GIF of reasonable size and the README shows it', () => {
+  const gif = readFileSync(path.join(__dirname, '..', 'docs', 'images', 'demo.gif'));
+  if (!/^GIF8[79]a$/.test(gif.subarray(0, 6).toString('latin1'))) throw new Error('demo.gif is not a GIF');
+  const w = gif.readUInt16LE(6), h = gif.readUInt16LE(8);
+  if (w < 600 || h < 600) throw new Error(`demo.gif is too small to read: ${w}x${h}`);
+  if (gif.length > 2 * 1024 * 1024) throw new Error('demo.gif is larger than 2 MB');
+  if (!readRepoFile('README.md').includes('docs/images/demo.gif')) throw new Error('the README should show the demo');
+});
+
 check('release: the version label in the UI, README title, README "current" entry and CHANGELOG all agree', () => {
   const ui = (html.match(/<span class="version-tag">v(\d+\.\d+\.\d+)<\/span>/) || [])[1];
   const readmeTitle = (readmeText.match(/^# PII Redactor <sup>v(\d+\.\d+\.\d+)<\/sup>/m) || [])[1];

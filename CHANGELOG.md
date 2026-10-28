@@ -8,6 +8,30 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [1.3.2] — 2026-10-28
+
+Presentation only: the program itself is unchanged.
+
+### Added
+
+- **Social preview image** (`docs/images/social-preview.png`, 1280×640) for
+  links shared on GitHub, LinkedIn and chat, with its editable SVG source
+  (`docs/images/social-preview.svg`). It uses the same logo drawing and the
+  tagline "Share documents. Not identities.".
+
+### Changed
+
+- **Demo GIF re-recorded** (English, synthetic data only) so that it shows the
+  new header with logo and tagline, the version label v1.3.2, and the whole
+  image workflow: OCR, face cover (solid, then mosaic), confirming suspected
+  secrets, a hand-drawn area and the re-checked export.
+
+### Testing
+
+- Test suite grown from 210 to 212 tests: the social preview carries the same
+  logo drawing, the tagline and no external resource and has the right size;
+  the demo GIF is a real GIF of a sensible size that the README shows.
+
 ## [1.3.1] — 2026-10-28
 
 ### Added
@@ -292,6 +316,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.3.2]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2
 [1.3.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1
 [1.3.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0
 [1.2.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1

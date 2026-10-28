@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/images/logo.svg" alt="PII Redactor logo: a shield around a document with one line blacked out" width="120"></p>
 
-# PII Redactor <sup>v1.3.1</sup>
+# PII Redactor <sup>v1.3.2</sup>
 
 **Share documents. Not identities.**
 
@@ -18,7 +18,7 @@ removes what it finds and you confirm every result before download. It is
 a helper, not a legal guarantee of anonymisation or compliance — see
 [Known limitations](#known-limitations).
 
-> Status (v1.3.1): one unified input (paste text, or drop/pick an
+> Status (v1.3.2): one unified input (paste text, or drop/pick an
 > image, PDF, Word, or PowerPoint file — the type is auto-detected,
 > no need to pick the right box yourself), text redaction (regex +
 > custom term list + entropy-based secret detection), image/screenshot
@@ -439,7 +439,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3.1: 210 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3.2: 212 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -525,10 +525,15 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   backup offer. Tag:
   [`v1.3.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0).
 
-- **v1.3.1** (current) — a face for the project: new logo (inline SVG and
+- **v1.3.1** — a face for the project: new logo (inline SVG and
   data-URI favicon, no file is fetched), the tagline "Share documents. Not
   identities." and a new description line in all four languages. Tag:
   [`v1.3.1`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1).
+
+- **v1.3.2** (current) — presentation only, the program itself is unchanged:
+  a social preview image (`docs/images/social-preview.png`, 1280×640, with an
+  editable SVG source) and a demo GIF re-recorded with the new header and logo.
+  Tag: [`v1.3.2`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2).
 
 To use a specific version instead of the latest `main`, download the
 `index.html` (plus the matching `vendor/` folder) from that tag's
