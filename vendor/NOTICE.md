@@ -94,3 +94,30 @@ SOFTWARE.
   Used to read the internal XML of an uploaded .docx file (a .docx is
   itself a zip archive) so its text can be redacted before conversion
   to PDF.
+
+## pico.js and the `facefinder` cascade (face detection)
+
+- Project: https://github.com/nenadmarkus/picojs (runtime) and
+  https://github.com/nenadmarkus/pico (trained cascade)
+- License: MIT License, Copyright (c) 2013 Nenad Markus
+  (full text: `pico/LICENSE-pico.txt`, taken from the `master` branch of
+  the `pico` repository; `pico.js` itself carries "released under the MIT
+  license" in its first line)
+- Files: `pico/pico.js` (5,589 bytes), `pico/facefinder` (239,632 bytes),
+  `pico/LICENSE-pico.txt`; all unmodified.
+  - `pico.js` sha256: `785b981cc79e5fa3f7557dc3fa7773629d7529994d7627de41b77d8687649309`
+  - `facefinder` sha256: `d8014993e7298c7b1865d1f8b855d6dbf4ec5c808bf879e2091ab6837abf90cd`
+- Licence history, stated openly: an early version of the `pico`
+  repository (for example commit `c2e81f9`) carried a custom licence that
+  forbade commercial and military use without permission. The current
+  `master` branch is MIT. The `facefinder` file is byte-for-byte identical
+  in both. This project uses the current MIT terms, is non-commercial
+  open source, and cites the algorithm paper as the old licence asked:
+  N. Markus, M. Frljak, I. S. Pandzic, J. Ahlberg, R. Forchheimer,
+  "Object Detection with Pixel Intensity Comparisons Organized in
+  Decision Trees", http://arxiv.org/abs/1305.4537
+- Pure JavaScript: no WebAssembly, so it also works in Safari Lockdown
+  Mode. It only finds faces that look roughly at the camera; hand-drawn
+  regions cover the rest.
+- A test (`test/run-tests.mjs`) compares both files with the hashes above,
+  so a changed or replaced file turns the suite red.

@@ -249,6 +249,19 @@ colours, such as white on orange or orange on grey. Boxes from those
 passes are mapped back to the original image, a region is never filled
 or counted twice, and the extra passes never add entropy suspects. In those extra passes a pattern-based match (phone or card number) must also look like real digits, because noise such as "1111110)" would otherwise blacken a bogus box. A collapsible box under the image shows what the OCR actually read and lists every blacked-out region with its reason, the pass that read it and the text it saw, so both a miss and an unexpected black box can be explained.
 
+**Face detection (v1.3, unreleased):** "Detect faces" runs a small pure-JavaScript
+detector (pico.js, MIT, vendored in `vendor/pico/`, no WebAssembly, so it also works
+in Safari Lockdown Mode) on a copy of the image. Each face becomes a region in the
+same list as OCR hits and hand-drawn areas, so it can be switched off, undone and
+reviewed like any other. The person chooses how faces are covered, and the labels
+say what each option really does: **solid black** replaces the pixels (irreversible);
+**large mosaic** leaves one average colour per block, about 5x5 blocks per face
+(hard to reverse, not a guarantee); **blur** is cosmetic and can be partly
+reversed, so it is never described as anonymisation. The detector only finds faces
+looking roughly at the camera, which is why the review step and the drawing tool
+stay. The detector files are pinned by sha256 in a test and documented, including
+the licence history, in `vendor/NOTICE.md`.
+
 **Regions and hand-drawn areas (v1.3, unreleased):** everything the
 image panel will cover is a region — a box in the original image's
 pixels — in one list. The automatic detectors (OCR, rules, custom terms,
@@ -412,7 +425,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 194 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 206 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -464,7 +477,9 @@ node test/run-tests.mjs
       list with on/off switches and highlighting; works without OCR
 - [x] **v1.3** (unreleased) "Delete all terms" for the custom list, with a
       warning and an export offer before anything is deleted
-- [ ] **v1.3** Face detection with irreversible cover modes (next)
+- [x] **v1.3** (unreleased) Face detection (pico.js, pure JavaScript) as
+      regions in the same list, with three cover styles and honest labels
+      about which ones are irreversible
 
 ## Versioning
 

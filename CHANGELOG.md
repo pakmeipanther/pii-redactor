@@ -12,6 +12,17 @@ one never removes an older one.
 
 ### Added
 
+- **Face detection** ("Detect faces", image panel): finds faces with
+  pico.js (MIT, pure JavaScript, no WebAssembly, works in Safari Lockdown
+  Mode; vendored in `vendor/pico/`, loaded only from this folder).
+  Faces are regions in the same list as OCR and hand-drawn areas
+  (switch off, undo, highlight, export all shared). Cover style:
+  solid black (irreversible), large mosaic (hard to reverse, not
+  guaranteed) or blur (cosmetic, may be partly reversible); the
+  interface says so. Only faces looking roughly at the camera are found.
+  The vendored files are pinned by hash in a test; `vendor/NOTICE.md`
+  records the licence history.
+
 - **Hand-drawn regions** in the image panel. "Draw a covered area"
   switches on a drawing tool: drag (mouse, finger or pen) over anything
   the OCR missed, such as a logo, handwriting, a QR code or a face. Drawn
@@ -46,7 +57,7 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 161 to 194 tests: the pure region model (geometry,
+- Test suite grown from 161 to 206 tests: face detection (box mapping, mosaic and blur on real pixels, painter, UI with a stub detector, honest labels, vendored-file hashes), the pure region model (geometry,
   the undo/redo store, the painter, the drawing tool), and the pointer,
   keyboard and region-list code run against a fake DOM.
   The delete-all flow is tested exhaustively: no sequence of actions

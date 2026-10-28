@@ -482,6 +482,16 @@
     <button id="imgRedoBtn" class="secondary" data-i18n="redoBtn" disabled>Redo</button>
     <button id="imgClearManualBtn" class="secondary" data-i18n="clearManualBtn" disabled>Remove my drawn areas</button>
   </div>
+  <div class="img-row" id="imgFaceBar" style="display:none;">
+    <button id="imgFaceBtn" class="secondary" data-i18n="faceDetectBtn">Detect faces</button>
+    <label for="imgFaceStyle" data-i18n="faceStyleLabel" style="font-size:13px;color:var(--muted);">Cover faces with:</label>
+    <select id="imgFaceStyle">
+      <option value="solid" data-i18n="faceStyleSolid">Solid black (irreversible)</option>
+      <option value="mosaic" data-i18n="faceStyleMosaic">Large mosaic (hard to reverse, not guaranteed)</option>
+      <option value="blur" data-i18n="faceStyleBlur">Blur (cosmetic — may be partly reversible)</option>
+    </select>
+  </div>
+  <div class="subtitle" id="imgFaceStatus" style="display:none;font-size:12px;margin-top:4px;" role="status" aria-live="polite"></div>
   <div class="subtitle" id="imgDrawHint" style="display:none;font-size:12px;margin-top:4px;"></div>
   <div id="imgCanvasWrap"><div id="imgStage"><canvas id="imgCanvas"></canvas><canvas id="imgOverlay"></canvas></div></div>
   <div id="imgRegionList" class="region-list" style="display:none;"></div>
@@ -607,6 +617,8 @@
   outbound request — tesseract.js and tesseract.js-core are Apache-2.0.
 -->
 <script src="vendor/tesseract/tesseract.min.js"></script>
+<!-- pico.js (MIT, pure JS face detector) + its data file vendor/pico/facefinder: see vendor/NOTICE.md -->
+<script src="vendor/pico/pico.js"></script>
 <!--
   Vendored locally (see /vendor and NOTICE.md) — pdf-lib (MIT) builds
   the redacted output PDF from the flattened, already-redacted page
@@ -1312,6 +1324,7 @@ const I18N_REGIONS = {
     regionAuto: 'Tự động',
     regionManual: (n) => `Vùng tự vẽ #${n}`,
     regionRemove: 'Xóa',
+    regionFace: (n) => `Khuôn mặt #${n}`,
     regionsEmpty: 'Chưa có vùng nào.'
   },
   en: {
@@ -1325,6 +1338,7 @@ const I18N_REGIONS = {
     regionAuto: 'Automatic',
     regionManual: (n) => `Drawn area #${n}`,
     regionRemove: 'Remove',
+    regionFace: (n) => `Face #${n}`,
     regionsEmpty: 'No areas yet.'
   },
   fr: {
@@ -1338,6 +1352,7 @@ const I18N_REGIONS = {
     regionAuto: 'Automatique',
     regionManual: (n) => `Zone dessinée n° ${n}`,
     regionRemove: 'Supprimer',
+    regionFace: (n) => `Visage n° ${n}`,
     regionsEmpty: "Aucune zone pour l'instant."
   },
   de: {
@@ -1351,11 +1366,78 @@ const I18N_REGIONS = {
     regionAuto: 'Automatisch',
     regionManual: (n) => `Gezeichneter Bereich Nr. ${n}`,
     regionRemove: 'Entfernen',
+    regionFace: (n) => `Gesicht Nr. ${n}`,
     regionsEmpty: 'Noch keine Bereiche.'
   }
 };
 // I18N_REGIONS_END
 for (const lang of Object.keys(I18N_REGIONS)) Object.assign(I18N[lang], I18N_REGIONS[lang]);
+
+// I18N_FACES_START
+const I18N_FACES = {
+  vi: {
+    faceDetectBtn: 'Tìm khuôn mặt',
+    faceStyleLabel: 'Che khuôn mặt bằng:',
+    faceStyleSolid: 'Tô đen đặc (không thể khôi phục)',
+    faceStyleMosaic: 'Mosaic khối lớn (khó khôi phục, không đảm bảo tuyệt đối)',
+    faceStyleBlur: 'Làm mờ (chỉ mang tính thẩm mỹ, có thể khôi phục một phần)',
+    faceBusy: 'Đang tìm khuôn mặt…',
+    faceFound: (n) => `Tìm thấy ${n} khuôn mặt.`,
+    faceNone: 'Không tìm thấy khuôn mặt nào.',
+    faceReviewHint: 'Bộ dò chỉ bắt tốt khuôn mặt nhìn thẳng — hãy xem lại ảnh và vẽ tay thêm nếu còn sót.',
+    faceError: 'Không tải được bộ nhận diện khuôn mặt (cần chạy qua local server, không phải file://). Bạn vẫn có thể vẽ vùng che bằng tay.',
+    faceNote_solid: 'Tô đen: dữ liệu gốc bị thay hoàn toàn.',
+    faceNote_mosaic: 'Mosaic: mỗi khối chỉ còn một màu trung bình — rất khó khôi phục nhưng không phải là bảo đảm tuyệt đối.',
+    faceNote_blur: 'Cảnh báo: làm mờ chỉ là hiệu ứng thị giác, khuôn mặt có thể được khôi phục một phần. Nếu cần ẩn danh thật sự, hãy chọn tô đen.'
+  },
+  en: {
+    faceDetectBtn: 'Detect faces',
+    faceStyleLabel: 'Cover faces with:',
+    faceStyleSolid: 'Solid black (irreversible)',
+    faceStyleMosaic: 'Large mosaic (hard to reverse, not guaranteed)',
+    faceStyleBlur: 'Blur (cosmetic — may be partly reversible)',
+    faceBusy: 'Looking for faces…',
+    faceFound: (n) => `Found ${n} face${n === 1 ? '' : 's'}.`,
+    faceNone: 'No faces found.',
+    faceReviewHint: 'The detector is reliable for faces looking straight at the camera only — check the image and draw any missed area by hand.',
+    faceError: 'Could not load the face detector (it needs a local server, not file://). You can still draw covered areas by hand.',
+    faceNote_solid: 'Solid black: the original pixels are replaced completely.',
+    faceNote_mosaic: 'Mosaic: each block keeps one average colour — very hard to reverse, but not a mathematical guarantee.',
+    faceNote_blur: 'Warning: blur is only a visual effect and a face can be partly reconstructed. For real anonymity choose solid black.'
+  },
+  fr: {
+    faceDetectBtn: 'Détecter les visages',
+    faceStyleLabel: 'Masquer les visages avec :',
+    faceStyleSolid: 'Noir uni (irréversible)',
+    faceStyleMosaic: 'Grosse mosaïque (difficile à inverser, sans garantie)',
+    faceStyleBlur: 'Flou (cosmétique — partiellement réversible)',
+    faceBusy: 'Recherche de visages…',
+    faceFound: (n) => `${n} visage${n === 1 ? '' : 's'} trouvé${n === 1 ? '' : 's'}.`,
+    faceNone: 'Aucun visage trouvé.',
+    faceReviewHint: "Le détecteur n'est fiable que pour les visages de face — vérifiez l'image et dessinez à la main ce qui a été manqué.",
+    faceError: "Impossible de charger le détecteur de visages (il faut un serveur local, pas file://). Vous pouvez toujours dessiner des zones à la main.",
+    faceNote_solid: "Noir uni : les pixels d'origine sont entièrement remplacés.",
+    faceNote_mosaic: 'Mosaïque : chaque bloc garde une couleur moyenne — très difficile à inverser, mais sans garantie mathématique.',
+    faceNote_blur: "Attention : le flou n'est qu'un effet visuel, un visage peut être en partie reconstitué. Pour un vrai anonymat, choisissez le noir uni."
+  },
+  de: {
+    faceDetectBtn: 'Gesichter erkennen',
+    faceStyleLabel: 'Gesichter abdecken mit:',
+    faceStyleSolid: 'Vollständig schwarz (nicht umkehrbar)',
+    faceStyleMosaic: 'Grobes Mosaik (schwer umkehrbar, keine Garantie)',
+    faceStyleBlur: 'Weichzeichnen (nur kosmetisch — teilweise umkehrbar)',
+    faceBusy: 'Suche nach Gesichtern …',
+    faceFound: (n) => `${n} ${n === 1 ? 'Gesicht' : 'Gesichter'} gefunden.`,
+    faceNone: 'Keine Gesichter gefunden.',
+    faceReviewHint: 'Der Detektor erkennt zuverlässig nur Gesichter, die frontal in die Kamera blicken — prüfe das Bild und zeichne Übersehenes von Hand.',
+    faceError: 'Der Gesichtsdetektor konnte nicht geladen werden (er braucht einen lokalen Server, nicht file://). Bereiche zeichnen geht weiterhin.',
+    faceNote_solid: 'Schwarz: Die Originalpixel werden vollständig ersetzt.',
+    faceNote_mosaic: 'Mosaik: Jeder Block behält nur eine Durchschnittsfarbe — sehr schwer umkehrbar, aber keine mathematische Garantie.',
+    faceNote_blur: 'Achtung: Weichzeichnen ist nur ein optischer Effekt, ein Gesicht lässt sich teilweise rekonstruieren. Für echte Anonymität wähle Schwarz.'
+  }
+};
+// I18N_FACES_END
+for (const lang of Object.keys(I18N_FACES)) Object.assign(I18N[lang], I18N_FACES[lang]);
 
 // ---- "Delete all terms" and its warning (v1.3) ----
 // I18N_CLEAR_TERMS_START
@@ -2022,6 +2104,7 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   updateImgDownloadBtnLabel();
   rerenderMetadataUi();
   rerenderRegionsUi();
+  renderFaceStatus();
 });
 
 // ============================================================
@@ -2820,6 +2903,8 @@ function loadImageFile(file) {
     lastImgLines = [];
     confirmedImgSuspects = new Set();
     resetImageRegionsUi(true);
+    resetFaces();
+    document.getElementById('imgFaceBar').style.display = 'flex';
     renderImageRedactions();
     URL.revokeObjectURL(img.src);
   };
@@ -3274,7 +3359,7 @@ function createRegionStore() {
 function combineRegions(autoRegions, store) {
   const list = autoRegions.map(r => {
     const key = regionKey(r.box);
-    return { source: 'auto', key, box: r.box, text: r.text, why: r.why, pass: r.pass, enabled: store.isAutoEnabled(key) };
+    return { source: 'auto', kind: r.kind || 'text', key, box: r.box, text: r.text, why: r.why, pass: r.pass, enabled: store.isAutoEnabled(key) };
   });
   store.manualRegions().forEach(r => list.push({ source: 'manual', key: 'm' + r.id, id: r.id, box: r.box, enabled: r.enabled }));
   return list;
@@ -3326,6 +3411,133 @@ function regionToolbarState(store, scanned, covered) {
   };
 }
 // REGION_MODEL_END
+
+// ============================================================
+// Face detection (v1.3): a face is just another automatic region.
+//
+// The detector (pico.js, MIT, pure JavaScript -- no WebAssembly, so it
+// also runs in Safari Lockdown Mode) only proposes boxes. Everything
+// after that is the same machinery as OCR and hand-drawn regions:
+// one list, the person confirms, the export is rebuilt from the
+// untouched original.
+//
+// HONESTY about the three cover styles (the labels in the UI say the same):
+//   solid  -- pixels replaced by black: the original values are gone.
+//   mosaic -- each block becomes ONE average colour; with only about
+//             5x5 blocks per face the information is destroyed, but
+//             this is "hard to reverse", not a mathematical guarantee.
+//   blur   -- a smoothing filter. It is cosmetic: blurred faces can be
+//             partly reconstructed, so do not rely on it for anonymity.
+// ============================================================
+// FACE_MODEL_START
+const FACE_STYLES = ['solid', 'mosaic', 'blur'];
+const FACE_SCAN_MAX_SIDE = 1000;   // detector works on a copy at most this large
+const FACE_MIN_SCORE = 5.0;        // pico's own recommended confidence threshold
+const FACE_BOX_PADDING = 0.62;     // half-width of the covered box = size * this (pico boxes are tight)
+
+function isFaceStyle(style) { return FACE_STYLES.includes(style); }
+
+// RGBA bytes -> one luminance byte per pixel (what pico expects).
+function rgbaToGray(data, width, height) {
+  const gray = new Uint8Array(width * height);
+  for (let i = 0, p = 0; i < gray.length; i++, p += 4) {
+    gray[i] = (2 * data[p] + 7 * data[p + 1] + data[p + 2]) / 10;
+  }
+  return gray;
+}
+
+// How to scan an image of this size: shrink it (never enlarge it) and
+// choose the face size range.
+function planFaceScan(width, height) {
+  const scale = Math.min(1, FACE_SCAN_MAX_SIDE / Math.max(width, height, 1));
+  const w = Math.max(1, Math.round(width * scale));
+  const h = Math.max(1, Math.round(height * scale));
+  return {
+    scale, width: w, height: h,
+    params: { shiftfactor: 0.1, scalefactor: 1.1, minsize: Math.max(20, Math.round(Math.min(w, h) * 0.06)), maxsize: Math.min(w, h) }
+  };
+}
+
+// pico detections are [row, col, size, score] at the scan scale. Turn
+// the confident ones into regions in ORIGINAL image pixels.
+function faceDetectionsToRegions(detections, scale, width, height) {
+  const regions = [];
+  detections.filter(d => d[3] >= FACE_MIN_SCORE).forEach(d => {
+    const half = d[2] * FACE_BOX_PADDING / scale;
+    const cx = d[1] / scale;
+    const cy = d[0] / scale;
+    const box = clampRect({ x0: cx - half, y0: cy - half, x1: cx + half, y1: cy + half }, width, height);
+    box.x0 = Math.floor(box.x0); box.y0 = Math.floor(box.y0); box.x1 = Math.ceil(box.x1); box.y1 = Math.ceil(box.y1);
+    if (rectIsUsable(box)) regions.push({ box, kind: 'face', why: 'face', text: '', pass: 0 });
+  });
+  return regions;
+}
+
+// Block size / blur radius scale with the face, so a big face is not
+// left readable by a small, fixed effect.
+function faceCoverParams(box) {
+  const w = box.x1 - box.x0, h = box.y1 - box.y0;
+  return { block: Math.max(6, Math.ceil(Math.max(w, h) / 5)), radius: Math.max(4, Math.ceil(Math.min(w, h) / 4)) };
+}
+
+// In place: every block x block square becomes its average colour.
+function mosaicRgba(data, width, height, block) {
+  for (let by = 0; by < height; by += block) {
+    for (let bx = 0; bx < width; bx += block) {
+      const bw = Math.min(block, width - bx), bh = Math.min(block, height - by);
+      let r = 0, g = 0, b = 0;
+      for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) { const p = (y * width + x) * 4; r += data[p]; g += data[p + 1]; b += data[p + 2]; }
+      const n = bw * bh;
+      r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+      for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) { const p = (y * width + x) * 4; data[p] = r; data[p + 1] = g; data[p + 2] = b; data[p + 3] = 255; }
+    }
+  }
+  return data;
+}
+
+// In place: three box-blur passes (close to a Gaussian). Edges reuse the nearest pixel.
+function blurRgba(data, width, height, radius) {
+  const tmp = new Uint8ClampedArray(data.length);
+  const pass = (src, dst, horizontal) => {
+    const len = horizontal ? width : height, lines = horizontal ? height : width;
+    const stride = horizontal ? 4 : width * 4, lineStride = horizontal ? width * 4 : 4;
+    for (let l = 0; l < lines; l++) {
+      const base = l * lineStride;
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let k = -radius; k <= radius; k++) sum += src[base + Math.min(Math.max(k, 0), len - 1) * stride + c];
+        for (let i = 0; i < len; i++) {
+          dst[base + i * stride + c] = Math.round(sum / (2 * radius + 1));
+          sum += src[base + Math.min(i + radius + 1, len - 1) * stride + c] - src[base + Math.max(i - radius, 0) * stride + c];
+        }
+      }
+      for (let i = 0; i < len; i++) dst[base + i * stride + 3] = 255;
+    }
+  };
+  for (let n = 0; n < 3; n++) { pass(data, tmp, true); pass(tmp, data, false); }
+  return data;
+}
+
+// Cover one box of ctx's current pixels in the chosen style.
+function paintFaceCover(ctx, box, style) {
+  const x = Math.floor(box.x0), y = Math.floor(box.y0);
+  const w = Math.ceil(box.x1) - x, h = Math.ceil(box.y1) - y;
+  if (w <= 0 || h <= 0) return;
+  if (style === 'solid' || !isFaceStyle(style)) { ctx.fillStyle = '#000000'; ctx.fillRect(x, y, w, h); return; }
+  const image = ctx.getImageData(x, y, w, h);
+  const params = faceCoverParams(box);
+  if (style === 'mosaic') mosaicRgba(image.data, w, h, params.block);
+  else blurRgba(image.data, w, h, params.radius);
+  ctx.putImageData(image, x, y);
+}
+
+// All enabled regions: faces in the chosen style, everything else solid black.
+function paintAllRegions(ctx, regions, faceStyle) {
+  const enabled = regions.filter(r => r.enabled);
+  enabled.filter(r => r.kind === 'face').forEach(r => paintFaceCover(ctx, r.box, faceStyle));
+  paintRedactionBoxes(ctx, enabled.filter(r => r.kind !== 'face').map(r => r.box));
+}
+// FACE_MODEL_END
 
 // Walks tesseract.js's nested blocks → paragraphs → lines → words
 // structure and returns each OCR line as its own array of words (with
@@ -3650,6 +3862,7 @@ function renderRegionList() {
   }
   const ul = document.createElement('ul');
   let manualIndex = 0;
+  let faceIndex = 0;
   lastImgEffective.forEach(region => {
     const li = document.createElement('li');
     const label = document.createElement('label');
@@ -3663,6 +3876,8 @@ function renderRegionList() {
     const text = document.createElement('span');
     text.textContent = region.source === 'manual'
       ? t.regionManual(++manualIndex)
+      : region.kind === 'face'
+      ? t.regionFace(++faceIndex)
       : t.regionAuto + ': ' + (region.why || '?') + (region.text ? ' — ' + region.text : '');
     label.appendChild(checkbox);
     label.appendChild(text);
@@ -3704,6 +3919,91 @@ function rerenderRegionsUi() {
 
 // REGIONS_UI_END
 
+// FACE_UI_START
+// ---- Face detection UI (v1.3) ----
+// Detected faces are kept apart from OCR results but travel in the SAME
+// region list (renderImageRedactions adds them to the automatic regions),
+// so switching one off, undo, the overlay highlight and export all work
+// exactly as for any other region.
+let imgFaceRegions = [];
+let imgFaceStyle = 'solid';
+let imgFaceStatus = null;     // { kind: 'busy' | 'found' | 'none' | 'error' }
+let faceClassifier = null;
+const imgFaceBtn = document.getElementById('imgFaceBtn');
+const imgFaceStyleSelect = document.getElementById('imgFaceStyle');
+const imgFaceStatusEl = document.getElementById('imgFaceStatus');
+
+function renderFaceStatus() {
+  const t = I18N[currentLang];
+  const s = imgFaceStatus;
+  let text = '';
+  if (s) {
+    if (s.kind === 'busy') text = t.faceBusy;
+    else if (s.kind === 'error') text = t.faceError;
+    else if (s.kind === 'none') text = t.faceNone;
+    else if (s.kind === 'found') text = t.faceFound(s.count);
+    if (s.kind === 'found' || s.kind === 'none') text += ' ' + t.faceReviewHint;
+  }
+  if (imgFaceRegions.length) text += ' ' + t['faceNote_' + imgFaceStyle];
+  imgFaceStatusEl.textContent = text;
+  imgFaceStatusEl.style.display = text ? 'block' : 'none';
+}
+function resetFaces() {
+  imgFaceRegions = [];
+  imgFaceStatus = null;
+  renderFaceStatus();
+}
+
+// The detector's learned data is loaded on first use, from this folder
+// (never from the network; CSP would block that anyway).
+async function loadFaceClassifier() {
+  if (faceClassifier) return faceClassifier;
+  const response = await fetch('vendor/pico/facefinder');
+  if (!response.ok) throw new Error('facefinder: HTTP ' + response.status);
+  faceClassifier = pico.unpack_cascade(new Int8Array(await response.arrayBuffer()));
+  return faceClassifier;
+}
+function detectFaces(bitmap, classify) {
+  const width = bitmap.naturalWidth, height = bitmap.naturalHeight;
+  const plan = planFaceScan(width, height);
+  const canvas = document.createElement('canvas');
+  canvas.width = plan.width;
+  canvas.height = plan.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#ffffff';          // transparent PNGs must not turn black
+  ctx.fillRect(0, 0, plan.width, plan.height);
+  ctx.drawImage(bitmap, 0, 0, plan.width, plan.height);
+  const gray = rgbaToGray(ctx.getImageData(0, 0, plan.width, plan.height).data, plan.width, plan.height);
+  let detections = pico.run_cascade({ pixels: gray, nrows: plan.height, ncols: plan.width, ldim: plan.width }, classify, plan.params);
+  detections = pico.cluster_detections(detections, 0.2);
+  return faceDetectionsToRegions(detections, plan.scale, width, height);
+}
+
+imgFaceBtn.addEventListener('click', async () => {
+  if (!originalImageBitmap) return;
+  imgFaceBtn.disabled = true;
+  imgFaceStatus = { kind: 'busy' };
+  renderFaceStatus();
+  await new Promise(resolve => setTimeout(resolve, 30)); // let the message paint first
+  try {
+    const classify = await loadFaceClassifier();
+    imgFaceRegions = detectFaces(originalImageBitmap, classify);
+    imgFaceStatus = imgFaceRegions.length ? { kind: 'found', count: imgFaceRegions.length } : { kind: 'none' };
+  } catch (err) {
+    console.error(err);
+    imgFaceStatus = { kind: 'error' };
+  }
+  imgFaceBtn.disabled = false;
+  renderFaceStatus();
+  renderImageRedactions();
+});
+imgFaceStyleSelect.addEventListener('change', () => {
+  imgFaceStyle = isFaceStyle(imgFaceStyleSelect.value) ? imgFaceStyleSelect.value : 'solid';
+  renderFaceStatus();
+  if (originalImageBitmap) renderImageRedactions();
+});
+// FACE_UI_END
+
 // State kept from the most recent OCR pass, so a checklist toggle can
 // redraw the image (certain matches + whichever suspects are now
 // confirmed) WITHOUT re-running OCR — OCR is the slow part, redrawing
@@ -3733,8 +4033,8 @@ function renderImageRedactions() {
     lastImgLines, lastImgActiveRules, customTerms, customCaseSensitiveEl.checked,
     lastImgEntropyEnabled, confirmedImgSuspects
   );
-  lastImgEffective = combineRegions(found.regions, imgRegionStore);
-  paintRedactionBoxes(imgCtx, boxesToPaint(lastImgEffective));
+  lastImgEffective = combineRegions(found.regions.concat(imgFaceRegions), imgRegionStore);
+  paintAllRegions(imgCtx, lastImgEffective, imgFaceStyle);
   paintSuspectOutlines(imgCtx, found.suspects);
   lastImgRegionsText = formatRegions(found.regions);
   renderImgOcrText();
@@ -3946,6 +4246,8 @@ imgClearBtn.addEventListener('click', () => {
   originalImageMimeType = 'image/png';
   imgCanvasWrap.style.display = 'none';
   resetImageRegionsUi(false);
+  resetFaces();
+  document.getElementById('imgFaceBar').style.display = 'none';
   imgCtx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;

@@ -2175,7 +2175,7 @@ check('guard: the overlay never touches the export canvas, the export is rebuilt
   if (/\bimgCtx\b|imgCanvas\.getContext/.test(overlayBody)) throw new Error('drawOverlay draws on the export canvas');
   if (!overlayBody.includes('imgOverlayCtx')) throw new Error('drawOverlay should use the overlay context');
   const render = html.slice(html.indexOf('function renderImageRedactions()'), html.indexOf("imgScanBtn.addEventListener('click'"));
-  if (!render.includes('imgCtx.drawImage(originalImageBitmap, 0, 0);') || !render.includes('paintRedactionBoxes(imgCtx, boxesToPaint(lastImgEffective));')) throw new Error('the export is not rebuilt from the original + enabled regions');
+  if (!render.includes('imgCtx.drawImage(originalImageBitmap, 0, 0);') || !render.includes('paintAllRegions(imgCtx, lastImgEffective, imgFaceStyle);')) throw new Error('the export is not rebuilt from the original + enabled regions');
   for (const needle of ["'pointerdown'", "'pointermove'", "'pointerup'", "'pointercancel'", 'setPointerCapture']) if (!html.includes(needle)) throw new Error('missing ' + needle);
   if (!/#imgCanvasWrap #imgOverlay\.drawing \{[^}]*touch-action: none/.test(html)) throw new Error('touch-action: none is needed while drawing, or the page scrolls instead');
   if (!/<div id="imgStage"><canvas id="imgCanvas"><\/canvas><canvas id="imgOverlay"><\/canvas><\/div>/.test(html)) throw new Error('the overlay must be a separate canvas inside the stage');
@@ -2389,6 +2389,198 @@ check('guard: only the confirmed flow can empty the list, the old Export button 
   if (!html.includes('  renderClearTermsUi();\n}')) throw new Error('the chip list does not refresh the clear-all UI');
   const listBlock = html.slice(html.indexOf('id="customClearBtn"'), html.indexOf('id="customClearStatus"'));
   if (!/id="customClearConfirm" role="alert"/.test(listBlock)) throw new Error('the warning should be announced (role="alert")');
+});
+
+// --- face detection (v1.3, step 3) -----------------------------------------
+const faceModelCode = extractBetween('// FACE_MODEL_START', '// FACE_MODEL_END', 'FACE_MODEL');
+const faceUiCode = extractBetween('// FACE_UI_START', '// FACE_UI_END', 'FACE_UI');
+const faceApi = new Function(`${regionModelCode}\n${faceModelCode}\nreturn { FACE_STYLES, isFaceStyle, rgbaToGray, planFaceScan, faceDetectionsToRegions, faceCoverParams, mosaicRgba, blurRgba, paintFaceCover, paintAllRegions, createRegionStore, combineRegions, regionKey };`)();
+
+// A tiny canvas stand-in that really stores pixels, so the painters can be checked on real bytes.
+function fakeCanvasCtx(width, height, fill = [200, 100, 50]) {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i++) { data[i * 4] = (fill[0] + (i * 37) % 55) % 256; data[i * 4 + 1] = (fill[1] + (i * 91) % 97) % 256; data[i * 4 + 2] = fill[2]; data[i * 4 + 3] = 255; }
+  return {
+    width, height, data, fillStyle: '',
+    fillRect(x, y, w, h) { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) { const p = (yy * width + xx) * 4; data[p] = 0; data[p + 1] = 0; data[p + 2] = 0; data[p + 3] = 255; } },
+    getImageData(x, y, w, h) { const out = new Uint8ClampedArray(w * h * 4); for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { const s = ((y + yy) * width + x + xx) * 4, d = (yy * w + xx) * 4; for (let k = 0; k < 4; k++) out[d + k] = data[s + k]; } return { data: out, width: w, height: h }; },
+    putImageData(img, x, y) { for (let yy = 0; yy < img.height; yy++) for (let xx = 0; xx < img.width; xx++) { const d = ((y + yy) * width + x + xx) * 4, s = (yy * img.width + xx) * 4; for (let k = 0; k < 4; k++) data[d + k] = img.data[s + k]; } }
+  };
+}
+const pixelAt = (ctx, x, y) => Array.from(ctx.data.slice((y * ctx.width + x) * 4, (y * ctx.width + x) * 4 + 4));
+
+check('faces: rgbaToGray gives one luminance byte per pixel', () => {
+  const gray = faceApi.rgbaToGray(new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 255, 100, 100, 100, 255]), 3, 1);
+  if (gray.length !== 3 || gray[0] < 254 || gray[1] !== 0 || gray[2] !== 100) throw new Error('unexpected gray values ' + Array.from(gray));
+});
+check('faces: planFaceScan shrinks big images, never enlarges small ones, and keeps the size range sane', () => {
+  const big = faceApi.planFaceScan(4000, 2000);
+  if (big.scale !== 0.25 || big.width !== 1000 || big.height !== 500) throw new Error('big image not shrunk to 1000 px: ' + JSON.stringify(big));
+  const small = faceApi.planFaceScan(300, 200);
+  if (small.scale !== 1 || small.width !== 300) throw new Error('small image must not be enlarged');
+  for (const p of [big, small, faceApi.planFaceScan(10, 10)]) if (!(p.params.minsize >= 20) || p.params.maxsize < 1) throw new Error('bad size range ' + JSON.stringify(p.params));
+});
+check('faces: detections become regions in ORIGINAL pixels; weak and degenerate ones are dropped; boxes stay inside the image', () => {
+  const regions = faceApi.faceDetectionsToRegions([[100, 100, 50, 6], [50, 50, 50, 4.9], [5, 5, 200, 9], [0, 0, 1, 9]], 0.5, 2000, 1000);
+  if (regions.length !== 2) throw new Error('expected 2 regions (score 4.9 dropped, 1-px face dropped), got ' + regions.length);
+  const first = regions[0];
+  if (first.kind !== 'face' || first.why !== 'face') throw new Error('region must be tagged as a face');
+  if (!(first.box.x0 < 200 && first.box.x1 > 200 && first.box.y0 < 200 && first.box.y1 > 200)) throw new Error('box must surround the detection centre scaled back to the original (200,200)');
+  if (first.box.x0 !== 138 || first.box.x1 !== 262 || first.box.y0 !== 138 || first.box.y1 !== 262) throw new Error('size must be scaled back too: ' + JSON.stringify(first.box));
+  for (const r of regions) if (r.box.x0 < 0 || r.box.y0 < 0 || r.box.x1 > 2000 || r.box.y1 > 1000) throw new Error('box outside the image');
+});
+check('faces: mosaic leaves exactly one colour per block (so the detail is really gone)', () => {
+  const ctx = fakeCanvasCtx(40, 40);
+  const image = ctx.getImageData(0, 0, 40, 40);
+  faceApi.mosaicRgba(image.data, 40, 40, 10);
+  const colours = new Set();
+  for (let i = 0; i < 40 * 40; i++) colours.add(Array.from(image.data.slice(i * 4, i * 4 + 4)).join(','));
+  if (colours.size > 16) throw new Error('more than 16 colours for 4x4 blocks: ' + colours.size);
+  const before = ctx.getImageData(0, 0, 40, 40).data;
+  let sumR = 0;
+  for (let y = 0; y < 10; y++) for (let x = 0; x < 10; x++) sumR += before[(y * 40 + x) * 4];
+  if (image.data[0] !== Math.round(sumR / 100)) throw new Error('the first block must hold the exact average colour, got ' + image.data[0] + ' expected ' + Math.round(sumR / 100));
+  for (let i = 0; i < 40 * 40; i++) if (image.data[i * 4 + 3] !== 255) throw new Error('mosaic must be opaque');
+});
+check('faces: blur keeps a flat area flat, smooths a hard edge, stays opaque', () => {
+  const flat = new Uint8ClampedArray(20 * 20 * 4).fill(120);
+  for (let i = 3; i < flat.length; i += 4) flat[i] = 255;
+  faceApi.blurRgba(flat, 20, 20, 4);
+  if (flat.some((v, i) => v !== (i % 4 === 3 ? 255 : 120))) throw new Error('a uniform image changed');
+  const edge = new Uint8ClampedArray(20 * 20 * 4);
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const p = (y * 20 + x) * 4; const v = x < 10 ? 0 : 255; edge[p] = v; edge[p + 1] = v; edge[p + 2] = v; edge[p + 3] = 255; }
+  faceApi.blurRgba(edge, 20, 20, 3);
+  const mid = edge[(10 * 20 + 10) * 4];
+  if (!(mid > 0 && mid < 255)) throw new Error('the edge was not smoothed: ' + mid);
+  if (edge[3] !== 255) throw new Error('blur must be opaque');
+});
+check('faces: cover strength grows with the face size', () => {
+  const small = faceApi.faceCoverParams({ x0: 0, y0: 0, x1: 40, y1: 40 });
+  const large = faceApi.faceCoverParams({ x0: 0, y0: 0, x1: 400, y1: 400 });
+  if (!(large.block > small.block) || !(large.radius > small.radius)) throw new Error('large faces need larger blocks and radius');
+  if (large.block < 400 / 5 - 1) throw new Error('at most about 5x5 blocks per face');
+});
+check('faces: paintAllRegions covers faces in the chosen style and everything else in solid black; disabled regions are untouched', () => {
+  const regions = (store) => faceApi.combineRegions([
+    { box: { x0: 0, y0: 0, x1: 20, y1: 20 }, kind: 'face', why: 'face', text: '' },
+    { box: { x0: 30, y0: 30, x1: 40, y1: 40 }, why: 'email', text: 'x' }
+  ], store);
+  const store = faceApi.createRegionStore();
+  store.addManual({ x0: 50, y0: 0, x1: 60, y1: 10 });
+  const original = fakeCanvasCtx(64, 64);
+  for (const style of ['solid', 'mosaic', 'blur']) {
+    const ctx = fakeCanvasCtx(64, 64);
+    faceApi.paintAllRegions(ctx, regions(store), style);
+    const textBox = pixelAt(ctx, 35, 35), manual = pixelAt(ctx, 55, 5), face = pixelAt(ctx, 5, 5);
+    if (textBox.slice(0, 3).join() !== '0,0,0' || manual.slice(0, 3).join() !== '0,0,0') throw new Error(style + ': non-face regions must be solid black');
+    const faceIsBlack = face.slice(0, 3).join() === '0,0,0';
+    if (style === 'solid' && !faceIsBlack) throw new Error('solid style must be black');
+    if (style !== 'solid' && faceIsBlack) throw new Error(style + ' style must not be black');
+    if (pixelAt(ctx, 60, 60).join() !== pixelAt(original, 60, 60).join()) throw new Error('pixels outside every region changed');
+  }
+  const list = regions(store);
+  store.toggleAuto(list[0].key);
+  const ctx = fakeCanvasCtx(64, 64);
+  faceApi.paintAllRegions(ctx, regions(store), 'solid');
+  if (pixelAt(ctx, 5, 5).join() !== pixelAt(original, 5, 5).join()) throw new Error('a switched-off face was still covered');
+});
+check('faces: combineRegions keeps the face kind and tags text regions as text', () => {
+  const list = faceApi.combineRegions([{ box: { x0: 1, y0: 1, x1: 9, y1: 9 }, kind: 'face', why: 'face' }, { box: { x0: 2, y0: 2, x1: 8, y1: 8 }, why: 'ip' }], faceApi.createRegionStore());
+  if (list[0].kind !== 'face' || list[1].kind !== 'text') throw new Error(JSON.stringify(list.map(r => r.kind)));
+});
+
+await checkAsync('faces: the UI loads the detector once, from the local vendor folder, and turns detections into regions', async () => {
+  const listeners = {};
+  const els = {};
+  const el = (id) => els[id] || (els[id] = { id, value: 'solid', textContent: '', style: {}, disabled: false, addEventListener(t, fn) { listeners[id + ':' + t] = fn; } });
+  const calls = { fetch: [], unpack: 0, render: 0, cascade: 0 };
+  const doc = {
+    getElementById: el,
+    createElement: () => { const c = fakeCanvasCtx(1, 1); return { width: 0, height: 0, getContext: () => ({ ...c, fillStyle: '', fillRect() {}, drawImage() {}, getImageData: (x, y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) }) }; }
+  };
+  const pico = {
+    unpack_cascade: () => { calls.unpack++; return () => 1; },
+    run_cascade: () => { calls.cascade++; return [[60, 80, 40, 9]]; },
+    cluster_detections: (d) => d
+  };
+  const fetchStub = async (url) => { calls.fetch.push(url); return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) }; };
+  const source = `
+    let currentLang = 'en';
+    const I18N = { en: I18N_FACES_EN };
+    let originalImageBitmap = { naturalWidth: 200, naturalHeight: 150 };
+    function renderImageRedactions() { calls.render++; }
+    ${faceModelCode}
+    ${faceUiCode}
+    return { regions: () => imgFaceRegions, status: () => imgFaceStatus, style: () => imgFaceStyle, resetFaces, setBitmap: (b) => { originalImageBitmap = b; } };
+  `;
+  const i18nFacesCode = extractBetween('// I18N_FACES_START', '// I18N_FACES_END', 'I18N_FACES');
+  const { I18N_FACES } = new Function(`${i18nFacesCode}\nreturn { I18N_FACES };`)();
+  const api = new Function('document', 'pico', 'fetch', 'calls', 'I18N_FACES_EN', 'clampRect', 'rectIsUsable', 'paintRedactionBoxes', source)(doc, pico, fetchStub, calls, I18N_FACES.en, faceApi.clampRectForTest || ((r, w, h) => ({ x0: Math.max(0, r.x0), y0: Math.max(0, r.y0), x1: Math.min(w, r.x1), y1: Math.min(h, r.y1) })), () => true, () => {});
+  await listeners['imgFaceBtn:click']();
+  if (api.regions().length !== 1 || api.regions()[0].kind !== 'face') throw new Error('detection did not produce a face region');
+  if (calls.fetch.length !== 1 || calls.fetch[0] !== 'vendor/pico/facefinder') throw new Error('detector must come from vendor/pico/facefinder: ' + calls.fetch);
+  await listeners['imgFaceBtn:click']();
+  if (calls.fetch.length !== 1 || calls.unpack !== 1) throw new Error('the detector data must be loaded only once');
+  if (calls.render !== 2) throw new Error('every detection must re-render');
+  if (!/Found 1 face/.test(els.imgFaceStatus.textContent) || !/blur|Solid/i.test(els.imgFaceStatus.textContent)) throw new Error('status text: ' + els.imgFaceStatus.textContent);
+  els.imgFaceStyle.value = 'blur';
+  listeners['imgFaceStyle:change']();
+  if (api.style() !== 'blur' || !/Warning/.test(els.imgFaceStatus.textContent)) throw new Error('choosing blur must show the honesty warning');
+  els.imgFaceStyle.value = 'nonsense';
+  listeners['imgFaceStyle:change']();
+  if (api.style() !== 'solid') throw new Error('an unknown style must fall back to solid');
+  api.resetFaces();
+  if (api.regions().length !== 0 || api.status() !== null) throw new Error('resetFaces must forget detections');
+});
+await checkAsync('faces: when the detector cannot be loaded the person is told and drawing still works', async () => {
+  const listeners = {}, els = {};
+  const el = (id) => els[id] || (els[id] = { id, value: 'solid', textContent: '', style: {}, disabled: false, addEventListener(t, fn) { listeners[id + ':' + t] = fn; } });
+  const i18nFacesCode = extractBetween('// I18N_FACES_START', '// I18N_FACES_END', 'I18N_FACES');
+  const { I18N_FACES } = new Function(`${i18nFacesCode}\nreturn { I18N_FACES };`)();
+  const source = `
+    let currentLang = 'de';
+    const I18N = { de: I18N_FACES_DE };
+    let originalImageBitmap = { naturalWidth: 10, naturalHeight: 10 };
+    let renders = 0;
+    function renderImageRedactions() { renders++; }
+    ${faceModelCode}
+    ${faceUiCode}
+    return { status: () => imgFaceStatus, renders: () => renders, btn: () => imgFaceBtn };
+  `;
+  const origError = console.error; console.error = () => {};
+  try {
+    const api = new Function('document', 'pico', 'fetch', 'I18N_FACES_DE', 'clampRect', 'rectIsUsable', 'paintRedactionBoxes', source)({ getElementById: el }, {}, async () => ({ ok: false, status: 404 }), I18N_FACES.de, () => ({}), () => true, () => {});
+    await listeners['imgFaceBtn:click']();
+    if (api.status().kind !== 'error' || !/file:\/\//.test(els.imgFaceStatus.textContent)) throw new Error('the error must be explained: ' + els.imgFaceStatus.textContent);
+    if (els.imgFaceBtn.disabled) throw new Error('the button must work again after a failure');
+    if (api.renders() !== 1) throw new Error('must still re-render');
+  } finally { console.error = origError; }
+});
+check('faces: translations exist in all four languages with the same keys, and the cover-style labels are honest', () => {
+  const i18nFacesCode = extractBetween('// I18N_FACES_START', '// I18N_FACES_END', 'I18N_FACES');
+  const { I18N_FACES } = new Function(`${i18nFacesCode}\nreturn { I18N_FACES };`)();
+  const keys = Object.keys(I18N_FACES.en).sort().join();
+  for (const l of ['vi', 'en', 'fr', 'de']) if (Object.keys(I18N_FACES[l]).sort().join() !== keys) throw new Error('keys differ in ' + l);
+  if (!/irreversible/i.test(I18N_FACES.en.faceStyleSolid)) throw new Error('solid must be labelled irreversible');
+  if (!/not guaranteed/i.test(I18N_FACES.en.faceStyleMosaic)) throw new Error('mosaic must say it is not guaranteed');
+  if (!/cosmetic/i.test(I18N_FACES.en.faceStyleBlur) || !/reversible/i.test(I18N_FACES.en.faceStyleBlur)) throw new Error('blur must be labelled cosmetic / partly reversible');
+  for (const l of ['vi', 'en', 'fr', 'de']) for (const k of ['faceNote_solid', 'faceNote_mosaic', 'faceNote_blur']) if (!I18N_FACES[l][k]) throw new Error('missing ' + k + ' in ' + l);
+});
+await checkAsync('guard: faces share the one region list, load only from vendor/, and the vendored detector is exactly the audited files', async () => {
+  const render = html.slice(html.indexOf('function renderImageRedactions()'), html.indexOf("imgScanBtn.addEventListener('click'"));
+  if (!render.includes('combineRegions(found.regions.concat(imgFaceRegions), imgRegionStore)')) throw new Error('faces must join the same region list as OCR and drawn regions');
+  if (!render.includes('paintAllRegions(imgCtx, lastImgEffective, imgFaceStyle);')) throw new Error('the export must be painted by paintAllRegions');
+  if (/innerHTML|insertAdjacentHTML|outerHTML/.test(faceUiCode)) throw new Error('the face UI writes markup');
+  const urls = faceUiCode.match(/fetch\(([^)]*)\)/g) || [];
+  if (urls.length !== 1 || !urls[0].includes("'vendor/pico/facefinder'")) throw new Error('the only fetch must be the local vendor file: ' + urls);
+  if (!html.includes('<script src="vendor/pico/pico.js"></script>')) throw new Error('pico.js must be loaded from vendor/');
+  const { createHash } = await import('node:crypto');
+  const sha = (f) => createHash('sha256').update(readFileSync(path.join(__dirname, '..', 'vendor', 'pico', f))).digest('hex');
+  if (sha('pico.js') !== '785b981cc79e5fa3f7557dc3fa7773629d7529994d7627de41b77d8687649309') throw new Error('vendor/pico/pico.js is not the audited file');
+  if (sha('facefinder') !== 'd8014993e7298c7b1865d1f8b855d6dbf4ec5c808bf879e2091ab6837abf90cd') throw new Error('vendor/pico/facefinder is not the audited file');
+  const notice = readFileSync(path.join(__dirname, '..', 'vendor', 'NOTICE.md'), 'utf8');
+  if (!/pico/i.test(notice) || !notice.includes('d8014993e7298c7b1865d1f8b855d6dbf4ec5c808bf879e2091ab6837abf90cd')) throw new Error('vendor/NOTICE.md must record the detector and its hash');
+  for (const id of ['imgFaceBar', 'imgFaceBtn', 'imgFaceStyle', 'imgFaceStatus']) if (!html.includes(`id="${id}"`)) throw new Error('missing #' + id);
 });
 
 // --- release consistency (v1.2.1, step 4) --------------------------------
