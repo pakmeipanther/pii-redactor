@@ -2601,6 +2601,7 @@ check('release: the version label in the UI, README title, README "current" entr
   if (!changelogText.includes(`[${ui}]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v${ui}`)) throw new Error(`CHANGELOG has no link reference for ${ui}`);
 });
 
+const { I18N_FACES: I18N_FACES_GUIDE } = new Function(`${extractBetween('// I18N_FACES_START', '// I18N_FACES_END', 'I18N_FACES')}\nreturn { I18N_FACES };`)();
 check('release: the four user guides have the same structure and quote the exact UI labels of their own language', () => {
   const counts = {};
   for (const l of LANGS) {
@@ -2612,6 +2613,7 @@ check('release: the four user guides have the same structure and quote the exact
     if (!/ICC/.test(text)) throw new Error(`docs/guide.${l}.md does not mention the ICC note`);
     if (!/WebAssembly/.test(text) || !/Lockdown/.test(text)) throw new Error(`docs/guide.${l}.md does not mention WebAssembly / Lockdown Mode`);
     if (!text.includes(I18N_REGIONS[l].drawToggle)) throw new Error(`docs/guide.${l}.md does not quote the drawing tool label: "${I18N_REGIONS[l].drawToggle}"`);
+    if (!text.includes(I18N_FACES_GUIDE[l].faceDetectBtn)) throw new Error(`docs/guide.${l}.md does not quote the face detection label: "${I18N_FACES_GUIDE[l].faceDetectBtn}"`);
     if (!text.includes(I18N_CLEAR_TERMS[l].clearAllBtn)) throw new Error(`docs/guide.${l}.md does not quote the delete-all label: "${I18N_CLEAR_TERMS[l].clearAllBtn}"`);
     for (const [what, label] of [['thorough scan label', I18N_OCR[l].imgThoroughLabel], ['OCR text box title', I18N_OCR[l].imgOcrTextTitle]]) {
       const quoted = label.split(' (')[0];
@@ -2619,6 +2621,27 @@ check('release: the four user guides have the same structure and quote the exact
     }
   }
   if (new Set(Object.values(counts)).size !== 1) throw new Error('guides have different numbers of sections: ' + JSON.stringify(counts));
+});
+
+check('release: every guide covers all ten features and quotes the buttons of each one exactly as its own interface spells them', () => {
+  const faces = I18N_FACES_GUIDE;
+  const main = new Function(`${extractBetween('const I18N = {', 'const ruleListEl', 'I18N main literal')}\nreturn I18N;`)();
+  const wanted = (l) => [
+    ['text scan', main[l].scanBtn], ['text download', main[l].downloadBtn], ['add term', main[l].addBtn], ['case-sensitive', main[l].caseSensitiveLabel],
+    ['export list', main[l].exportBtn], ['import list', main[l].importBtn], ['delete-all: export first', main[l].clearExportFirst],
+    ['delete-all: delete anyway', main[l].clearDeleteAnyway], ['delete-all: delete now', main[l].clearDeleteNow],
+    ['image scan', main[l].imgScanBtn], ['image download', main[l].imgDownloadBtn], ['image to PDF', main[l].imgDownloadPdfBtn],
+    ['undo', main[l].undoBtn], ['redo', main[l].redoBtn], ['remove drawn areas', main[l].clearManualBtn],
+    ['face style label', faces[l].faceStyleLabel.replace(/:$/, '')], ['solid black', faces[l].faceStyleSolid], ['mosaic', faces[l].faceStyleMosaic], ['blur', faces[l].faceStyleBlur],
+    ['PDF scan', main[l].pdfScanBtn], ['PDF download', main[l].pdfDownloadBtn], ['Word/PowerPoint convert', main[l].docxScanBtn],
+    ['suspect list title', main[l].imgSuspectListTitle], ['metadata show/hide', main[l].metaHideValues], ['detected prefix', main[l].detectedTypePrefix.replace(/\s*:$/, '')]
+  ];
+  for (const l of LANGS) {
+    const text = readRepoFile(`docs/guide.${l}.md`);
+    for (const [what, label] of wanted(l)) if (!text.includes(label)) throw new Error(`docs/guide.${l}.md does not quote "${what}": "${label}"`);
+    if ((text.match(/^## /gm) || []).length < 14) throw new Error(`docs/guide.${l}.md should have a section per feature`);
+    if (!text.includes('images/demo.gif')) throw new Error(`docs/guide.${l}.md should show the demo GIF`);
+  }
 });
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {

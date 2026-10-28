@@ -409,7 +409,7 @@
     <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
          overwrites a [data-i18n] element's whole textContent on every
          language switch, which would wipe out a nested span instantly. -->
-    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.2.1</span></h1>
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.3.0</span></h1>
     <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
   </div>
   <select id="langSelect" aria-label="Language">
@@ -676,7 +676,7 @@ const I18N = {
     imgProgressRecognizing: p => `Đang nhận diện chữ trong ảnh... ${p}%`,
     imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
     imgProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong ảnh.',
-    imgProgressError: 'Lỗi khi xử lý ảnh — xem Ghi chú Bước 4 (cần chạy qua local server, không phải file://).',
+    imgProgressError: 'Lỗi khi xử lý ảnh — xem Bước 3 trong hướng dẫn sử dụng (cần chạy qua local server, không phải file://).',
     sectionPdf: 'File PDF',
     pdfDesc: 'Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).',
     pdfOcrCheckboxLabel: 'Cũng chạy OCR trên từng trang — chỉ cần bật nếu PDF là file scan/ảnh (không có lớp chữ chọn được), sẽ chậm hơn',
@@ -792,7 +792,7 @@ const I18N = {
     imgProgressRecognizing: p => `Recognizing text in image... ${p}%`,
     imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
     imgProgressNone: 'No sensitive regions found in the image.',
-    imgProgressError: 'Error processing the image — see the Step 4 note (must run via a local server, not file://).',
+    imgProgressError: 'Error processing the image — see Step 3 of the user guide (must run via a local server, not file://).',
     sectionPdf: 'PDF file',
     pdfDesc: 'Each page is re-rendered as an image, sensitive regions are blacked out directly on that image, and the pages are reassembled into a new PDF — no original text layer or metadata survives (the exported file is no longer selectable/copyable text, like a scanned document).',
     pdfOcrCheckboxLabel: 'Also run OCR on each page — only needed if the PDF is a scan/image (no selectable text layer), slower',
@@ -908,7 +908,7 @@ const I18N = {
     imgProgressRecognizing: p => `Reconnaissance du texte dans l'image... ${p}%`,
     imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
     imgProgressNone: 'Aucune zone sensible trouvée dans l\'image.',
-    imgProgressError: 'Erreur lors du traitement de l\'image — voir la note de l\'étape 4 (doit passer par un serveur local, pas file://).',
+    imgProgressError: 'Erreur lors du traitement de l\'image — voir l\'étape 3 du guide d\'utilisation (doit passer par un serveur local, pas file://).',
     sectionPdf: 'Fichier PDF',
     pdfDesc: 'Chaque page est redessinée en image, les zones sensibles sont noircies directement sur cette image, puis les pages sont réassemblées en un nouveau PDF — aucune couche de texte ni métadonnée d\'origine ne subsiste (le fichier exporté n\'est plus sélectionnable/copiable, comme un document scanné).',
     pdfOcrCheckboxLabel: 'Exécuter aussi l\'OCR sur chaque page — utile seulement si le PDF est un scan/image (pas de couche de texte sélectionnable), plus lent',
@@ -934,7 +934,7 @@ const I18N = {
     docxProgressDone: n => `Terminé — ${n} zone(s) sensible(s) masquée(s) et nouveau PDF créé.`,
     docxProgressNone: 'Aucune information sensible trouvée dans le fichier Word — un PDF a tout de même été créé à partir du contenu original.',
     docxProgressError: 'Erreur lors du traitement du fichier Word — il est peut-être corrompu ou n\'est pas un .docx valide.',
-    docxDownloadName: 'texte-cavarde.pdf',
+    docxDownloadName: 'texte-caviarde.pdf',
     sectionPptx: 'Fichier PowerPoint (.pptx)',
     pptxDesc: 'Extrait le texte visible des diapositives (les notes du présentateur ne sont pas incluses), masque les informations sensibles, puis génère un PDF simple — suffisant à transmettre à une IA. Ce PDF ne conserve PAS la mise en page, les images, les graphiques ni les animations d\'origine.',
     pptxScanBtn: 'Convertir et caviarder → PDF',
@@ -1024,7 +1024,7 @@ const I18N = {
     imgProgressRecognizing: p => `Text im Bild wird erkannt... ${p}%`,
     imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
     imgProgressNone: 'Keine sensiblen Bereiche im Bild gefunden.',
-    imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Hinweis zu Schritt 4 (muss über einen lokalen Server laufen, nicht file://).',
+    imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Schritt 3 im Benutzerhandbuch (muss über einen lokalen Server laufen, nicht file://).',
     sectionPdf: 'PDF-Datei',
     pdfDesc: 'Jede Seite wird neu als Bild gerendert, sensible Bereiche werden direkt auf diesem Bild geschwärzt, und die Seiten werden zu einem neuen PDF zusammengesetzt — es bleibt keine ursprüngliche Textebene oder Metadaten erhalten (die exportierte Datei ist nicht mehr auswählbar/kopierbar, wie ein gescanntes Dokument).',
     pdfOcrCheckboxLabel: 'Auch OCR auf jeder Seite ausführen — nur nötig, wenn das PDF ein Scan/Bild ist (keine auswählbare Textebene), langsamer',

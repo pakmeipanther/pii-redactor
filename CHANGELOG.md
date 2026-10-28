@@ -8,7 +8,20 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
-## [Unreleased]
+## [1.3.0] — 2026-10-28
+
+### Changed
+
+- **User guides rewritten feature by feature** in English, Tiếng Việt,
+  Deutsch and Français: a map of the screen, which features need the
+  local server, then one section per feature (text, custom terms and
+  "Delete all terms", suspected secrets, images, the region list, drawing
+  by hand, faces, PDF, Word/PowerPoint, metadata check), plus a
+  troubleshooting table and good habits. A test checks that every guide
+  quotes the buttons of its own language exactly.
+- The image error message now points to "Step 3" of the guide (the local
+  server) instead of a step that no longer existed; the French Word/
+  PowerPoint output file names are spelled correctly (`texte-caviarde.pdf`).
 
 ### Added
 
@@ -57,7 +70,7 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 161 to 206 tests: face detection (box mapping, mosaic and blur on real pixels, painter, UI with a stub detector, honest labels, vendored-file hashes), the pure region model (geometry,
+- Test suite grown from 161 to 207 tests: face detection (box mapping, mosaic and blur on real pixels, painter, UI with a stub detector, honest labels, vendored-file hashes), the pure region model (geometry,
   the undo/redo store, the painter, the drawing tool), and the pointer,
   keyboard and region-list code run against a fake DOM.
   The delete-all flow is tested exhaustively: no sequence of actions
@@ -252,6 +265,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.3.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0
 [1.2.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1
 [1.2.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0

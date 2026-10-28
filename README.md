@@ -1,4 +1,4 @@
-# PII Redactor <sup>v1.2.1</sup>
+# PII Redactor <sup>v1.3.0</sup>
 
 A single-file, client-side tool that strips personal data and internal
 infrastructure secrets out of text, Word documents, PowerPoint decks,
@@ -6,7 +6,7 @@ PDFs, and screenshots **before** that content is pasted into any AI
 tool — so sensitive information never leaves your machine in the
 first place.
 
-> Status (v1.2.1): one unified input (paste text, or drop/pick an
+> Status (v1.3.0): one unified input (paste text, or drop/pick an
 > image, PDF, Word, or PowerPoint file — the type is auto-detected,
 > no need to pick the right box yourself), text redaction (regex +
 > custom term list + entropy-based secret detection), image/screenshot
@@ -15,7 +15,9 @@ first place.
 > working, with a synthetic-data test suite and a demo GIF above.
 > Since v1.2.1 it also reports the metadata a loaded file carries and
 > re-scans every export before download (see
-> [Architecture](#architecture)).
+> [Architecture](#architecture)). Since v1.3.0 images get one editable
+> list of regions (OCR hits, detected faces and hand-drawn areas), face
+> detection with honest cover styles, and a "Delete all terms" button.
 > Local NER was investigated and deferred for now — see
 > [Known limitations](#known-limitations) for why. Looking for an
 > earlier release instead? See [Versioning](#versioning) below.
@@ -30,7 +32,7 @@ first place.
 > layout), save your Word/PowerPoint file as a PDF yourself first,
 > then drop that PDF in.
 
-![Demo: pasting text with fake PII, scanning, adding a custom internal term, and switching the UI to German](docs/images/demo.gif)
+![Demo: dropping a fake staff badge into the image panel, OCR blacking out the email, phone and IP, detecting the face and covering it with a mosaic, confirming suspected secrets, drawing an extra area by hand, and reviewing the single list of regions](docs/images/demo.gif)
 
 *(All data shown is synthetic/fake, invented for this recording —
 never a real person, company, or secret.)*
@@ -249,7 +251,7 @@ colours, such as white on orange or orange on grey. Boxes from those
 passes are mapped back to the original image, a region is never filled
 or counted twice, and the extra passes never add entropy suspects. In those extra passes a pattern-based match (phone or card number) must also look like real digits, because noise such as "1111110)" would otherwise blacken a bogus box. A collapsible box under the image shows what the OCR actually read and lists every blacked-out region with its reason, the pass that read it and the text it saw, so both a miss and an unexpected black box can be explained.
 
-**Face detection (v1.3, unreleased):** "Detect faces" runs a small pure-JavaScript
+**Face detection (v1.3.0):** "Detect faces" runs a small pure-JavaScript
 detector (pico.js, MIT, vendored in `vendor/pico/`, no WebAssembly, so it also works
 in Safari Lockdown Mode) on a copy of the image. Each face becomes a region in the
 same list as OCR hits and hand-drawn areas, so it can be switched off, undone and
@@ -262,7 +264,7 @@ looking roughly at the camera, which is why the review step and the drawing tool
 stay. The detector files are pinned by sha256 in a test and documented, including
 the licence history, in `vendor/NOTICE.md`.
 
-**Regions and hand-drawn areas (v1.3, unreleased):** everything the
+**Regions and hand-drawn areas (v1.3.0):** everything the
 image panel will cover is a region — a box in the original image's
 pixels — in one list. The automatic detectors (OCR, rules, custom terms,
 confirmed entropy suspects) add regions; the person adds more by
@@ -425,7 +427,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3 (unreleased): 206 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3.0: 207 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -472,12 +474,12 @@ node test/run-tests.mjs
       file carries (with values and a Show/Hide toggle); every export is
       re-scanned and the download is blocked if anything identifying
       remains (EN/FR/DE/VI)
-- [x] **v1.3** (unreleased) Image regions: one editable list of regions
+- [x] **v1.3.0** Image regions: one editable list of regions
       (automatic + hand-drawn), a drawing tool with undo/redo, a region
       list with on/off switches and highlighting; works without OCR
-- [x] **v1.3** (unreleased) "Delete all terms" for the custom list, with a
+- [x] **v1.3.0** "Delete all terms" for the custom list, with a
       warning and an export offer before anything is deleted
-- [x] **v1.3** (unreleased) Face detection (pico.js, pure JavaScript) as
+- [x] **v1.3.0** Face detection (pico.js, pure JavaScript) as
       regions in the same list, with three cover styles and honest labels
       about which ones are irreversible
 
@@ -499,11 +501,17 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   detection; no change to the underlying detection/redaction pipelines.
   Tag:
   [`v1.2.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0).
-- **v1.2.1** (current) — metadata report and export verification: shows the
+- **v1.2.1** — metadata report and export verification: shows the
   metadata a loaded file carries, builds every PDF without pdf-lib's default
   Producer/Creator/dates, and re-scans every export, blocking the download
   if anything identifying is left. Tag:
   [`v1.2.1`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1).
+- **v1.3.0** (current) — image regions and faces: one editable list of
+  regions (OCR, detected faces, hand-drawn areas) with undo/redo; face
+  detection (pico.js, pure JavaScript) with solid / mosaic / blur cover
+  styles labelled by how reversible they are; "Delete all terms" with a
+  backup offer. Tag:
+  [`v1.3.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0).
 
 To use a specific version instead of the latest `main`, download the
 `index.html` (plus the matching `vendor/` folder) from that tag's
