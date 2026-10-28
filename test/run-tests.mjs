@@ -2591,6 +2591,57 @@ const readRepoFile = rel => readFileSync(path.join(__dirname, '..', rel), 'utf8'
 const readmeText = readRepoFile('README.md');
 const changelogText = readRepoFile('CHANGELOG.md');
 
+// --- logo, tagline, CSP (v1.3.1) ---------------------------------------------
+const logoSvgFile = readRepoFile('docs/images/logo.svg').trim();
+const drawingOf = (svg) => (svg.match(/<(?:path|rect)\b[^>]*>/g) || []).join('');
+const logoDrawing = drawingOf(logoSvgFile);
+
+check('logo: the same drawing is in the SVG file, the page header and the data: URI favicon, and it cannot load anything', () => {
+  if (!/^<svg [^>]*viewBox="[^"]+"/.test(logoSvgFile)) throw new Error('logo.svg must start with an <svg> that has a viewBox');
+  if (!logoDrawing.includes('M619 320 L965 192')) throw new Error('the logo drawing could not be found');
+  for (const svg of [logoSvgFile]) if (/<script|<foreignObject|<image|<use|xlink:href|\bhref=|url\(|@import|\son\w+=/i.test(svg)) throw new Error('the logo SVG must be pure shapes (no script, image, link, url() or event attribute)');
+  const header = (html.match(/<svg class="logo"[\s\S]*?<\/svg>/) || [])[0];
+  if (!header) throw new Error('the page header must contain the inline logo');
+  if (drawingOf(header) !== logoDrawing) throw new Error('the header logo differs from docs/images/logo.svg');
+  if (!/aria-hidden="true"/.test(header)) throw new Error('the decorative header logo should be hidden from screen readers (the title already names the tool)');
+  const fav = (html.match(/<link rel="icon" type="image\/svg\+xml" href="(data:image\/svg\+xml,[^"]+)">/) || [])[1];
+  if (!fav) throw new Error('the favicon must be a data: URI');
+  const decoded = decodeURIComponent(fav.slice('data:image/svg+xml,'.length)).replace(/'/g, '"');
+  if (drawingOf(decoded) !== logoDrawing) throw new Error('the favicon differs from docs/images/logo.svg');
+  if (/https?:/.test(decoded.replace('http://www.w3.org/2000/svg', ''))) throw new Error('the favicon contains a URL other than the SVG namespace');
+  if (!readRepoFile('README.md').includes('docs/images/logo.svg')) throw new Error('the README should show the logo');
+});
+
+check('tagline: the header shows it, and all four languages carry the agreed wording and a description', () => {
+  if (!/<div class="tagline" data-i18n="tagline">/.test(html)) throw new Error('the header needs a tagline element');
+  const main = new Function(`${extractBetween('const I18N = {', 'const ruleListEl', 'I18N main literal')}\nreturn I18N;`)();
+  const expected = { en: 'Share documents. Not identities.', vi: 'Chia sẻ tài liệu, bảo vệ danh tính.', de: 'Dokumente teilen. Identitäten schützen.', fr: "Partagez le document, pas l'identité." };
+  for (const l of LANGS) {
+    if (main[l].tagline !== expected[l]) throw new Error(`tagline in ${l}: "${main[l].tagline}"`);
+    if (!main[l].subtitle || main[l].subtitle.length < 60) throw new Error(`description missing in ${l}`);
+    if (/AI|KI|IA/.test(main[l].subtitle.replace(/PowerPoint/g, ''))) throw new Error(`the description in ${l} should not limit the tool to AI use`);
+  }
+  if (!readRepoFile('README.md').includes(expected.en)) throw new Error('the README should carry the tagline');
+});
+
+check('csp: the policy blocks every outbound route, and the page references no external resource', () => {
+  const csp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/) || [])[1];
+  if (!csp) throw new Error('the Content-Security-Policy meta tag is missing');
+  const directive = (name) => (csp.split(';').map(s => s.trim()).find(s => s.startsWith(name + ' ')) || '').slice(name.length + 1);
+  if (directive('default-src') !== "'self'") throw new Error('default-src must be only \'self\'');
+  if (directive('connect-src') !== "'self'") throw new Error('connect-src must be only \'self\' (no outbound requests)');
+  if (directive('form-action') !== "'none'") throw new Error('forms must not be able to submit anywhere');
+  if (/\*|https?:/.test(csp)) throw new Error('the policy must not allow any wildcard or external origin');
+  if (!directive('img-src').split(' ').includes('data:')) throw new Error('img-src needs data: (the favicon)');
+  const external = [];
+  for (const m of html.matchAll(/<(script|img|iframe|source|video|audio|embed|object)\b[^>]*\bsrc="([^"]*)"/g)) external.push(m[2]);
+  for (const m of html.matchAll(/<link\b[^>]*\bhref="([^"]*)"/g)) if (!m[1].startsWith('data:')) external.push(m[1]);
+  for (const m of html.matchAll(/url\(\s*['"]?([^)'"]+)/g)) external.push(m[1]);
+  for (const m of html.matchAll(/@import\s+['"]?([^'";\s]+)/g)) external.push(m[1]);
+  const bad = external.filter(u => /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(u) && !u.startsWith('data:') && !u.startsWith('blob:'));
+  if (bad.length) throw new Error('external resources referenced: ' + bad.join(', '));
+});
+
 check('release: the version label in the UI, README title, README "current" entry and CHANGELOG all agree', () => {
   const ui = (html.match(/<span class="version-tag">v(\d+\.\d+\.\d+)<\/span>/) || [])[1];
   const readmeTitle = (readmeText.match(/^# PII Redactor <sup>v(\d+\.\d+\.\d+)<\/sup>/m) || [])[1];

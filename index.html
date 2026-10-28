@@ -21,6 +21,8 @@
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; form-action 'none';">
 <title>PII Redactor</title>
+<!-- Favicon: the same logo as docs/images/logo.svg, embedded as a data: URI so no file is fetched (img-src allows data:). -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='66 66 1800 1800' role='img' aria-label='PII Redactor logo: a shield around a document with one line blacked out'%3E%3Crect x='66' y='66' width='1800' height='1800' rx='280' fill='%23fff'/%3E%3Cpath fill='%23183a6e' d='M619 320 L965 192 L1585 382 V1050 C1585 1400 1280 1630 965 1740 C650 1630 347 1400 347 1050 V618 H483 V1030 C483 1300 700 1480 965 1596 C1230 1480 1449 1300 1449 1030 V492 L965 339 L619 459 Z'/%3E%3Cpath fill='%23ffaa28' d='M347 382 L579 331 V468 L483 490 V580 H347 Z'/%3E%3Cpath fill='%23fff' stroke='%23183a6e' stroke-width='57' stroke-linejoin='miter' d='M647 595 H1140 L1283 738 V1362 H647 Z'/%3E%3Cpath fill='none' stroke='%23183a6e' stroke-width='57' d='M1140 595 V725 H1283'/%3E%3Crect x='773' y='811' width='259' height='59' fill='%23183a6e'/%3E%3Crect x='773' y='946' width='386' height='116' fill='%23000'/%3E%3Crect x='773' y='1130' width='259' height='58' fill='%23183a6e'/%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #0f1115;
@@ -61,7 +63,12 @@
     margin-left: 8px;
     vertical-align: middle;
   }
+  .brand { display: flex; gap: 14px; align-items: flex-start; }
+  .brand .logo { width: 56px; height: 56px; flex: none; border-radius: 12px; }
+  .brand-text { min-width: 0; }
+  .tagline { font-size: 17px; font-weight: 600; color: var(--text); margin: 2px 0 4px 0; }
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  @media (max-width: 560px) { .brand .logo { width: 44px; height: 44px; } .tagline { font-size: 15px; } }
   .footer-author { margin-top: 4px; }
   select#langSelect {
     background: var(--panel);
@@ -405,12 +412,17 @@
 <body>
 
 <div class="topbar">
-  <div>
+  <div class="brand">
+    <!-- The logo is inline SVG (same drawing as docs/images/logo.svg): no file is fetched. -->
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="66 66 1800 1800" aria-hidden="true" focusable="false"><rect x="66" y="66" width="1800" height="1800" rx="280" fill="#fff"/><path fill="#183a6e" d="M619 320 L965 192 L1585 382 V1050 C1585 1400 1280 1630 965 1740 C650 1630 347 1400 347 1050 V618 H483 V1030 C483 1300 700 1480 965 1596 C1230 1480 1449 1300 1449 1030 V492 L965 339 L619 459 Z"/><path fill="#ffaa28" d="M347 382 L579 331 V468 L483 490 V580 H347 Z"/><path fill="#fff" stroke="#183a6e" stroke-width="57" stroke-linejoin="miter" d="M647 595 H1140 L1283 738 V1362 H647 Z"/><path fill="none" stroke="#183a6e" stroke-width="57" d="M1140 595 V725 H1283"/><rect x="773" y="811" width="259" height="59" fill="#183a6e"/><rect x="773" y="946" width="386" height="116" fill="#000"/><rect x="773" y="1130" width="259" height="58" fill="#183a6e"/></svg>
+    <div class="brand-text">
     <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
          overwrites a [data-i18n] element's whole textContent on every
          language switch, which would wipe out a nested span instantly. -->
-    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.3.0</span></h1>
-    <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.3.1</span></h1>
+    <div class="tagline" data-i18n="tagline">Share documents. Not identities.</div>
+    <div class="subtitle" data-i18n="subtitle">Remove personal data and secrets from text, images, PDFs, Word and PowerPoint files — entirely in your browser. Nothing leaves your computer.</div>
+    </div>
   </div>
   <select id="langSelect" aria-label="Language">
     <option value="en">English</option>
@@ -643,7 +655,8 @@
 const I18N = {
   vi: {
     title: 'PII Redactor',
-    subtitle: 'Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.',
+    tagline: "Chia sẻ tài liệu, bảo vệ danh tính.",
+    subtitle: "Loại bỏ dữ liệu cá nhân và bí mật khỏi văn bản, ảnh, PDF, Word và PowerPoint — hoàn toàn trong trình duyệt của bạn. Không có gì rời khỏi máy tính của bạn.",
     badge: '● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn',
     section1: '1. Dán văn bản, hoặc kéo-thả / chọn file (ảnh, PDF, Word, PowerPoint)',
     placeholder: 'Dán văn bản có chứa email, IP, số điện thoại, connection string database... vào đây',
@@ -759,7 +772,8 @@ const I18N = {
   },
   en: {
     title: 'PII Redactor',
-    subtitle: 'Remove sensitive information from text before handing it to AI.',
+    tagline: "Share documents. Not identities.",
+    subtitle: "Remove personal data and secrets from text, images, PDFs, Word and PowerPoint files — entirely in your browser. Nothing leaves your computer.",
     badge: '● No network connection is made — all processing happens in your browser',
     section1: '1. Paste text, or drop / choose a file (image, PDF, Word, PowerPoint)',
     placeholder: 'Paste text containing emails, IPs, phone numbers, database connection strings...',
@@ -875,7 +889,8 @@ const I18N = {
   },
   fr: {
     title: 'PII Redactor',
-    subtitle: "Supprimez les informations sensibles d'un texte avant de le transmettre à une IA.",
+    tagline: "Partagez le document, pas l'identité.",
+    subtitle: "Supprimez les données personnelles et les secrets des textes, images, PDF, fichiers Word et PowerPoint — entièrement dans votre navigateur. Rien ne quitte votre ordinateur.",
     badge: "● Aucune connexion réseau n'est établie — tout le traitement se fait dans votre navigateur",
     section1: '1. Collez du texte, ou glissez-déposez / choisissez un fichier (image, PDF, Word, PowerPoint)',
     placeholder: 'Collez un texte contenant des emails, IP, numéros de téléphone, chaînes de connexion à une base de données...',
@@ -991,7 +1006,8 @@ const I18N = {
   },
   de: {
     title: 'PII Redactor',
-    subtitle: 'Entfernen Sie sensible Informationen aus Text, bevor er an eine KI übergeben wird.',
+    tagline: "Dokumente teilen. Identitäten schützen.",
+    subtitle: "Entfernen Sie persönliche Daten und Geheimnisse aus Text, Bildern, PDF-, Word- und PowerPoint-Dateien — vollständig in Ihrem Browser. Nichts verlässt Ihren Computer.",
     badge: '● Es wird keine Netzwerkverbindung hergestellt — die gesamte Verarbeitung erfolgt in Ihrem Browser',
     section1: '1. Text einfügen oder Datei per Drag & Drop / Auswahl hinzufügen (Bild, PDF, Word, PowerPoint)',
     placeholder: 'Text mit E-Mails, IPs, Telefonnummern, Datenbank-Connection-Strings einfügen...',

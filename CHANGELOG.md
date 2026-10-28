@@ -8,6 +8,33 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [1.3.1] — 2026-10-28
+
+### Added
+
+- **Logo:** a shield around a document with one line blacked out, drawn as
+  SVG (`docs/images/logo.svg`). It is inline in the page header and
+  embedded as a `data:` URI favicon, so no extra file is fetched and the
+  Content-Security-Policy is unchanged.
+- **Tagline** "Share documents. Not identities." (Tiếng Việt: "Chia sẻ tài
+  liệu, bảo vệ danh tính."; Deutsch: "Dokumente teilen. Identitäten
+  schützen."; Français: "Partagez le document, pas l'identité.").
+
+### Changed
+
+- The description under the title no longer says the tool is only for
+  text going to an AI; it now names the file types and the "nothing leaves
+  your computer" promise, in all four languages.
+- README: logo, tagline and a short "Who it is for" paragraph that makes no
+  legal promise.
+
+### Testing
+
+- Test suite grown from 207 to 210 tests: the logo drawing is the same in the
+  page, the favicon and the SVG file and contains nothing that could load
+  a resource; the tagline is present in four languages; the
+  Content-Security-Policy and "no external resource" guards.
+
 ## [1.3.0] — 2026-10-28
 
 ### Changed
@@ -265,6 +292,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.3.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1
 [1.3.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0
 [1.2.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1
 [1.2.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0
