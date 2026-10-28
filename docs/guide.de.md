@@ -10,6 +10,21 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 > **Das Wichtigste:** Diese Software stellt keine Internetverbindung her und sendet keinerlei Daten irgendwohin — die gesamte Verarbeitung erfolgt direkt auf Ihrem Computer. Sie können das WLAN beim Benutzen komplett ausschalten, und es funktioniert weiterhin normal — so können Sie dies auch selbst überprüfen.
 
+![PII Redactor Demo: Ein erfundener Mitarbeiterausweis wird gescannt, der Text geschwärzt, das Gesicht mit einem Mosaik abgedeckt und ein zusätzlicher Bereich von Hand gezeichnet](images/demo.gif)
+
+*(Alles in dieser Aufnahme sind erfundene Beispieldaten.)*
+
+**Was das Tool kann, in einer Liste** — jeder Punkt hat unten einen eigenen Abschnitt:
+
+- sensible Angaben in **Text** verbergen (E-Mails, Telefonnummern, IP-Adressen, Schlüssel, Passwörter ...);
+- **Ihre eigene Liste** mit Wörtern führen, die immer verborgen werden (Firmenname, Servernamen ...);
+- **vermutete Passwörter und Geheimnisse** markieren, damit Sie sie bestätigen;
+- sensiblen Text in **Bildern und Screenshots** schwärzen;
+- **Bereiche von Hand** prüfen, abschalten oder hinzufügen, bevor irgendetwas gespeichert wird;
+- **Gesichter** in Bildern finden und abdecken;
+- **PDF**-Dateien bereinigen und **Word**- und **PowerPoint**-Dateien in ein geschwärztes PDF umwandeln;
+- die versteckten **Metadaten** jeder Datei anzeigen und entfernen und jedes Ergebnis vor dem Download noch einmal prüfen.
+
 ## Schritt 1 — Software herunterladen
 
 1. Öffnen Sie Ihren Browser (Firefox oder Brave werden empfohlen — beide sind für Sicherheit/Datenschutz bekannt; Chrome, Safari und Edge funktionieren ebenfalls) und rufen Sie folgende Adresse auf:
@@ -35,24 +50,35 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 1. Ein Fenster fragt nach dem Speicherort — lassen Sie die Standardeinstellung und klicken Sie auf "Extract" (Extrahieren).
 1. Ein neuer, gleichnamiger Ordner erscheint.
 
-## Schritt 2 — Die Textbereinigungsfunktion nutzen
+## Schritt 2 — Die Software öffnen und sich zurechtfinden
 
-*Der einfachste Weg — nichts zu installieren*
+1. Öffnen Sie den in Schritt 1 entpackten Ordner und doppelklicken Sie auf die Datei index.html. Sie öffnet sich in Ihrem Browser.
+1. Wählen Sie oben rechts Ihre Sprache (English, Français, Deutsch oder Tiếng Việt).
+1. Die grüne Zeile unter dem Titel sagt, dass keine Netzwerkverbindung hergestellt wird. Das ist ein Versprechen, das Sie selbst überprüfen können (siehe „Gute Gewohnheiten“ am Ende).
 
-1. Öffnen Sie den in Schritt 1 entpackten Ordner.
-1. Suchen Sie die Datei mit dem Namen index.html.
-1. Doppelklicken Sie darauf — sie öffnet sich automatisch in Ihrem Browser.
-1. Oben rechts im Bildschirm befindet sich eine Sprachauswahl — klicken Sie darauf und wählen Sie bei Bedarf "Deutsch", um die gesamte Oberfläche umzustellen.
-1. Fügen Sie den zu prüfenden Text (z. B. eine E-Mail mit einer Telefonnummer, einer Adresse...) in das große Feld oben ein.
-1. Klicken Sie auf die Schaltfläche "Scannen & markieren".
-1. Schauen Sie sich unten den Bereich "Ergebnis" an — die rot markierten Stellen sind die vom Programm gefundenen sensiblen Informationen.
-1. Wenn alles passt, klicken Sie auf "Bereinigten Text herunterladen (.txt)", um die bereinigte Version zu speichern — diese Version können Sie bedenkenlos in eine KI einfügen.
+Die Seite liest sich von oben nach unten:
 
-> **Hinweis:** Die Software ist nicht zu 100 % perfekt — überprüfen Sie die markierten Stellen immer, bevor Sie ihnen vollständig vertrauen; klicken Sie nicht einfach auf Herunterladen, ohne vorher zu prüfen.
+| Bereich | Wofür er da ist |
+|---|---|
+| **1. Text einfügen oder Datei per Drag & Drop / Auswahl hinzufügen** | Das große Textfeld zum Einfügen von Text und eine einzige Ablagefläche für jede Datei. Den Dateityp wählen Sie nie selbst: Die Software zeigt eine Zeile „Erkannt:“ und öffnet direkt darunter das passende Feld (Bild, PDF, Word oder PowerPoint). |
+| **2. Benutzerdefinierte interne Begriffe** | Ihre eigene Liste von Wörtern, die immer verborgen werden. |
+| **3. Zu erkennende Datentypen** | Hier haken Sie die Arten von Daten an oder ab, nach denen im Text gesucht wird. |
+| **4. Ergebnis** | Der Text mit markierten Funden und die Download-Schaltfläche. |
+| **Feld Bild / PDF / Word / PowerPoint** | Erscheint erst, nachdem Sie eine Datei dieses Typs abgelegt haben. |
 
-## Schritt 3 (fortgeschritten, optional) — Die Funktionen für Bilder und PDF nutzen
+Welche Funktionen laufen per Doppelklick auf index.html, und welche brauchen den lokalen Server aus Schritt 3?
 
-Die beiden Funktionen für Screenshots und PDF-Dateien benötigen aufgrund einer Sicherheitsrichtlinie des Browsers einen kleinen zusätzlichen technischen Schritt. Der Begriff "einen lokalen Server starten" klingt beängstigend, ist aber tatsächlich nur das Eintippen einer einzigen Befehlszeile. Wenn Sie nur die Textfunktion benötigen, können Sie diesen Abschnitt überspringen.
+| Funktion | Doppelklick auf index.html | Lokaler Server nötig (Schritt 3) |
+|---|---|---|
+| Text, eigene Begriffe, vermutete Geheimnisse | ja | — |
+| Word- und PowerPoint-Dateien | ja | — |
+| Bilder und Screenshots (Text darin lesen), Bereiche von Hand zeichnen, Gesichter, PDF | nein (nutzen Sie den lokalen Server) | ja |
+
+Im Zweifel nehmen Sie den lokalen Server: Er funktioniert für alles.
+
+## Schritt 3 (fortgeschritten, nötig für Bilder, Gesichter und PDF) — Einen lokalen Server starten
+
+Das Lesen von Text in Bildern, die Gesichtserkennung und die Verarbeitung von PDF-Dateien brauchen aufgrund einer Sicherheitsrichtlinie des Browsers einen zusätzlichen kleinen technischen Schritt. „Einen lokalen Server starten“ klingt beängstigend, ist aber nur eine einzige Zeile zum Eintippen. Wenn Sie nur Text, Word oder PowerPoint bearbeiten, können Sie diesen Abschnitt überspringen.
 
 #### macOS — lokalen Server starten
 
@@ -64,13 +90,13 @@ Die beiden Funktionen für Screenshots und PDF-Dateien benötigen aufgrund einer
    python3 -m http.server 8000
    ```
 
-   > Erscheint die rote Fehlermeldung "command not found: python3", bedeutet das, dass Python auf Ihrem Rechner nicht installiert ist. Siehe die ausführliche Python-Installationsanleitung weiter unten, oder nutzen Sie einfach nur die Textfunktion aus Schritt 2 — das reicht völlig aus.
+   > Erscheint die rote Fehlermeldung "command not found: python3", bedeutet das, dass Python auf Ihrem Rechner nicht installiert ist. Siehe die ausführliche Python-Installationsanleitung weiter unten, oder nutzen Sie einfach nur die Textfunktion (Funktion 1) — das reicht völlig aus.
 1. Öffnen Sie Ihren Browser und geben Sie in die Adresszeile ein:
 
    ```
    http://localhost:8000
    ```
-1. Jetzt funktionieren alle Funktionen (Text, Bild, PDF), genauso wie in Schritt 2.
+1. Jetzt funktionieren alle Funktionen (Text, Bild, PDF), wie in den Funktionen unten beschrieben.
 1. Wenn Sie fertig sind, wechseln Sie zurück zum Terminal-Fenster, drücken Sie Strg + C, und schließen Sie das Fenster.
 
 #### Windows — lokalen Server starten
@@ -89,7 +115,7 @@ Die beiden Funktionen für Screenshots und PDF-Dateien benötigen aufgrund einer
    ```
    http://localhost:8000
    ```
-1. Nutzen Sie es genauso wie in Schritt 2.
+1. Nutzen Sie es wie in den Funktionen unten beschrieben.
 1. Wenn Sie fertig sind, wechseln Sie zurück zum Eingabeaufforderungsfenster, drücken Sie Strg + C zum Beenden, und schließen Sie das Fenster.
 
 ### Ausführliche Python-Installation (falls Ihr Rechner "Befehl python nicht gefunden" meldet)
@@ -136,24 +162,142 @@ Die beiden Funktionen für Screenshots und PDF-Dateien benötigen aufgrund einer
 
 > Wenn Sie alle Schritte korrekt ausgeführt haben und trotzdem ein Fehler auftritt, muss der Rechner möglicherweise einmal neu gestartet werden, damit die Änderung wirksam wird.
 
-## Schritt 4 (automatisch) — Die Metadaten-Prüfung
+## Funktion 1 — Text schwärzen
 
-„Metadaten" sind Informationen, die unsichtbar in einer Datei stecken: wer sie erstellt hat, mit welchem Programm, wann — und manchmal sogar wo (ein Foto kann den GPS-Standort der Aufnahme enthalten).
+*Die einfachste Funktion — nichts zu installieren.*
 
-- **Sobald du eine Datei hineinziehst** (Bild, PDF, Word oder PowerPoint), erscheint unter der Zeile „Erkannt:" ein Kasten „Metadaten der Originaldatei". Er listet auf, was die Datei mitbringt, samt der echten Werte — so siehst du genau, was weitergegeben worden wäre. Mit „Werte ausblenden" kannst du die Werte verbergen (z. B. beim Bildschirmteilen); die Feldnamen bleiben sichtbar. Die Werte werden nur auf deinem eigenen Computer angezeigt.
-- **Die heruntergeladene Datei wird komplett neu aufgebaut**, daher wird nichts davon übernommen.
-- **Vor jedem Download prüft das Tool das Ergebnis erneut.** Ist alles sauber, siehst du eine grüne Zeile: „Verifiziert: Die exportierte Datei enthält keine identifizierenden Metadaten." Bleibt etwas übrig — oder kann das Tool es nicht sicher beurteilen —, wird der Download **blockiert** und eine rote Zeile nennt den Grund. Dann wird nichts heruntergeladen.
-- Das Farbprofil (ICC) eines Fotos kann grau aufgeführt werden: Es ist rein technisch, identifiziert dich nicht und blockiert nichts.
-- Die Prüfung kann nicht ins Bild selbst hineinschauen und erkennt daher z. B. unsichtbare Wasserzeichen nicht.
+1. Öffnen Sie index.html (Schritt 2).
+1. Fügen Sie den zu prüfenden Text in das große Feld in Bereich 1 ein — zum Beispiel eine E-Mail mit Telefonnummer und Adresse.
+1. Lassen Sie in Bereich 3, „Zu erkennende Datentypen“, die Datentypen angehakt, nach denen gesucht werden soll: E-Mail, IPv4-Adresse, IPv6-Adresse, Telefonnummer, API-Schlüssel / Token, Bankkartennummer, Datenbank-Connection-String (in beiden Formen), Datenbank-Verbindungsport und Passwort / Zufallszeichenfolge (hohe Entropie). Am Anfang sind alle angehakt.
+1. Klicken Sie auf „Scannen & markieren“.
+1. In Bereich 4, „Ergebnis“, sind die Funde rot markiert. Eine Zeile darüber nennt, wie viele gefunden wurden.
+1. Wenn alles passt, klicken Sie auf „Bereinigten Text herunterladen (.txt)“. In der gespeicherten Datei ist jeder Fund durch ein Etikett wie [E-MAIL ENTFERNT] oder [IP ENTFERNT] ersetzt. Das ist die Fassung, die Sie bedenkenlos in ein KI-Tool einfügen können.
+1. „Alles löschen“ leert die Seite, damit Sie von vorn beginnen können.
 
-## Noch ein paar Hinweise
+> **Sehen Sie sich die markierten Stellen immer an, bevor Sie herunterladen.** Ein automatisches Werkzeug ist ein Helfer, nie eine Garantie.
 
-- Die Software unterstützt Sie nur, sie ersetzt nicht Ihre eigene Sorgfalt — überprüfen Sie die markierten Stellen immer, bevor Sie ihnen vollständig vertrauen, denn kein automatisches Werkzeug erkennt 100 % der Fälle.
-- Möchten Sie selbst überprüfen, dass "keine Daten irgendwohin gesendet werden"? Schalten Sie WLAN/Netzwerk Ihres Rechners komplett aus, bevor Sie die Software öffnen — Sie werden sehen, dass sie weiterhin normal funktioniert, was beweist, dass keine Internetverbindung genutzt wird.
-- Ein Fehler, den Sie nicht verstehen? Machen Sie einen Screenshot der Fehlermeldung und bitten Sie eine technisch versierte Person (Freund, Familienmitglied) um Hilfe, anstatt zu raten.
-- Alle heruntergeladenen Daten und "eigene Suchbegriffe" (z. B. ein zu verbergender Firmenname) werden ausschließlich auf Ihrem eigenen Rechner gespeichert — niemand sonst kann sie sehen.
-- Lass bei Bildern und Screenshots „Gründliche Analyse" angekreuzt: Sie ist langsamer, findet aber auch Text auf farbigem Hintergrund. Wähle die OCR-Sprache passend zum Bild, und öffne bei einem übersehenen Treffer das Feld „Was die OCR gelesen hat" unter dem Bild, um zu sehen, ob die Software den Text überhaupt gelesen hat. Dort steht auch, warum jedes schwarze Feld gezeichnet wurde.
-- Safari mit aktiviertem Lockdown Mode (Blockierungsmodus) schaltet eine Technik (WebAssembly) ab, die das Lesen von Text in Bildern braucht. Wenn du eine Meldung zu WebAssembly siehst, nutze für Bilder Firefox oder Chrome; Text, Word- und PowerPoint-Dateien sind nicht betroffen.
-- Wenn die Software in einem Bild etwas übersieht (ein Logo, Handschrift, einen QR-Code, ein Gesicht), schalte „Bereich zum Abdecken zeichnen" ein und ziehe mit der Maus oder dem Finger darüber. Gezeichnete Bereiche werden wie die automatischen vollständig schwarz gefüllt, und du kannst sie rückgängig machen.
-- Um deine Liste eigener Begriffe auf einmal zu leeren, drücke „Alle Begriffe löschen". Die Software warnt dich zuerst, dass die Liste aus diesem Browser entfernt wird, und bietet eine Sicherungsdatei (.json) an; gelöscht wird nur, wenn du es wählst.
-- Um Gesichter zu verbergen, drücke „Gesichter erkennen“, prüfe die gefundenen Rahmen und wähle die Abdeckung. Nur „Vollständig schwarz (nicht umkehrbar)“ zerstört das Gesicht wirklich; „Grobes Mosaik (schwer umkehrbar, keine Garantie)“ ist stark, aber keine Garantie, und „Weichzeichnen (nur kosmetisch — teilweise umkehrbar)“ sollte nicht verwendet werden, wenn jemand anonym bleiben muss. Der Detektor findet am besten Gesichter, die in die Kamera schauen — prüfe das Bild und nutze „Bereich zum Abdecken zeichnen“ für übersehene Gesichter. Wie die Texterkennung braucht er den lokalen Server (nicht file://).
+## Funktion 2 — Ihre eigene Liste interner Begriffe
+
+Die Software kann nicht wissen, dass „srv-db-prod-02“ oder der Name Ihrer Firma geheim ist. Sagen Sie es ihr einmal, und es wird immer verborgen — in Text, in Bildern, in PDF-, Word- und PowerPoint-Dateien — ohne Rückfrage.
+
+1. Geben Sie in Bereich 2, „Benutzerdefinierte interne Begriffe“, ein Wort oder eine Wendung ein und klicken Sie auf „Hinzufügen“. Es erscheint als kleines Etikett; mit „Entfernen“ am Etikett nehmen Sie es wieder heraus.
+1. Haken Sie „Groß-/Kleinschreibung beachten“ nur an, wenn Großbuchstaben eine Rolle spielen (zum Beispiel um „Falcon“ zu verbergen, aber nicht „falcon“).
+1. Die Begriffe werden in Ihrem Browser gespeichert, nur auf Ihrem Computer, und sind beim nächsten Mal noch da.
+1. „Liste exportieren (.json)“ speichert Ihre Liste als Datei (als Sicherung oder um sie auf einen anderen Computer zu übertragen). „Liste importieren (.json)“ lädt eine solche Datei.
+1. In Bildern wird ein Begriff auch erkannt, wenn der Text im Bild andere Akzente hat oder (wenn „Groß-/Kleinschreibung beachten“ nicht angehakt ist) andere Großbuchstaben; Wendungen, die über zwei Zeilen gehen, werden ebenfalls gefunden. Enthalten Ihre Begriffe Buchstaben mit Akzent, die OCR-Sprache ist aber Englisch, warnt Sie die Software — wählen Sie die tatsächliche Sprache des Bildes (Funktion 4).
+
+### Die ganze Liste leeren: „Alle Begriffe löschen“
+
+Bei einer langen Liste ist das Entfernen einzelner Begriffe mühsam. „Alle Begriffe löschen“ entfernt alle auf einmal, aber nie schon beim ersten Klick, denn die Liste lässt sich danach nicht wiederherstellen:
+
+1. Eine Warnung erscheint: Die Begriffe werden aus dem lokalen Speicher dieses Browsers entfernt und können nicht wiederhergestellt werden.
+1. Wählen Sie „Liste (.json) zuerst exportieren“, um eine Sicherung zu speichern. Danach fragt die Software noch einmal nach („Sicherung exportiert. Jetzt alle eigenen Begriffe (…) löschen?“).
+1. Oder wählen Sie „Ohne Export löschen“, wenn Sie wirklich keine Sicherung brauchen.
+1. Nur „Jetzt löschen“ löscht. „Abbrechen“ (oder die Esc-Taste) schließt die Warnung und lässt alles unverändert.
+
+## Funktion 3 — Vermutete Passwörter und Geheimnisse
+
+Manche Geheimnisse haben keine erkennbare Form: ein zufällig aussehendes Passwort, ein Token. Die Software erkennt Zeichenfolgen, die zufällig aussehen („hohe Entropie“), verbirgt sie aber **nicht** selbst, weil sie sich irren kann.
+
+- **Im Text:** Vermutete Funde sind markiert, der Hinweistext lautet „Vermutetes Passwort/Secret (hohe Entropie) — klicken, um die Schwärzung zu bestätigen“. Klicken Sie auf einen, um ihn zu bestätigen („Bestätigt — wird beim Download geschwärzt“); klicken Sie erneut, um die Bestätigung aufzuheben.
+- **In einem Bild:** Vermutete Funde erhalten einen **gelben Rahmen**, und die Pixel sind **noch nicht** gelöscht. In einer Liste unter dem Bild, „Vermutete Passwörter/Secrets (hohe Entropie) — zum Bestätigen ankreuzen“, kreuzen Sie die an, die geschwärzt werden sollen; das Bild wird sofort neu gezeichnet.
+- **In Word- und PowerPoint-Dateien:** Vermutete Funde werden nur gemeldet. Ist einer wirklich ein Geheimnis, nehmen Sie ihn in Ihre eigene Liste auf (Funktion 2) und wandeln Sie noch einmal um.
+- Sie können diese Erkennung ganz abschalten, indem Sie „Passwort / Zufallszeichenfolge (hohe Entropie)“ unter „Zu erkennende Datentypen“ abwählen.
+
+## Funktion 4 — Bilder und Screenshots
+
+1. Legen Sie ein Bild (PNG, JPEG oder WEBP) auf der Ablagefläche ab oder klicken Sie darauf, um eines zu wählen. Sie können einen Screenshot auch mit Strg+V (Cmd+V am Mac) irgendwo auf der Seite **einfügen**: Er wird als Bild erkannt und nicht als Text eingefügt.
+1. Die Zeile „Erkannt:“ zeigt „Bild / Screenshot“, und das Feld „Bild / Screenshot“ öffnet sich. Darüber zeigt „Metadaten der Originaldatei“, was das Bild mitführt (Funktion 10).
+1. Wählen Sie unter „OCR-Sprache:“ die Sprache, **in der das Bild geschrieben ist**. Eine falsche Wahl führt zu falsch gelesenem Text und kann sensible Wörter durchrutschen lassen.
+1. Lassen Sie „Gründliche Analyse (langsamer)“ angehakt. Sie liest das Bild mehrmals mit unterschiedlicher Farbverarbeitung, wodurch Text auf farbigem Hintergrund, helle Buchstaben auf dunklen Überschriften und verschnörkelte Schriften gefunden werden.
+1. Klicken Sie auf „Scannen & sensible Bereiche schwärzen“. Beim ersten Mal wird das Lesemodell geladen (einige Sekunden); danach sehen Sie den Fortschritt und eine Zeile wie „Fertig — 3 sensible Bereich(e) im Bild geschwärzt.“
+1. Sehen Sie sich das Bild an. Echte schwarze Rechtecke decken die Funde ab. Gelbe Rahmen sind Verdachtsfälle, die Sie bestätigen können (Funktion 3). Prüfen Sie die Liste der Bereiche (Funktion 5) und ergänzen Sie, was übersehen wurde (Funktion 6, Funktion 7).
+1. Klicken Sie auf „Bearbeitetes Bild herunterladen“ (die Schaltfläche nennt auch den Dateityp: .png, .jpg oder .webp) oder auf „Als PDF herunterladen“.
+1. „Alles löschen“ im Feld entfernt das Bild und beginnt von vorn.
+
+**Das ist echtes Löschen.** Das fertige Bild wird aus Ihrem unveränderten Original neu aufgebaut: Die sensiblen Pixel werden mit Schwarz überschrieben, nicht unter einer durchsichtigen Schicht versteckt — niemand kann das Schwarz entfernen, um zu sehen, was darunter war.
+
+**Wenn die Software etwas übersehen hat**, öffnen Sie unter dem Bild „Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)“. Dort steht der Text, den die Software gelesen hat, und der Grund für jedes schwarze Rechteck. Steht das erwartete Wort dort nicht, hat die Software es nicht gelesen — wählen Sie die richtige Sprache, lassen Sie „Gründliche Analyse“ an oder decken Sie die Stelle von Hand ab.
+
+## Funktion 5 — Die Liste der abgedeckten Bereiche
+
+Unter dem Bild listet „Bereiche, die abgedeckt werden: N (M von dir gezeichnet)“ **alles** auf, was verborgen wird: was die Software selbst gefunden hat, die Gesichter und die Bereiche, die Sie gezeichnet haben. Alles steht in dieser einen Liste.
+
+- Jede Zeile hat ein Kästchen. **Nehmen Sie den Haken weg**, damit der Bereich sichtbar bleibt (zum Beispiel bei einem Fehlalarm); haken Sie ihn wieder an, um ihn abzudecken.
+- Eine Zeile lautet „Automatisch: die Art der Daten — der Text“, „Gesicht Nr. 1“ oder „Gezeichneter Bereich Nr. 1“.
+- Fahren Sie mit der Maus über eine Zeile (oder gehen Sie mit der Tab-Taste hin): Ein gestrichelter hellblauer Rahmen zeigt, wo sie im Bild liegt.
+- Von Ihnen gezeichnete Bereiche haben eine Schaltfläche „Entfernen“.
+- Bild und Download richten sich immer nach dieser Liste: Was angehakt ist, wird abgedeckt, was nicht angehakt ist, nicht.
+- Ein neuer Textscan ersetzt die automatischen Textbereiche; Gesichter und gezeichnete Bereiche bleiben erhalten.
+
+## Funktion 6 — Bereiche von Hand zeichnen
+
+Für alles, was die Software nicht lesen kann: ein Logo, Handschrift, ein QR-Code, ein Name auf einem Ausweis, ein Gesicht.
+
+1. Klicken Sie auf „Bereich zum Abdecken zeichnen“, um das Werkzeug einzuschalten (die Schaltfläche bleibt hervorgehoben).
+1. Ziehen Sie mit Maus, Finger oder Stift über den Bereich. Ein hellblauer Rahmen folgt Ihnen; lassen Sie los, um zu bestätigen. Esc bricht den Strich ab, den Sie gerade ziehen. Ein einfacher Klick wird ignoriert.
+1. Der neue Bereich wird wie die automatischen vollständig schwarz gefüllt und erscheint in der Liste als „Gezeichneter Bereich Nr. …“.
+1. „Rückgängig“ und „Wiederholen“ (auch Strg/Cmd+Z, Umschalt+Strg/Cmd+Z und Strg+Y) gehen durch alles, was Sie ändern, vor und zurück — Zeichnen, Entfernen, einen Bereich an- oder abhaken.
+1. „Meine gezeichneten Bereiche entfernen“ löscht alle Ihre Zeichnungen auf einmal (Sie können es noch rückgängig machen).
+1. Zeichnen funktioniert ohne Scan: Sie können also einfach Teile eines Bildes von Hand schwärzen und es herunterladen.
+
+## Funktion 7 — Gesichter abdecken
+
+1. Laden Sie ein Bild (Funktion 4). Der Textscan ist vorher nicht nötig.
+1. Wählen Sie unter „Gesichter abdecken mit:“, wie Gesichter abgedeckt werden:
+   - **„Vollständig schwarz (nicht umkehrbar)“** — die Pixel werden ersetzt; vom Gesicht bleibt nichts übrig. Wählen Sie das immer, wenn jemand nicht erkannt werden darf.
+   - **„Grobes Mosaik (schwer umkehrbar, keine Garantie)“** — jeder große Block behält nur eine Durchschnittsfarbe. Sehr schwer rückgängig zu machen, aber keine mathematische Garantie.
+   - **„Weichzeichnen (nur kosmetisch — teilweise umkehrbar)“** — ein Glättungseffekt, der sich manchmal teilweise wiederherstellen lässt. Verlassen Sie sich nicht darauf, um die Identität einer Person zu schützen; die Software zeigt eine Warnung, wenn Sie es wählen.
+1. Klicken Sie auf „Gesichter erkennen“. Eine Meldung sagt, wie viele gefunden wurden („1 Gesicht gefunden.“).
+1. Jedes Gesicht erscheint in der Liste der Bereiche (Funktion 5) als „Gesicht Nr. 1“, „Gesicht Nr. 2“ ... Nehmen Sie bei einer Zeile den Haken weg, damit dieses Gesicht sichtbar bleibt. Ein Wechsel des Stils aktualisiert das Bild sofort.
+1. **Der Detektor ist nur bei Gesichtern zuverlässig, die ungefähr in die Kamera schauen.** Seitlich gedrehte, kleine, verdeckte oder schlecht beleuchtete Gesichter können übersehen werden — sehen Sie sich das Bild daher immer an und decken Sie übersehene Gesichter mit „Bereich zum Abdecken zeichnen“ ab (Funktion 6). Gezeichnete Bereiche sind immer vollständig schwarz.
+1. Der Detektor läuft komplett in Ihrem Browser (ein kleines Programm und seine Datendatei liegen im vendor-Ordner der Software). Er funktioniert sogar in Safari mit Lockdown-Modus. Er braucht den lokalen Server (Schritt 3); ohne ihn erhalten Sie eine Meldung und können trotzdem von Hand zeichnen.
+
+## Funktion 8 — PDF-Dateien
+
+1. Legen Sie das PDF auf der Ablagefläche ab. Das Feld „PDF-Datei“ öffnet sich.
+1. Ist das PDF ein **Scan oder ein Foto** von Papier (Sie können den Text nicht markieren), haken Sie „Auch OCR auf jeder Seite ausführen — nur nötig, wenn das PDF ein Scan/Bild ist (keine auswählbare Textebene), langsamer“ an und wählen „OCR-Sprache (falls aktiviert):“. Bei am Computer erstellten PDFs ist dieses Kästchen nicht nötig.
+1. Klicken Sie auf „PDF scannen & schwärzen“. Sie sehen den Fortschritt Seite für Seite.
+1. Klicken Sie auf „Bearbeitetes PDF herunterladen“.
+
+So funktioniert es: Jede Seite wird **als Bild neu gezeichnet**, die sensiblen Stellen werden auf diesem Bild geschwärzt, und die Bilder werden zu einem neuen PDF zusammengesetzt. Die ursprüngliche Textebene und die Metadaten überleben dadurch nicht. Der Preis: Das Ergebnis verhält sich wie ein gescanntes Dokument — Sie können den Text darin nicht mehr markieren oder kopieren.
+
+Gesichtserkennung und von Hand gezeichnete Bereiche gibt es nur im Bildfeld. Enthält ein PDF ein Foto mit Gesichtern, speichern Sie diese Seite als Bild und bearbeiten Sie sie im Bildfeld.
+
+## Funktion 9 — Word- und PowerPoint-Dateien
+
+1. Legen Sie die .docx- oder .pptx-Datei ab. Das Feld „Word-Datei (.docx)“ oder „PowerPoint-Datei (.pptx)“ öffnet sich.
+1. Klicken Sie auf „Umwandeln & schwärzen → PDF“ und dann auf „Bearbeitetes PDF herunterladen“ (die Datei heißt geschwaerzter-text.pdf oder geschwaerzte-folien.pdf).
+
+Was Sie erhalten, ist absichtlich ein **reines Text-PDF**, nie eine Kopie Ihrer Originaldatei, denn eine Word- oder PowerPoint-Datei kann viel verstecken (Kommentare, alte Versionen, Notizen, eingebettete Objekte). Layout, Tabellen, Bilder, Diagramme und Animationen werden daher **nicht** übernommen. Kommentare und unter „Änderungen nachverfolgen“ gelöschter Text sind nicht enthalten, und die Sprechernotizen einer PowerPoint-Datei ebenfalls nicht — nur der auf den Seiten oder Folien sichtbare Text. Brauchen Sie das Layout, speichern Sie die Datei zuerst selbst als PDF und legen Sie dieses PDF ab (Funktion 8).
+
+## Funktion 10 — Die Metadaten-Prüfung
+
+„Metadaten“ sind Informationen, die in einer Datei versteckt sind und die Sie beim Öffnen nicht sehen: wer sie erstellt hat, mit welchem Programm, wann — und manchmal sogar wo (ein Foto kann den GPS-Standort tragen, an dem es aufgenommen wurde).
+
+- **Wenn Sie eine Datei ablegen** (ein Bild, PDF, Word- oder PowerPoint-Datei), erscheint unter der Zeile „Erkannt:“ ein Kasten „Metadaten der Originaldatei“. Er listet auf, was die Datei mitführt, mit den tatsächlichen Werten, damit Sie genau sehen, was weitergegeben worden wäre. Klicken Sie auf „Werte ausblenden“, wenn Sie die Werte verbergen möchten (zum Beispiel beim Bildschirmteilen); die Feldnamen bleiben sichtbar. Diese Werte werden nur auf Ihrem eigenen Computer angezeigt.
+- **Die Datei, die Sie herunterladen, wird von Grund auf neu aufgebaut**, es wird also nichts davon hineinkopiert.
+- **Vor jedem Download prüft das Tool das Ergebnis noch einmal.** Ist alles sauber, sehen Sie eine grüne Zeile: „Verifiziert: Die exportierte …-Datei enthält keine identifizierenden Metadaten.“ Bleibt etwas übrig — oder kann das Tool nicht sicher sein —, wird der Download **blockiert**, und eine rote Zeile erklärt warum. Dann wird nichts heruntergeladen.
+- Das Farbprofil (ICC) eines Fotos kann grau aufgelistet sein: Es ist eine technische Angabe, die Sie nicht identifiziert und nichts blockiert.
+- Die Prüfung kann nicht in das Bild selbst hineinsehen, deshalb erkennt sie Dinge wie unsichtbare Wasserzeichen nicht.
+
+## Wenn etwas nicht funktioniert
+
+| Was Sie sehen | Was zu tun ist |
+|---|---|
+| Eine Meldung zur Datei (file://) oder „Fehler bei der Bildverarbeitung“ | Bilder, Gesichter und PDF brauchen den lokalen Server — siehe Schritt 3. Text, Word und PowerPoint nicht. |
+| Eine Meldung zu **WebAssembly** (Safari mit **Lockdown-Modus**) | Der Lockdown-Modus schaltet WebAssembly ab, das für das Lesen von Text in Bildern nötig ist. Nutzen Sie für Bilder Firefox oder Chrome oder nehmen Sie diese Website in den Einstellungen für Websites in Safari vom Lockdown-Modus aus. Text, Word- und PowerPoint-Dateien, Zeichnen von Hand und Gesichtserkennung funktionieren weiterhin. |
+| Ein sensibles Wort in einem Bild wurde nicht verborgen | Prüfen Sie „OCR-Sprache:“, lassen Sie „Gründliche Analyse“ an, öffnen Sie „Was die OCR gelesen hat“ und nehmen Sie das Wort dann in Ihre eigene Liste auf oder decken Sie es von Hand ab. |
+| Ein schwarzes Rechteck deckt etwas Harmloses ab | Nehmen Sie bei dieser Zeile in der Liste der Bereiche den Haken weg (Funktion 5). |
+| „Dieses Dateiformat wurde nicht erkannt“ | Unterstützt: Text (.txt), Bilder (PNG, JPEG, WEBP), PDF, Word (.docx), PowerPoint (.pptx). |
+| Eine rote Zeile „DOWNLOAD BLOCKIERT“ | Die Abschlussprüfung hat etwas gefunden, das sie nicht ausräumen konnte (Funktion 10). Es wurde nichts heruntergeladen; bitte melden Sie es auf der GitHub-Seite des Projekts. |
+
+Kommen Sie nicht weiter? Machen Sie einen Screenshot (ohne sensible Inhalte) und fragen Sie jemanden mit technischem Know-how, statt zu raten.
+
+## Gute Gewohnheiten
+
+- Die Software ist ein Helfer, kein Ersatz für Ihre eigene Sorgfalt: Prüfen Sie immer, bevor Sie vertrauen, denn kein Werkzeug erkennt 100 % der Fälle.
+- Sie möchten selbst überprüfen, dass „keine Daten irgendwohin gesendet werden“? Schalten Sie WLAN/Netzwerk aus, bevor Sie die Software öffnen. Sie funktioniert weiterhin normal — und die Seite selbst verbietet außerdem jede ausgehende Verbindung.
+- Alles, was Sie laden, bleibt auf Ihrem Computer. Nur Ihre eigenen Begriffe werden gemerkt, in Ihrem eigenen Browser.
+- Nutzen Sie erfundene Daten, wenn Sie die Software ausprobieren.
+- Für alle, deren Identität geheim bleiben muss: „Vollständig schwarz“ für Gesichter verwenden, Bildränder, Hintergründe und Spiegelungen auf andere Hinweise prüfen und das Original von KI-Tools fernhalten.
