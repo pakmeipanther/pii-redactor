@@ -343,6 +343,42 @@
     text-align: center;
     margin-top: 24px;
   }
+
+  /* Metadata report (v1.2.1): what the uploaded file was carrying, and
+     the verdict of the post-export scan. */
+  .meta-report {
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+  .meta-report ul { margin: 6px 0 6px 18px; padding: 0; }
+  .meta-report { overflow-wrap: anywhere; }
+  .meta-report .meta-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .meta-report .meta-toggle { font-size: 11px; padding: 2px 8px; }
+  .meta-report ul ul { margin: 2px 0 2px 16px; }
+  .meta-report li { margin: 2px 0; }
+  .meta-report li.meta-info { color: var(--muted); }
+  .meta-report .meta-warn { color: var(--danger); margin-top: 4px; }
+  .meta-report .meta-foot { color: var(--muted); margin-top: 6px; }
+  .export-verify {
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 8px;
+  }
+  .export-verify.ok {
+    color: var(--ok);
+    background: rgba(61, 220, 132, 0.1);
+    border: 1px solid rgba(61, 220, 132, 0.3);
+  }
+  .export-verify.blocked {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border: 1px solid rgba(255, 92, 92, 0.5);
+  }
 </style>
 </head>
 <body>
@@ -385,6 +421,7 @@
   <div class="dropzone" id="unifiedDropzone" role="button" tabindex="0" data-i18n="unifiedDropzoneText">Kéo-thả ảnh, PDF, Word hoặc PowerPoint vào đây, hoặc bấm để chọn file — phần mềm sẽ tự nhận diện loại file</div>
   <input type="file" id="unifiedFileInput" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation,.txt,.md,.csv,.log,text/plain" style="display:none;">
   <div class="detected-type" id="detectedType" style="display:none;"></div>
+  <div class="meta-report" id="inputMetaReport" style="display:none;" role="status" aria-live="polite"></div>
 </div>
 
 <!-- The four panels below are what the old 1b/1c/1d/1e sections used to
@@ -413,6 +450,7 @@
   </div>
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="imgProgress"></div>
+  <div class="export-verify" id="imgVerify" style="display:none;" role="status"></div>
   <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
   <div id="imgSuspectList" class="suspect-list" style="display:none;"></div>
 </div>
@@ -439,6 +477,7 @@
   </div>
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="pdfProgress"></div>
+  <div class="export-verify" id="pdfVerify" style="display:none;" role="status"></div>
   <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
 </div>
 
@@ -452,6 +491,7 @@
     <button id="docxClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
   <div class="img-progress" id="docxProgress"></div>
+  <div class="export-verify" id="docxVerify" style="display:none;" role="status"></div>
 </div>
 
 <div class="panel" id="pptxPanel" style="display:none;">
@@ -464,6 +504,7 @@
     <button id="pptxClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
   <div class="img-progress" id="pptxProgress"></div>
+  <div class="export-verify" id="pptxVerify" style="display:none;" role="status"></div>
 </div>
 
 <div class="panel">
@@ -1011,6 +1052,170 @@ const I18N = {
 // so the first thing anyone sees (including on GitHub, before touching
 // the language selector) should be readable to them. Every other
 // language is still one click away in the selector above.
+// ---- Metadata report + export verification strings (v1.2.1) ----
+// Kept in their own object (merged into I18N right below) so the whole
+// v1.2.1 string set can be reviewed -- and tested for completeness in
+// all four languages -- in one place. `metaCode` must have an entry for
+// every finding code scanMetadata() and the helpers below can produce;
+// test/run-tests.mjs fails if a language is missing one.
+// I18N_METADATA_START
+const I18N_METADATA = {
+  vi: {
+    metaReportTitle: 'Metadata của file gốc',
+    metaReportReading: 'Đang đọc metadata của file…',
+    metaReportNone: 'Không tìm thấy metadata nhận dạng nào trong file này.',
+    metaGpsWarning: '⚠ File này chứa dữ liệu vị trí GPS.',
+    metaReportFooter: 'File xuất ra được dựng lại từ đầu nên không mang theo những mục trên. Sau khi xuất, công cụ quét lại kết quả và chặn tải xuống nếu còn sót gì.',
+    metaThumbnail: 'ảnh thu nhỏ nhúng sẵn',
+    metaUnparsed: 'không đọc được chi tiết',
+    metaShowValues: 'Hiện giá trị',
+    metaHideValues: 'Ẩn giá trị',
+    metaValuesLocal: 'Giá trị chỉ hiển thị trên máy bạn và không được gửi đi đâu.',
+    metaCode: {
+      'exif': 'EXIF (máy ảnh, thời gian, vị trí)',
+      'xmp': 'Gói metadata XMP',
+      'iptc': 'IPTC / Photoshop (chú thích, tác giả, bản quyền)',
+      'jpeg-comment': 'Ghi chú JPEG',
+      'trailing-data': 'Dữ liệu thừa sau phần cuối của ảnh',
+      'icc': 'Hồ sơ màu ICC (kỹ thuật, không nhận dạng cá nhân)',
+      'mpf': 'Dữ liệu đa ảnh MPF (kỹ thuật)',
+      'png-text': 'Khối văn bản PNG',
+      'png-time': 'Thời điểm sửa của PNG',
+      'pdf-info': 'Từ điển thông tin PDF',
+      'pdf-field': 'Trường PDF',
+      'pdf-xmp': 'Metadata XMP của PDF',
+      'pdf-objstm': 'Đối tượng PDF đã nén (không quét sâu được)',
+      'pdf-encrypt': 'PDF có mã hóa (không quét được)',
+      'unknown-format': 'Định dạng không nhận ra (không quét được)',
+      'scan-error': 'Lỗi khi quét',
+      'office-field': 'Thuộc tính tài liệu',
+      'office-custom': 'Thuộc tính tùy chỉnh của tài liệu',
+      'office-comments': 'Bình luận hoặc dữ liệu duyệt',
+      'office-thumbnail': 'Ảnh xem trước nhúng sẵn'
+    },
+    verifyOk: (fmt) => `Đã xác minh: file ${fmt} xuất ra không còn metadata nhận dạng.`,
+    verifyInfoNote: (list) => `Chỉ còn dữ liệu kỹ thuật: ${list}.`,
+    verifyBlockedSensitive: (list) => `ĐÃ CHẶN TẢI XUỐNG: bộ quét thấy metadata trong file xuất ra (${list}). Chưa có gì được tải. Vui lòng báo lỗi này.`,
+    verifyBlockedUnscannable: (list) => `ĐÃ CHẶN TẢI XUỐNG: không xác minh được file xuất ra (${list}). Chưa có gì được tải.`
+  },
+  en: {
+    metaReportTitle: 'Metadata of the original file',
+    metaReportReading: 'Reading the file metadata…',
+    metaReportNone: 'No identifying metadata was found in this file.',
+    metaGpsWarning: '⚠ This file contains GPS location data.',
+    metaReportFooter: 'The exported file is rebuilt from scratch, so none of the above is copied into it. After export, the tool scans the result again and blocks the download if anything is left.',
+    metaThumbnail: 'embedded thumbnail',
+    metaUnparsed: 'details unreadable',
+    metaShowValues: 'Show values',
+    metaHideValues: 'Hide values',
+    metaValuesLocal: 'Values are shown only on your computer and are never sent anywhere.',
+    metaCode: {
+      'exif': 'EXIF (camera, time, location)',
+      'xmp': 'XMP metadata packet',
+      'iptc': 'IPTC / Photoshop (captions, author, copyright)',
+      'jpeg-comment': 'JPEG comment',
+      'trailing-data': 'Extra data after the end of the image',
+      'icc': 'ICC colour profile (technical, not identifying)',
+      'mpf': 'Multi-picture data MPF (technical)',
+      'png-text': 'PNG text chunk',
+      'png-time': 'PNG modification time',
+      'pdf-info': 'PDF information dictionary',
+      'pdf-field': 'PDF field',
+      'pdf-xmp': 'PDF XMP metadata',
+      'pdf-objstm': 'Compressed PDF objects (cannot be scanned in depth)',
+      'pdf-encrypt': 'Encrypted PDF (cannot be scanned)',
+      'unknown-format': 'Unrecognized format (cannot be scanned)',
+      'scan-error': 'Scan error',
+      'office-field': 'Document property',
+      'office-custom': 'Custom document properties',
+      'office-comments': 'Comments or review data',
+      'office-thumbnail': 'Embedded preview thumbnail'
+    },
+    verifyOk: (fmt) => `Verified: the exported ${fmt} file contains no identifying metadata.`,
+    verifyInfoNote: (list) => `Only technical data remains: ${list}.`,
+    verifyBlockedSensitive: (list) => `DOWNLOAD BLOCKED: the scan found metadata in the exported file (${list}). Nothing was downloaded. Please report this as a bug.`,
+    verifyBlockedUnscannable: (list) => `DOWNLOAD BLOCKED: the exported file could not be verified (${list}). Nothing was downloaded.`
+  },
+  fr: {
+    metaReportTitle: "Métadonnées du fichier d'origine",
+    metaReportReading: 'Lecture des métadonnées du fichier…',
+    metaReportNone: "Aucune métadonnée identifiante n'a été trouvée dans ce fichier.",
+    metaGpsWarning: '⚠ Ce fichier contient des données de localisation GPS.',
+    metaReportFooter: "Le fichier exporté est reconstruit de zéro : rien de ce qui précède n'y est copié. Après l'export, l'outil analyse à nouveau le résultat et bloque le téléchargement s'il reste quoi que ce soit.",
+    metaThumbnail: 'miniature intégrée',
+    metaUnparsed: 'détails illisibles',
+    metaShowValues: 'Afficher les valeurs',
+    metaHideValues: 'Masquer les valeurs',
+    metaValuesLocal: "Les valeurs ne s'affichent que sur votre ordinateur et ne sont envoyées nulle part.",
+    metaCode: {
+      'exif': 'EXIF (appareil, date, localisation)',
+      'xmp': 'Paquet de métadonnées XMP',
+      'iptc': 'IPTC / Photoshop (légendes, auteur, droits)',
+      'jpeg-comment': 'Commentaire JPEG',
+      'trailing-data': "Données supplémentaires après la fin de l'image",
+      'icc': 'Profil colorimétrique ICC (technique, non identifiant)',
+      'mpf': 'Données multi-images MPF (technique)',
+      'png-text': 'Bloc de texte PNG',
+      'png-time': 'Date de modification PNG',
+      'pdf-info': "Dictionnaire d'informations du PDF",
+      'pdf-field': 'Champ PDF',
+      'pdf-xmp': 'Métadonnées XMP du PDF',
+      'pdf-objstm': 'Objets PDF compressés (analyse approfondie impossible)',
+      'pdf-encrypt': 'PDF chiffré (analyse impossible)',
+      'unknown-format': 'Format non reconnu (analyse impossible)',
+      'scan-error': "Erreur d'analyse",
+      'office-field': 'Propriété du document',
+      'office-custom': 'Propriétés personnalisées du document',
+      'office-comments': 'Commentaires ou données de révision',
+      'office-thumbnail': "Miniature d'aperçu intégrée"
+    },
+    verifyOk: (fmt) => `Vérifié : le fichier ${fmt} exporté ne contient aucune métadonnée identifiante.`,
+    verifyInfoNote: (list) => `Il ne reste que des données techniques : ${list}.`,
+    verifyBlockedSensitive: (list) => `TÉLÉCHARGEMENT BLOQUÉ : l'analyse a trouvé des métadonnées dans le fichier exporté (${list}). Rien n'a été téléchargé. Merci de signaler ce bug.`,
+    verifyBlockedUnscannable: (list) => `TÉLÉCHARGEMENT BLOQUÉ : le fichier exporté n'a pas pu être vérifié (${list}). Rien n'a été téléchargé.`
+  },
+  de: {
+    metaReportTitle: 'Metadaten der Originaldatei',
+    metaReportReading: 'Metadaten der Datei werden gelesen…',
+    metaReportNone: 'In dieser Datei wurden keine identifizierenden Metadaten gefunden.',
+    metaGpsWarning: '⚠ Diese Datei enthält GPS-Standortdaten.',
+    metaReportFooter: 'Die exportierte Datei wird komplett neu aufgebaut, daher wird nichts davon übernommen. Nach dem Export prüft das Tool das Ergebnis erneut und blockiert den Download, falls etwas übrig geblieben ist.',
+    metaThumbnail: 'eingebettetes Vorschaubild',
+    metaUnparsed: 'Details nicht lesbar',
+    metaShowValues: 'Werte anzeigen',
+    metaHideValues: 'Werte ausblenden',
+    metaValuesLocal: 'Die Werte werden nur auf deinem Computer angezeigt und nirgendwohin gesendet.',
+    metaCode: {
+      'exif': 'EXIF (Kamera, Zeit, Standort)',
+      'xmp': 'XMP-Metadatenpaket',
+      'iptc': 'IPTC / Photoshop (Beschriftungen, Autor, Urheberrecht)',
+      'jpeg-comment': 'JPEG-Kommentar',
+      'trailing-data': 'Zusätzliche Daten nach dem Bildende',
+      'icc': 'ICC-Farbprofil (technisch, nicht identifizierend)',
+      'mpf': 'Mehrbild-Daten MPF (technisch)',
+      'png-text': 'PNG-Textblock',
+      'png-time': 'PNG-Änderungszeit',
+      'pdf-info': 'PDF-Informationsverzeichnis',
+      'pdf-field': 'PDF-Feld',
+      'pdf-xmp': 'XMP-Metadaten des PDFs',
+      'pdf-objstm': 'Komprimierte PDF-Objekte (nicht tiefgehend prüfbar)',
+      'pdf-encrypt': 'Verschlüsseltes PDF (nicht prüfbar)',
+      'unknown-format': 'Unbekanntes Format (nicht prüfbar)',
+      'scan-error': 'Prüffehler',
+      'office-field': 'Dokumenteigenschaft',
+      'office-custom': 'Benutzerdefinierte Dokumenteigenschaften',
+      'office-comments': 'Kommentare oder Überarbeitungsdaten',
+      'office-thumbnail': 'Eingebettetes Vorschaubild'
+    },
+    verifyOk: (fmt) => `Verifiziert: Die exportierte ${fmt}-Datei enthält keine identifizierenden Metadaten.`,
+    verifyInfoNote: (list) => `Es verbleiben nur technische Daten: ${list}.`,
+    verifyBlockedSensitive: (list) => `DOWNLOAD BLOCKIERT: Die Prüfung hat Metadaten in der exportierten Datei gefunden (${list}). Es wurde nichts heruntergeladen. Bitte melde diesen Fehler.`,
+    verifyBlockedUnscannable: (list) => `DOWNLOAD BLOCKIERT: Die exportierte Datei konnte nicht verifiziert werden (${list}). Es wurde nichts heruntergeladen.`
+  }
+};
+// I18N_METADATA_END
+for (const lang of Object.keys(I18N_METADATA)) Object.assign(I18N[lang], I18N_METADATA[lang]);
+
 let currentLang = 'en';
 
 // ============================================================
@@ -1528,6 +1733,7 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
   applyI18n();
   buildRuleCheckboxes();
   updateImgDownloadBtnLabel();
+  rerenderMetadataUi();
 });
 
 // ============================================================
@@ -1572,11 +1778,16 @@ function saveCleanPdf(doc) {
 // tIME, trailing data), WebP (EXIF, XMP) and PDF (Info dictionary
 // fields, XMP stream).
 //
-// Findings are { code, severity, detail? }. `code` is a stable id the
-// UI maps to a localized sentence; `detail` is language-neutral data
-// such as EXIF tag names or a PNG text keyword. Because `detail` can
-// be copied straight out of the scanned file, it is UNTRUSTED text:
-// the UI must show it with textContent, never innerHTML.
+// Findings are { code, severity, detail?, value?, fields? }. `code` is
+// a stable id the UI maps to a localized sentence; `detail` is
+// language-neutral data such as EXIF tag names or a PNG text keyword.
+// `value` (one string) and `fields` ([{ name, value }], e.g. each EXIF
+// tag with its decoded value, GPS position included) are what the file
+// actually says -- shown to the person in the input report, never used
+// by the export check. Everything in detail / value / fields is copied
+// straight out of the scanned file, so it is UNTRUSTED text: the UI
+// must show it with textContent, never innerHTML. Values are cut to
+// 300 characters and stripped of control characters.
 //
 // severity: 'sensitive'   can identify a person, device, place, time
 //                         or tool -- never acceptable in an export
@@ -1600,16 +1811,40 @@ const TIFF_TAG_NAMES = {
   0xA434: 'LensModel', 0xA435: 'LensSerialNumber',
   0x9C9B: 'XPTitle', 0x9C9C: 'XPComment', 0x9C9D: 'XPAuthor', 0x9C9E: 'XPKeywords', 0x9C9F: 'XPSubject'
 };
+const GPS_TAG_NAMES = {
+  0x0001: 'GPSLatitudeRef', 0x0002: 'GPSLatitude', 0x0003: 'GPSLongitudeRef', 0x0004: 'GPSLongitude',
+  0x0005: 'GPSAltitudeRef', 0x0006: 'GPSAltitude', 0x001D: 'GPSDateStamp'
+};
+const IPTC_DATASET_NAMES = {
+  5: 'ObjectName', 25: 'Keywords', 55: 'DateCreated', 80: 'By-line', 90: 'City', 101: 'Country',
+  105: 'Headline', 110: 'Credit', 115: 'Source', 116: 'CopyrightNotice', 120: 'Caption'
+};
+const MAX_VALUE_LENGTH = 300;
+const MAX_FIELDS = 40;
+
+// Makes text that came out of a file safe to display: control
+// characters and runs of whitespace collapse to one space, and long
+// values are cut. (It is still untrusted text -- see the note above.)
+function clipValue(text) {
+  const clean = String(text).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return clean.length > MAX_VALUE_LENGTH ? clean.slice(0, MAX_VALUE_LENGTH) + '…' : clean;
+}
+function unescapeXml(text) {
+  return String(text).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+}
 
 function scanMetadata(input) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   const n = bytes.length;
   const result = { format: 'unknown', findings: [], hasSensitive: false, hasGps: false, unscannable: false };
 
-  function add(code, severity, detail) {
+  // `extra` may carry { value } (one string) or { fields: [{ name, value }] }.
+  function add(code, severity, detail, extra) {
     if (result.findings.some(f => f.code === code && f.detail === detail)) return;
     const finding = { code, severity };
     if (detail) finding.detail = detail;
+    if (extra && extra.fields && extra.fields.length) finding.fields = extra.fields;
+    if (extra && typeof extra.value === 'string' && extra.value !== '') finding.value = extra.value;
     result.findings.push(finding);
     if (severity === 'sensitive') result.hasSensitive = true;
     if (severity === 'unscannable') result.unscannable = true;
@@ -1622,15 +1857,17 @@ function scanMetadata(input) {
   const be16 = o => (bytes[o] << 8) | bytes[o + 1];
   const be32 = o => bytes[o] * 16777216 + bytes[o + 1] * 65536 + bytes[o + 2] * 256 + bytes[o + 3];
   const le32 = o => bytes[o] + bytes[o + 1] * 256 + bytes[o + 2] * 65536 + bytes[o + 3] * 16777216;
+  const decode = (label, start, end) => new TextDecoder(label).decode(bytes.subarray(Math.max(0, start), Math.max(0, Math.min(end, n))));
 
-  // Reads only the *names* of well-known identifying EXIF tags (never
-  // their values), whether a GPS block is present, and whether IFD1
+  // Reads the identifying EXIF tags: their names (for the one-line
+  // summary) and now also their VALUES, including the GPS position.
+  // Every read is bounds-checked, value sizes / IFD counts / entry
+  // counts are capped, and visited offsets are remembered, so a hostile
+  // or corrupt file cannot loop or overrun. Also reports whether IFD1
   // exists (an embedded thumbnail, which can keep a copy of the image
-  // from before any redaction). Every read is bounds-checked, the
-  // number of IFDs and entries is capped, and visited offsets are
-  // remembered, so a hostile or corrupt file cannot loop or overrun.
+  // from before any redaction).
   function readTiff(start, end) {
-    const out = { ok: false, names: [], gps: false, thumbnail: false };
+    const out = { ok: false, names: [], fields: [], gps: false, thumbnail: false };
     end = Math.min(end, n);
     if (start < 0 || end - start < 8) return out;
     let little;
@@ -1642,11 +1879,49 @@ function scanMetadata(input) {
       ? bytes[o] + bytes[o + 1] * 256 + bytes[o + 2] * 65536 + bytes[o + 3] * 16777216
       : bytes[o] * 16777216 + bytes[o + 1] * 65536 + bytes[o + 2] * 256 + bytes[o + 3];
     if (r16(start + 2) !== 42) return out;
-    const queue = [{ off: r32(start + 4), primary: true }];
+
+    const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+    // Where an entry's value bytes live (inline when <= 4 bytes), or null if out of range.
+    const locate = (q) => {
+      const type = r16(q + 2);
+      const count = r32(q + 4);
+      const unit = TYPE_SIZE[type];
+      const size = unit ? unit * count : 0;
+      if (!size || size > 65536) return null;
+      const at = size <= 4 ? q + 8 : start + r32(q + 8);
+      return at >= start && at + size <= end ? { type, count, at, size } : null;
+    };
+    const asciiAt = (loc) => {
+      let s = '';
+      for (let k = loc.at; k < loc.at + loc.size && bytes[k] !== 0; k++) s += String.fromCharCode(bytes[k]);
+      return clipValue(s);
+    };
+    const rationalsAt = (loc) => {
+      const list = [];
+      for (let k = 0; k < loc.count && k < 3; k++) {
+        const num = r32(loc.at + k * 8);
+        const den = r32(loc.at + k * 8 + 4);
+        list.push(den ? num / den : NaN);
+      }
+      return list;
+    };
+    const valueFor = (tag, loc) => {
+      if (tag >= 0x9C9B && tag <= 0x9C9F) return clipValue(new TextDecoder('utf-16le').decode(bytes.subarray(loc.at, loc.at + loc.size))); // Windows XP* tags
+      if (tag === 0x9286) { // UserComment: an 8-byte character-set id, then the text
+        if (loc.size <= 8) return '';
+        const id = String.fromCharCode(...bytes.subarray(loc.at, loc.at + 8));
+        const body = bytes.subarray(loc.at + 8, loc.at + loc.size);
+        return clipValue(new TextDecoder(id.startsWith('UNICODE') ? (little ? 'utf-16le' : 'utf-16be') : 'latin1').decode(body));
+      }
+      return loc.type === 2 ? asciiAt(loc) : '';
+    };
+
+    const queue = [{ off: r32(start + 4), kind: 'ifd0' }];
     const seen = new Set();
+    const gpsRaw = {};
     let ifdCount = 0;
     while (queue.length && ifdCount < 8) {
-      const { off, primary } = queue.shift();
+      const { off, kind } = queue.shift();
       if (off === 0 || seen.has(off)) continue;
       seen.add(off);
       ifdCount++;
@@ -1657,16 +1932,47 @@ function scanMetadata(input) {
         const q = p + 2 + e * 12;
         if (q + 12 > end) break;
         const tag = r16(q);
+        if (kind === 'gps') {
+          const gname = GPS_TAG_NAMES[tag];
+          const loc = gname ? locate(q) : null;
+          if (loc) {
+            if (loc.type === 2) gpsRaw[gname] = asciiAt(loc);
+            else if (loc.type === 5) gpsRaw[gname] = rationalsAt(loc);
+            else if (loc.type === 1) gpsRaw[gname] = bytes[loc.at];
+          }
+          continue;
+        }
         const name = TIFF_TAG_NAMES[tag];
-        if (name && !out.names.includes(name)) out.names.push(name);
-        if (tag === 0x8769) queue.push({ off: r32(q + 8), primary: false });
-        else if (tag === 0x8825) out.gps = true;
+        if (name) {
+          if (!out.names.includes(name)) out.names.push(name);
+          const loc = locate(q);
+          const value = loc ? valueFor(tag, loc) : '';
+          if (value && out.fields.length < MAX_FIELDS) out.fields.push({ name, value });
+        }
+        if (tag === 0x8769) queue.push({ off: r32(q + 8), kind: 'exif' });
+        else if (tag === 0x8825) { out.gps = true; queue.push({ off: r32(q + 8), kind: 'gps' }); }
       }
-      if (primary) {
+      if (kind === 'ifd0') {
         const nextAt = p + 2 + entries * 12;
         if (nextAt + 4 <= end && r32(nextAt) !== 0) out.thumbnail = true;
       }
     }
+
+    // GPS: degrees/minutes/seconds -> decimal degrees, with the hemisphere.
+    const dms = a => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite)) ? a[0] + a[1] / 60 + a[2] / 3600 : NaN;
+    const lat = dms(gpsRaw.GPSLatitude);
+    const lon = dms(gpsRaw.GPSLongitude);
+    if (Number.isFinite(lat)) out.fields.push({ name: 'GPSLatitude', value: (lat.toFixed(6) + '° ' + (gpsRaw.GPSLatitudeRef || '')).trim() });
+    if (Number.isFinite(lon)) out.fields.push({ name: 'GPSLongitude', value: (lon.toFixed(6) + '° ' + (gpsRaw.GPSLongitudeRef || '')).trim() });
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      const sLat = gpsRaw.GPSLatitudeRef === 'S' ? -1 : 1;
+      const sLon = gpsRaw.GPSLongitudeRef === 'W' ? -1 : 1;
+      out.fields.push({ name: 'GPSPosition', value: (lat * sLat).toFixed(6) + ', ' + (lon * sLon).toFixed(6) });
+    }
+    const alt = Array.isArray(gpsRaw.GPSAltitude) ? gpsRaw.GPSAltitude[0] : NaN;
+    if (Number.isFinite(alt)) out.fields.push({ name: 'GPSAltitude', value: (alt * (gpsRaw.GPSAltitudeRef === 1 ? -1 : 1)).toFixed(1) + ' m' });
+    if (gpsRaw.GPSDateStamp) out.fields.push({ name: 'GPSDateStamp', value: gpsRaw.GPSDateStamp });
+
     out.ok = true;
     return out;
   }
@@ -1677,7 +1983,63 @@ function scanMetadata(input) {
     if (t.gps) parts.push('GPS');
     if (t.thumbnail) parts.push('thumbnail');
     if (t.gps) result.hasGps = true;
-    add('exif', 'sensitive', parts.join(', '));
+    add('exif', 'sensitive', parts.join(', '), { fields: t.fields });
+  }
+
+  // Simple, forgiving extraction of the usual XMP fields: attributes on
+  // rdf:Description, list-valued properties (rdf:Seq/Bag/Alt -> rdf:li)
+  // and plain text elements. Not a full XML parser, by design.
+  function xmpFields(start, end) {
+    const text = decode('utf-8', start, Math.min(end, start + 65536));
+    const fields = [];
+    const push = (name, value) => {
+      const v = clipValue(unescapeXml(value));
+      if (v && fields.length < MAX_FIELDS) fields.push({ name, value: v });
+    };
+    for (const d of text.matchAll(/<rdf:Description\b([^>]*)>/g)) {
+      for (const a of d[1].matchAll(/([A-Za-z][\w.-]*:[\w.-]+)\s*=\s*"([^"]*)"/g)) {
+        if (a[1].startsWith('xmlns:') || a[1] === 'rdf:about') continue;
+        push(a[1], a[2]);
+      }
+    }
+    for (const m of text.matchAll(/<([A-Za-z][\w.-]*:[\w.-]+)[^>]*>\s*<rdf:(?:Seq|Bag|Alt)>([\s\S]*?)<\/rdf:(?:Seq|Bag|Alt)>\s*<\/\1>/g)) {
+      push(m[1], [...m[2].matchAll(/<rdf:li[^>]*>([^<]*)<\/rdf:li>/g)].map(x => x[1]).join('; '));
+    }
+    for (const m of text.matchAll(/<([A-Za-z][\w.-]*:[\w.-]+)(?:\s[^>]*)?>([^<>]+)<\/\1>/g)) {
+      if (!m[1].startsWith('rdf:') && !m[1].startsWith('x:')) push(m[1], m[2]);
+    }
+    return fields;
+  }
+
+  // IPTC-IIM datasets inside a Photoshop "8BIM" image-resource block.
+  function iptcFields(start, end) {
+    const fields = [];
+    end = Math.min(end, n);
+    let p = start + 14; // after "Photoshop 3.0\0"
+    let guard = 0;
+    while (p + 12 <= end && startsWith(p, '8BIM') && guard++ < 64) {
+      const resourceId = be16(p + 4);
+      const nameLen = bytes[p + 6];
+      const q = p + 7 + nameLen + ((1 + nameLen) % 2); // Pascal string, padded to even
+      const size = be32(q);
+      const data = q + 4;
+      if (resourceId === 0x0404) {
+        let r = data;
+        let sets = 0;
+        while (r + 5 <= Math.min(data + size, end) && bytes[r] === 0x1C && sets++ < 200) {
+          const record = bytes[r + 1];
+          const dataset = bytes[r + 2];
+          const len = be16(r + 3);
+          if (len & 0x8000) break; // extended-size dataset: not worth decoding here
+          const name = record === 2 ? IPTC_DATASET_NAMES[dataset] : null;
+          const value = name ? clipValue(decode('utf-8', r + 5, r + 5 + len)) : '';
+          if (value && fields.length < MAX_FIELDS) fields.push({ name, value });
+          r += 5 + len;
+        }
+      }
+      p = data + size + (size & 1);
+    }
+    return fields;
   }
 
   function scanJpeg() {
@@ -1702,15 +2064,17 @@ function scanMetadata(input) {
       const segStart = i + 4;
       const segEnd = Math.min(i + 2 + len, n);
       if (marker === 0xE1) {
+        const XMP_HEADER = 'http://ns.adobe.com/xap/1.0/\0';
         if (startsWith(segStart, 'Exif\0\0')) addExif(segStart + 6, segEnd);
-        else if (startsWith(segStart, 'http://ns.adobe.com/xap/1.0/\0') || startsWith(segStart, 'http://ns.adobe.com/xmp/extension/')) add('xmp', 'sensitive');
+        else if (startsWith(segStart, XMP_HEADER)) add('xmp', 'sensitive', undefined, { fields: xmpFields(segStart + XMP_HEADER.length, segEnd) });
+        else if (startsWith(segStart, 'http://ns.adobe.com/xmp/extension/')) add('xmp', 'sensitive');
       } else if (marker === 0xE2) {
         if (startsWith(segStart, 'ICC_PROFILE\0')) add('icc', 'info');
         else if (startsWith(segStart, 'MPF\0')) add('mpf', 'info');
       } else if (marker === 0xED) {
-        if (startsWith(segStart, 'Photoshop 3.0\0')) add('iptc', 'sensitive');
+        if (startsWith(segStart, 'Photoshop 3.0\0')) add('iptc', 'sensitive', undefined, { fields: iptcFields(segStart, segEnd) });
       } else if (marker === 0xFE) {
-        add('jpeg-comment', 'sensitive', (len - 2) + ' bytes');
+        add('jpeg-comment', 'sensitive', (len - 2) + ' bytes', { value: clipValue(decode('utf-8', segStart, segEnd)) });
       }
       i += 2 + len;
     }
@@ -1722,17 +2086,31 @@ function scanMetadata(input) {
       const len = be32(pos);
       const type = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
       const dataStart = pos + 8;
+      const dataEnd = Math.min(dataStart + len, n);
       if (type === 'tEXt' || type === 'zTXt' || type === 'iTXt') {
         let kw = '';
-        const lim = Math.min(dataStart + 79, dataStart + len, n);
-        for (let k = dataStart; k < lim && bytes[k] !== 0; k++) kw += String.fromCharCode(bytes[k]);
-        add('png-text', 'sensitive', type + (kw ? ': ' + kw : ''));
+        const lim = Math.min(dataStart + 79, dataEnd);
+        let kwEnd = dataStart;
+        for (; kwEnd < lim && bytes[kwEnd] !== 0; kwEnd++) kw += String.fromCharCode(bytes[kwEnd]);
+        let extra;
+        if (type === 'tEXt' && bytes[kwEnd] === 0) {
+          extra = { value: clipValue(decode('latin1', kwEnd + 1, dataEnd)) };
+        } else if (type === 'iTXt' && bytes[kwEnd] === 0 && bytes[kwEnd + 1] === 0) { // 0 = uncompressed
+          let p = kwEnd + 3;                       // skip compression flag + method
+          while (p < dataEnd && bytes[p] !== 0) p++; // language tag
+          p++;
+          while (p < dataEnd && bytes[p] !== 0) p++; // translated keyword
+          p++;
+          extra = kw === 'XML:com.adobe.xmp' ? { fields: xmpFields(p, dataEnd) } : { value: clipValue(decode('utf-8', p, dataEnd)) };
+        } // zTXt and compressed iTXt: the value is deflated; only the keyword is reported
+        add('png-text', 'sensitive', type + (kw ? ': ' + kw : ''), extra);
       } else if (type === 'eXIf') {
         addExif(dataStart, dataStart + len);
       } else if (type === 'iCCP') {
         add('icc', 'info');
       } else if (type === 'tIME') {
-        add('png-time', 'sensitive');
+        const two = v => String(v).padStart(2, '0');
+        add('png-time', 'sensitive', undefined, { value: be16(dataStart) + '-' + two(bytes[dataStart + 2]) + '-' + two(bytes[dataStart + 3]) + ' ' + two(bytes[dataStart + 4]) + ':' + two(bytes[dataStart + 5]) + ':' + two(bytes[dataStart + 6]) });
       } else if (type === 'IEND') {
         if (n - (pos + 12) > 0) add('trailing-data', 'sensitive', (n - (pos + 12)) + ' bytes');
         return;
@@ -1749,7 +2127,7 @@ function scanMetadata(input) {
       const size = le32(pos + 4);
       const dataStart = pos + 8;
       if (fourcc === 'EXIF') addExif(startsWith(dataStart, 'Exif\0\0') ? dataStart + 6 : dataStart, dataStart + size);
-      else if (fourcc === 'XMP ') add('xmp', 'sensitive');
+      else if (fourcc === 'XMP ') add('xmp', 'sensitive', undefined, { fields: xmpFields(dataStart, dataStart + size) });
       else if (fourcc === 'ICCP') add('icc', 'info');
       if (size > n) return;
       pos += 8 + size + (size & 1);
@@ -1798,6 +2176,285 @@ function scanMetadata(input) {
   return result;
 }
 // SCAN_METADATA_END
+
+// ============================================================
+// METADATA REPORT + EXPORT VERIFICATION (v1.2.1)
+// Two jobs, both built on scanMetadata() above:
+//
+//   1. Before processing: tell the person what the file they just
+//      loaded is carrying (EXIF/GPS, author fields, comments...), with
+//      the actual VALUES so they can see exactly what would have been
+//      shared. Values appear only on this page, on this computer; a
+//      Show/Hide toggle lets them be masked (screen sharing, demos).
+//
+//   2. After processing, at the moment of download: scan the exact
+//      bytes that are about to be handed over. If anything identifying
+//      is found -- or the file can't be verified at all -- the
+//      download is BLOCKED (fail closed). A clean result is shown as a
+//      positive line so the person can see the check actually ran.
+//      That verdict names what was found but never repeats the values.
+//
+// Everything that comes out of a scanned file is untrusted text and is
+// written with textContent only, never innerHTML (test/run-tests.mjs
+// enforces this for the UI block).
+// ============================================================
+// META_LOGIC_START
+const OFFICE_CORE_FIELDS = {
+  'dc:title': 'Title', 'dc:subject': 'Subject', 'dc:creator': 'Creator',
+  'cp:keywords': 'Keywords', 'dc:description': 'Description',
+  'cp:lastModifiedBy': 'LastModifiedBy', 'cp:category': 'Category',
+  'dcterms:created': 'Created', 'dcterms:modified': 'Modified', 'cp:lastPrinted': 'LastPrinted'
+};
+const OFFICE_APP_FIELDS = ['Application', 'Company', 'Manager'];
+const PDF_INFO_FIELDS = ['Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer', 'CreationDate', 'ModDate'];
+
+// PDF dates look like D:20260105123000+01'00'. Shown as 2026-01-05 12:30:00 +01:00.
+// Anything that doesn't parse is shown as written.
+function formatPdfDate(raw) {
+  const m = /^D:(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?(?:(Z)|([+-])(\d{2})'?(\d{2})?'?)?/.exec(String(raw).trim());
+  if (!m) return String(raw);
+  const [, Y, Mo = '01', D = '01', h = '00', mi = '00', s = '00', z, sign, th, tm = '00'] = m;
+  return Y + '-' + Mo + '-' + D + ' ' + h + ':' + mi + ':' + s + (z ? ' UTC' : (sign ? ' ' + sign + th + ':' + tm : ''));
+}
+
+// Findings for a .docx/.pptx, from the text of docProps/core.xml and
+// docProps/app.xml plus the archive's entry names. A field counts only
+// if it has non-blank text (an empty <dc:creator/> is nothing); its
+// value is carried along for the report.
+function officeMetadataFindings(coreXml, appXml, entryNames) {
+  const findings = [];
+  const textOf = (xml, tag) => {
+    if (!xml) return '';
+    const m = new RegExp('<' + tag + '(?:\\s[^>]*)?>([^<]*)</' + tag + '>').exec(xml);
+    return m ? clipValue(unescapeXml(m[1])) : '';
+  };
+  for (const [tag, name] of Object.entries(OFFICE_CORE_FIELDS)) {
+    const value = textOf(coreXml, tag);
+    if (value) findings.push({ code: 'office-field', severity: 'sensitive', detail: name, value });
+  }
+  for (const tag of OFFICE_APP_FIELDS) {
+    const value = textOf(appXml, tag);
+    if (value) findings.push({ code: 'office-field', severity: 'sensitive', detail: tag, value });
+  }
+  const names = entryNames || [];
+  if (names.includes('docProps/custom.xml')) findings.push({ code: 'office-custom', severity: 'sensitive' });
+  if (names.some(n => n === 'word/comments.xml' || n === 'word/commentsExtended.xml' || n === 'word/people.xml' || n === 'ppt/commentAuthors.xml' || n.startsWith('ppt/comments/'))) {
+    findings.push({ code: 'office-comments', severity: 'sensitive' });
+  }
+  if (names.some(n => n.startsWith('docProps/thumbnail.'))) findings.push({ code: 'office-thumbnail', severity: 'sensitive' });
+  return findings;
+}
+
+// Findings for a PDF from pdf.js's getMetadata() result (`info` is its
+// Info dictionary as an object; `hasXmp` says whether an XMP stream exists).
+function pdfInfoMetadataFindings(info, hasXmp) {
+  const findings = [];
+  const src = info && typeof info === 'object' ? info : {};
+  for (const name of PDF_INFO_FIELDS) {
+    const v = src[name];
+    if (typeof v === 'string' && v.trim() !== '') {
+      const shown = (name === 'CreationDate' || name === 'ModDate') ? formatPdfDate(v) : v;
+      findings.push({ code: 'pdf-field', severity: 'sensitive', detail: name, value: clipValue(shown) });
+    }
+  }
+  if (hasXmp) findings.push({ code: 'pdf-xmp', severity: 'sensitive' });
+  return findings;
+}
+
+// The decision at export time. Sensitive findings and "could not
+// verify" both block; "info" findings (e.g. an ICC colour profile) do not.
+function summarizeExportScan(scan) {
+  const sensitive = scan.findings.filter(f => f.severity === 'sensitive');
+  const unscannable = scan.findings.filter(f => f.severity === 'unscannable');
+  const info = scan.findings.filter(f => f.severity === 'info');
+  const reason = sensitive.length ? 'sensitive' : ((unscannable.length || scan.unscannable) ? 'unscannable' : null);
+  return { ok: reason === null, reason, sensitive, unscannable, info };
+}
+
+// One finding as a localized sentence fragment. Unknown codes fall back
+// to the raw code rather than throwing. Values are appended only when
+// `showValues` is true -- the export verdict never passes it, so a
+// "download blocked" message names what was found but never repeats it.
+function describeFinding(t, finding, showValues = false) {
+  const labels = (t && t.metaCode) || {};
+  const label = labels[finding.code] || finding.code;
+  let text = label;
+  if (finding.detail) {
+    let detail = finding.detail;
+    if (finding.code === 'exif') {
+      detail = detail.split(', ').map(part => part === 'thumbnail' ? t.metaThumbnail : (part === 'unparsed' ? t.metaUnparsed : part)).join(', ');
+    }
+    text = label + ': ' + detail;
+  }
+  if (showValues && finding.value) text += ' = ' + finding.value;
+  return text;
+}
+
+// One entry of a finding's `fields` list (an EXIF tag, an XMP property...).
+function describeField(field, showValues) {
+  return showValues ? field.name + ': ' + field.value : field.name;
+}
+// META_LOGIC_END
+
+// META_UI_START
+const inputMetaReportEl = document.getElementById('inputMetaReport');
+const VERIFY_ELEMENT_IDS = ['imgVerify', 'pdfVerify', 'docxVerify', 'pptxVerify'];
+let inputMetaState = null;   // null = nothing to show; otherwise { pending, findings, hasGps }
+let inputMetaShowValues = true; // the Show/Hide values toggle; kept across files
+let inputMetaToken = 0;      // bumped on every new file so a slow older read can't overwrite a newer report
+const verifyState = new Map(); // verify element id -> { summary, format }
+
+function renderInputMetaReport() {
+  const el = inputMetaReportEl;
+  el.textContent = '';
+  if (!inputMetaState) { el.style.display = 'none'; return; }
+  const t = I18N[currentLang];
+  el.style.display = 'block';
+  const addBlock = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    node.textContent = text;
+    el.appendChild(node);
+    return node;
+  };
+  const headEl = document.createElement('div');
+  headEl.className = 'meta-head';
+  const titleEl = document.createElement('strong');
+  titleEl.textContent = t.metaReportTitle;
+  headEl.appendChild(titleEl);
+  el.appendChild(headEl);
+  if (inputMetaState.pending) { addBlock('div', '', t.metaReportReading); return; }
+  const { findings, hasGps } = inputMetaState;
+  const hasValues = findings.some(f => f.value || (f.fields && f.fields.length));
+  if (hasValues) {
+    const toggle = document.createElement('button');
+    toggle.className = 'secondary meta-toggle';
+    toggle.textContent = inputMetaShowValues ? t.metaHideValues : t.metaShowValues;
+    toggle.addEventListener('click', () => { inputMetaShowValues = !inputMetaShowValues; renderInputMetaReport(); });
+    headEl.appendChild(toggle);
+  }
+  if (!findings.length) {
+    addBlock('div', '', t.metaReportNone);
+  } else {
+    const ul = document.createElement('ul');
+    for (const f of findings) {
+      const li = document.createElement('li');
+      if (f.severity !== 'sensitive') li.className = 'meta-info';
+      li.textContent = describeFinding(t, f, inputMetaShowValues);
+      if (f.fields && f.fields.length) {
+        const sub = document.createElement('ul');
+        for (const field of f.fields) {
+          const subLi = document.createElement('li');
+          subLi.textContent = describeField(field, inputMetaShowValues);
+          sub.appendChild(subLi);
+        }
+        li.appendChild(sub);
+      }
+      ul.appendChild(li);
+    }
+    el.appendChild(ul);
+  }
+  if (hasGps) addBlock('div', 'meta-warn', t.metaGpsWarning);
+  if (hasValues && inputMetaShowValues) addBlock('div', 'meta-foot', t.metaValuesLocal);
+  addBlock('div', 'meta-foot', t.metaReportFooter);
+}
+
+function renderVerify(elId) {
+  const el = document.getElementById(elId);
+  const st = verifyState.get(elId);
+  el.textContent = '';
+  if (!st) { el.style.display = 'none'; el.className = 'export-verify'; return; }
+  const t = I18N[currentLang];
+  const s = st.summary;
+  const list = arr => arr.map(f => describeFinding(t, f)).join('; ');
+  el.className = 'export-verify ' + (s.ok ? 'ok' : 'blocked');
+  el.style.display = 'block';
+  if (s.ok) el.textContent = t.verifyOk(st.format) + (s.info.length ? ' ' + t.verifyInfoNote(list(s.info)) : '');
+  else if (s.reason === 'sensitive') el.textContent = t.verifyBlockedSensitive(list(s.sensitive));
+  else el.textContent = t.verifyBlockedUnscannable(list(s.unscannable.length ? s.unscannable : [{ code: 'unknown-format', severity: 'unscannable' }]));
+}
+
+function clearVerify(elId) { verifyState.delete(elId); renderVerify(elId); }
+function clearAllExportVerify() { VERIFY_ELEMENT_IDS.forEach(clearVerify); }
+function resetInputMetaReport() { inputMetaToken++; inputMetaState = null; renderInputMetaReport(); }
+function rerenderMetadataUi() { renderInputMetaReport(); VERIFY_ELEMENT_IDS.forEach(renderVerify); }
+
+// Every export (image, image->PDF, PDF, Word->PDF, PowerPoint->PDF)
+// ends here. The bytes that get scanned are the very bytes that get
+// handed to the browser's download -- nothing is rebuilt in between --
+// and a failed or inconclusive scan means nothing is downloaded.
+async function deliverVerifiedFile(bytes, mime, filename, verifyElId) {
+  const scan = scanMetadata(bytes);
+  const summary = summarizeExportScan(scan);
+  verifyState.set(verifyElId, { summary, format: scan.format.toUpperCase() });
+  renderVerify(verifyElId);
+  if (!summary.ok) return false;
+  const blob = new Blob([bytes], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+// `pdfjsLib` can be injected so the tests can run this without a real
+// pdf.js. In the app it is imported on first use, exactly like the PDF
+// panel does it.
+//
+// Cleanup note: in the vendored pdf.js (6.x) the document object has no
+// destroy() -- it lives on the *loading task* returned by getDocument().
+// Calling doc.destroy() threw "doc.destroy is not a function" and
+// swallowed the whole report. So: destroy through the loading task, and
+// never let a cleanup problem replace the metadata that was already read.
+async function readPdfMetadataFindings(file, pdfjsLib = null) {
+  const lib = pdfjsLib || await import('./vendor/pdf/pdf.min.mjs');
+  if (!pdfjsLib) lib.GlobalWorkerOptions.workerSrc = 'vendor/pdf/pdf.worker.min.mjs';
+  // A private copy: pdf.js transfers (detaches) the buffer it is given.
+  const loadingTask = lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  try {
+    const doc = await loadingTask.promise;
+    const meta = await doc.getMetadata();
+    return pdfInfoMetadataFindings(meta && meta.info, !!(meta && meta.metadata));
+  } finally {
+    try { await loadingTask.destroy(); } catch (cleanupError) { console.warn('pdf.js cleanup failed:', cleanupError); }
+  }
+}
+
+async function readOfficeMetadataFindings(file) {
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const readText = async (name) => (zip.file(name) ? zip.file(name).async('string') : '');
+  return officeMetadataFindings(await readText('docProps/core.xml'), await readText('docProps/app.xml'), Object.keys(zip.files));
+}
+
+async function showInputMetaReport(type, file) {
+  const token = ++inputMetaToken;
+  inputMetaState = { pending: true, findings: [], hasGps: false };
+  renderInputMetaReport();
+  let findings = [];
+  let hasGps = false;
+  try {
+    if (type === 'image') {
+      const r = scanMetadata(await file.arrayBuffer());
+      findings = r.findings;
+      hasGps = r.hasGps;
+    } else if (type === 'pdf') {
+      findings = await readPdfMetadataFindings(file);
+    } else {
+      findings = await readOfficeMetadataFindings(file);
+    }
+  } catch (err) {
+    console.error('Metadata report failed:', err);
+    findings = [{ code: 'scan-error', severity: 'unscannable', detail: String((err && err.message) || err) }];
+  }
+  if (token !== inputMetaToken) return; // a newer file arrived while this one was being read
+  inputMetaState = { pending: false, findings, hasGps };
+  renderInputMetaReport();
+}
+// META_UI_END
 
 // ============================================================
 // IMAGE / SCREENSHOT REDACTION
@@ -1989,6 +2646,8 @@ async function routeFile(file) {
   if (!file) return;
   const t = I18N[currentLang];
   const type = await detectFileType(file);
+  clearAllExportVerify();
+  resetInputMetaReport();
 
   if (type === 'unknown') {
     detectedTypeEl.textContent = t.unknownFileType;
@@ -2016,6 +2675,7 @@ async function routeFile(file) {
   else if (type === 'pdf') loadPdfFile(file);
   else if (type === 'docx') loadDocxFile(file);
   else if (type === 'pptx') loadPptxFile(file);
+  showInputMetaReport(type, file);
 
   resultPanels[type].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -2296,6 +2956,7 @@ function renderImgSuspectChecklist(suspects) {
 }
 
 imgScanBtn.addEventListener('click', async () => {
+  clearVerify('imgVerify');
   const t = I18N[currentLang];
   if (!originalImageBitmap) return;
   imgScanBtn.disabled = true;
@@ -2338,21 +2999,17 @@ imgScanBtn.addEventListener('click', async () => {
   }
 });
 
-imgDownloadBtn.addEventListener('click', () => {
+imgDownloadBtn.addEventListener('click', async () => {
   // Native-format export (v1.1 proposal default) — whatever format the
   // person actually uploaded, re-encoded from the already-redacted
   // canvas pixels. See originalImageMimeType's comment for why the
-  // fallback-to-PNG case is fine from a redaction standpoint.
-  imgCanvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'redacted-image' + imgExtFromMime(originalImageMimeType);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, originalImageMimeType);
+  // fallback-to-PNG case is fine from a redaction standpoint. (v1.2.1:
+  // the encoded bytes are scanned for metadata before they are handed
+  // over — see deliverVerifiedFile.)
+  const blob = await new Promise((resolve) => imgCanvas.toBlob(resolve, originalImageMimeType));
+  if (!blob) return;
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  await deliverVerifiedFile(bytes, originalImageMimeType, 'redacted-image' + imgExtFromMime(originalImageMimeType), 'imgVerify');
 });
 
 imgDownloadPdfBtn.addEventListener('click', async () => {
@@ -2370,18 +3027,12 @@ imgDownloadPdfBtn.addEventListener('click', async () => {
   const page = outPdf.addPage([imgCanvas.width, imgCanvas.height]);
   page.drawImage(pngImage, { x: 0, y: 0, width: imgCanvas.width, height: imgCanvas.height });
   const pdfBytes = await saveCleanPdf(outPdf);
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'redacted-image.pdf';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await deliverVerifiedFile(pdfBytes, 'application/pdf', 'redacted-image.pdf', 'imgVerify');
 });
 
 imgClearBtn.addEventListener('click', () => {
+  clearVerify('imgVerify');
+  resetInputMetaReport();
   originalImageBitmap = null;
   originalImageMimeType = 'image/png';
   imgCanvasWrap.style.display = 'none';
@@ -2639,6 +3290,7 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
 }
 
 pdfScanBtn.addEventListener('click', async () => {
+  clearVerify('pdfVerify');
   const t = I18N[currentLang];
   if (!pdfOriginalBytes) return;
   pdfScanBtn.disabled = true;
@@ -2748,20 +3400,14 @@ pdfScanBtn.addEventListener('click', async () => {
   }
 });
 
-pdfDownloadBtn.addEventListener('click', () => {
+pdfDownloadBtn.addEventListener('click', async () => {
   if (!pdfOutputBytes) return;
-  const blob = new Blob([pdfOutputBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'redacted-document.pdf';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await deliverVerifiedFile(pdfOutputBytes, 'application/pdf', 'redacted-document.pdf', 'pdfVerify');
 });
 
 pdfClearBtn.addEventListener('click', () => {
+  clearVerify('pdfVerify');
+  resetInputMetaReport();
   pdfOriginalBytes = null;
   pdfOutputBytes = null;
   pdfPageCanvases = [];
@@ -3021,6 +3667,7 @@ function loadDocxFile(file) {
 }
 
 docxScanBtn.addEventListener('click', async () => {
+  clearVerify('docxVerify');
   const t = I18N[currentLang];
   if (!docxOriginalBytes) return;
   docxScanBtn.disabled = true;
@@ -3060,21 +3707,15 @@ docxScanBtn.addEventListener('click', async () => {
   }
 });
 
-docxDownloadBtn.addEventListener('click', () => {
+docxDownloadBtn.addEventListener('click', async () => {
   if (!docxOutputBytes) return;
   const t = I18N[currentLang];
-  const blob = new Blob([docxOutputBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = t.docxDownloadName || 'redacted-text.pdf';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await deliverVerifiedFile(docxOutputBytes, 'application/pdf', t.docxDownloadName || 'redacted-text.pdf', 'docxVerify');
 });
 
 docxClearBtn.addEventListener('click', () => {
+  clearVerify('docxVerify');
+  resetInputMetaReport();
   docxOriginalBytes = null;
   docxOutputBytes = null;
   docxScanBtn.disabled = true;
@@ -3117,6 +3758,7 @@ function loadPptxFile(file) {
 }
 
 pptxScanBtn.addEventListener('click', async () => {
+  clearVerify('pptxVerify');
   const t = I18N[currentLang];
   if (!pptxOriginalBytes) return;
   pptxScanBtn.disabled = true;
@@ -3155,21 +3797,15 @@ pptxScanBtn.addEventListener('click', async () => {
   }
 });
 
-pptxDownloadBtn.addEventListener('click', () => {
+pptxDownloadBtn.addEventListener('click', async () => {
   if (!pptxOutputBytes) return;
   const t = I18N[currentLang];
-  const blob = new Blob([pptxOutputBytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = t.pptxDownloadName || 'redacted-slides.pdf';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await deliverVerifiedFile(pptxOutputBytes, 'application/pdf', t.pptxDownloadName || 'redacted-slides.pdf', 'pptxVerify');
 });
 
 pptxClearBtn.addEventListener('click', () => {
+  clearVerify('pptxVerify');
+  resetInputMetaReport();
   pptxOriginalBytes = null;
   pptxOutputBytes = null;
   pptxScanBtn.disabled = true;

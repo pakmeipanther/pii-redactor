@@ -798,7 +798,7 @@ const JFIF = jpegSegment(0xE0, bytesOf('JFIF\0', [1, 1, 0, 0, 1, 0, 1, 0, 0]));
 const JPEG_SCAN = bytesOf([0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00], [0x12, 0x34, 0xFF, 0x00, 0x56], [0xFF, 0xD9]);
 const SOI = [0xFF, 0xD8];
 
-function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true } = {}) {
+function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true, latRef = 'N', lonRef = 'E' } = {}) {
   const le = littleEndian;
   const u16 = v => le ? [v & 255, (v >> 8) & 255] : [(v >> 8) & 255, v & 255];
   const u32 = v => le
@@ -806,7 +806,11 @@ function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true } = {
     : [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
   const asciiZ = s => [...Buffer.from(s + '\0', 'latin1')];
   const entry = (tag, type, count, value) => [...u16(tag), ...u16(type), ...u32(count), ...value];
+  const rational = (num, den) => [...u32(num), ...u32(den)];
   const make = asciiZ('FakeCam'), model = asciiZ('Model-X'), software = asciiZ('FakeSoft 1.0'), dto = asciiZ('2026:01:02 03:04:05');
+  // Synthetic position: 10 deg 30' 0" = 10.5, 20 deg 15' 0" = 20.25 (nowhere in particular).
+  const latData = [...rational(10, 1), ...rational(30, 1), ...rational(0, 1)];
+  const lonData = [...rational(20, 1), ...rational(15, 1), ...rational(0, 1)];
   const ifd0Entries = gps ? 5 : 4;
   const ifd0Off = 8;
   const makeOff = ifd0Off + 2 + ifd0Entries * 12 + 4;
@@ -815,7 +819,9 @@ function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true } = {
   const exifOff = softwareOff + software.length;
   const dtoOff = exifOff + 2 + 12 + 4;
   const gpsOff = dtoOff + dto.length;
-  const thumbOff = gpsOff + (gps ? 2 + 2 * 12 + 4 : 0);
+  const latOff = gpsOff + (gps ? 2 + 4 * 12 + 4 : 0);
+  const lonOff = latOff + (gps ? 24 : 0);
+  const thumbOff = lonOff + (gps ? 24 : 0);
   const out = [le ? 0x49 : 0x4D, le ? 0x49 : 0x4D, ...u16(42), ...u32(ifd0Off)];
   out.push(...u16(ifd0Entries),
     ...entry(0x010F, 2, make.length, u32(makeOff)),
@@ -827,7 +833,14 @@ function buildExifTiff({ littleEndian = true, gps = true, thumbnail = true } = {
   out.push(...make, ...model, ...software);
   out.push(...u16(1), ...entry(0x9003, 2, dto.length, u32(dtoOff)), ...u32(0));
   out.push(...dto);
-  if (gps) out.push(...u16(2), ...entry(0x0001, 2, 2, [0x4E, 0, 0, 0]), ...entry(0x0002, 5, 3, u32(thumbOff)), ...u32(0));
+  if (gps) {
+    out.push(...u16(4),
+      ...entry(0x0001, 2, 2, [latRef.charCodeAt(0), 0, 0, 0]),
+      ...entry(0x0002, 5, 3, u32(latOff)),
+      ...entry(0x0003, 2, 2, [lonRef.charCodeAt(0), 0, 0, 0]),
+      ...entry(0x0004, 5, 3, u32(lonOff)),
+      ...u32(0), ...latData, ...lonData);
+  }
   if (thumbnail) out.push(...u16(1), ...entry(0x0103, 3, 1, [...u16(6), 0, 0]), ...u32(0));
   return Uint8Array.from(out);
 }
@@ -999,6 +1012,132 @@ check('scanMetadata PDF: an encrypted PDF is reported unscannable', () => {
   if (!r.unscannable || !codesOf(r).includes('pdf-encrypt')) throw new Error(JSON.stringify(r.findings));
 });
 
+// ---- values: what the file actually says (v1.2.1 follow-up) ----
+// A small TIFF builder for exotic tags; values longer than 4 bytes are placed out of line.
+function tiffWithEntries(entries, littleEndian = true) {
+  const le = littleEndian;
+  const u16 = v => le ? [v & 255, (v >> 8) & 255] : [(v >> 8) & 255, v & 255];
+  const u32 = v => le ? [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255] : [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
+  const dataStart = 8 + 2 + entries.length * 12 + 4;
+  const data = [];
+  const ifd = [];
+  for (const e of entries) {
+    let value;
+    if (e.bytes.length <= 4) value = [...e.bytes, ...new Array(4 - e.bytes.length).fill(0)];
+    else { value = u32(dataStart + data.length); data.push(...e.bytes); }
+    ifd.push(...u16(e.tag), ...u16(e.type), ...u32(e.count ?? e.bytes.length), ...value);
+  }
+  return Uint8Array.from([le ? 0x49 : 0x4D, le ? 0x49 : 0x4D, ...u16(42), ...u32(8), ...u16(entries.length), ...ifd, ...u32(0), ...data]);
+}
+const fieldsOf = (r, code) => Object.fromEntries(((r.findings.find(f => f.code === code) || {}).fields || []).map(f => [f.name, f.value]));
+const jpegWith = (...segments) => bytesOf(SOI, ...segments, JPEG_SCAN);
+
+check('values: EXIF tag values and the GPS position are decoded (little-endian and big-endian)', () => {
+  for (const littleEndian of [true, false]) {
+    const f = fieldsOf(scanMetadata(jpegWith(exifSegment({ littleEndian }))), 'exif');
+    const want = { Make: 'FakeCam', Model: 'Model-X', Software: 'FakeSoft 1.0', DateTimeOriginal: '2026:01:02 03:04:05', GPSLatitude: '10.500000° N', GPSLongitude: '20.250000° E', GPSPosition: '10.500000, 20.250000' };
+    for (const [k, v] of Object.entries(want)) if (f[k] !== v) throw new Error(`${littleEndian ? 'LE' : 'BE'}: ${k} expected ${JSON.stringify(v)}, got ${JSON.stringify(f[k])} (all: ${JSON.stringify(f)})`);
+  }
+});
+
+check('values: southern / western hemispheres give a negative GPSPosition', () => {
+  const f = fieldsOf(scanMetadata(jpegWith(exifSegment({ latRef: 'S', lonRef: 'W' }))), 'exif');
+  if (f.GPSPosition !== '-10.500000, -20.250000') throw new Error('got ' + f.GPSPosition);
+  if (f.GPSLatitude !== '10.500000° S' || f.GPSLongitude !== '20.250000° W') throw new Error(JSON.stringify(f));
+});
+
+check('values: Windows XP tags (UTF-16), UserComment (charset prefix) and Artist are decoded', () => {
+  const utf16 = s => [...Buffer.from(s + '\0', 'utf16le')];
+  const tiff = tiffWithEntries([
+    { tag: 0x013B, type: 2, bytes: [...Buffer.from('Jane Fake\0', 'latin1')] },
+    { tag: 0x9286, type: 7, bytes: [...Buffer.from('ASCII\0\0\0hello comment', 'latin1')] },
+    { tag: 0x9C9D, type: 1, bytes: utf16('Fake Author') }
+  ]);
+  const f = fieldsOf(scanMetadata(jpegWith(jpegSegment(0xE1, bytesOf('Exif\0\0', tiff)))), 'exif');
+  if (f.Artist !== 'Jane Fake' || f.UserComment !== 'hello comment' || f.XPAuthor !== 'Fake Author') throw new Error(JSON.stringify(f));
+});
+
+check('values: a tag whose value points outside the data is still listed by name, with no value (no throw)', () => {
+  const tiff = tiffWithEntries([{ tag: 0x010F, type: 2, count: 100000, bytes: [...Buffer.from('FakeCam\0', 'latin1')] }]);
+  const r = scanMetadata(jpegWith(jpegSegment(0xE1, bytesOf('Exif\0\0', tiff))));
+  if (!detailOf(r, 'exif').includes('Make')) throw new Error('name missing: ' + detailOf(r, 'exif'));
+  if ('Make' in fieldsOf(r, 'exif')) throw new Error('a value was invented for an out-of-range entry');
+});
+
+check('values: a JPEG comment carries its text', () => {
+  const r = scanMetadata(jpegWith(jpegSegment(0xFE, bytesOf('Made by Fake Person'))));
+  if ((r.findings.find(f => f.code === 'jpeg-comment') || {}).value !== 'Made by Fake Person') throw new Error(JSON.stringify(r.findings));
+});
+
+const XMP_SAMPLE = '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmp:CreatorTool="Fake Editor 1.0"><dc:creator><rdf:Seq><rdf:li>Fake &amp; Co</rdf:li></rdf:Seq></dc:creator><photoshop:City>Fakeville</photoshop:City></rdf:Description></rdf:RDF></x:xmpmeta>';
+check('values: XMP attributes, list properties and plain properties are extracted (entities decoded, plumbing skipped)', () => {
+  const f = fieldsOf(scanMetadata(jpegWith(jpegSegment(0xE1, bytesOf('http://ns.adobe.com/xap/1.0/\0', XMP_SAMPLE)))), 'xmp');
+  if (f['xmp:CreatorTool'] !== 'Fake Editor 1.0' || f['dc:creator'] !== 'Fake & Co' || f['photoshop:City'] !== 'Fakeville') throw new Error(JSON.stringify(f));
+  if (Object.keys(f).some(k => k.startsWith('xmlns') || k === 'rdf:about')) throw new Error('namespace plumbing leaked into the fields: ' + JSON.stringify(f));
+});
+
+check('values: IPTC datasets (title, by-line, repeated keywords) are extracted from the Photoshop block', () => {
+  const ds = (num, text) => [0x1C, 2, num, 0, text.length, ...Buffer.from(text, 'utf8')];
+  const iim = [...ds(5, 'Fake Title'), ...ds(80, 'Fake Author'), ...ds(25, 'kw1'), ...ds(25, 'kw2')];
+  const size = iim.length;
+  const block = bytesOf('Photoshop 3.0\0', '8BIM', [0x04, 0x04], [0, 0], [(size >>> 24) & 255, (size >>> 16) & 255, (size >>> 8) & 255, size & 255], iim, size & 1 ? [0] : []);
+  const r = scanMetadata(jpegWith(jpegSegment(0xED, block)));
+  const fields = (r.findings.find(f => f.code === 'iptc') || {}).fields || [];
+  const names = fields.map(f => f.name + '=' + f.value);
+  for (const want of ['ObjectName=Fake Title', 'By-line=Fake Author', 'Keywords=kw1', 'Keywords=kw2']) if (!names.includes(want)) throw new Error(`missing ${want} in ${JSON.stringify(names)}`);
+});
+
+check('values: PNG text chunks carry their text; compressed ones report only the keyword; tIME is formatted', () => {
+  const png = pngInsertAfterIhdr(bytesOf(
+    pngChunk('tEXt', bytesOf('Author\0Fake Person')),
+    pngChunk('iTXt', bytesOf('Comment\0', [0, 0], '\0\0', [...Buffer.from('Grüße', 'utf8')])),
+    pngChunk('iTXt', bytesOf('XML:com.adobe.xmp\0', [0, 0], '\0\0', XMP_SAMPLE)),
+    pngChunk('zTXt', bytesOf('Secret\0', [0], [1, 2, 3])),
+    pngChunk('tIME', [0x07, 0xEA, 1, 2, 3, 4, 5])
+  ));
+  const r = scanMetadata(png);
+  const byDetail = d => r.findings.find(f => f.code === 'png-text' && f.detail === d) || {};
+  if (byDetail('tEXt: Author').value !== 'Fake Person') throw new Error('tEXt value: ' + JSON.stringify(byDetail('tEXt: Author')));
+  if (byDetail('iTXt: Comment').value !== 'Grüße') throw new Error('iTXt value: ' + JSON.stringify(byDetail('iTXt: Comment')));
+  const xmpFieldsFound = (byDetail('iTXt: XML:com.adobe.xmp').fields || []).map(f => f.name);
+  if (!xmpFieldsFound.includes('xmp:CreatorTool') || !xmpFieldsFound.includes('dc:creator')) throw new Error('XMP-in-PNG fields: ' + JSON.stringify(xmpFieldsFound));
+  if ('value' in byDetail('zTXt: Secret') || 'fields' in byDetail('zTXt: Secret')) throw new Error('compressed zTXt must not invent a value');
+  if ((r.findings.find(f => f.code === 'png-time') || {}).value !== '2026-01-02 03:04:05') throw new Error('tIME: ' + JSON.stringify(r.findings.find(f => f.code === 'png-time')));
+});
+
+check('values: WebP XMP and EXIF carry their fields', () => {
+  const r = scanMetadata(webp([riffChunk('EXIF', bytesOf('Exif\0\0', buildExifTiff())), riffChunk('XMP ', bytesOf(XMP_SAMPLE)), WEBP_IMAGE]));
+  if (fieldsOf(r, 'exif').Make !== 'FakeCam' || fieldsOf(r, 'xmp')['photoshop:City'] !== 'Fakeville') throw new Error(JSON.stringify(r.findings));
+});
+
+check('values: control characters are stripped and long values are cut to 300 characters', () => {
+  const nasty = 'A\u0001B\u0007\n\tC' + 'x'.repeat(400);
+  const r = scanMetadata(pngInsertAfterIhdr(pngChunk('tEXt', bytesOf('K\0', nasty))));
+  const v = r.findings.find(f => f.code === 'png-text').value;
+  if (/[\u0000-\u001f]/.test(v)) throw new Error('control character survived');
+  if (!v.startsWith('A B C') || v.length !== 301 || !v.endsWith('…')) throw new Error(`wrong clipping: len ${v.length} start ${JSON.stringify(v.slice(0, 8))}`);
+});
+
+check('values: scanning thousands of randomly corrupted files never crashes the scanner', () => {
+  let seed = 12345;
+  const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const samples = [
+    JPEG_DIRTY,
+    pngInsertAfterIhdr(bytesOf(pngChunk('tEXt', bytesOf('Author\0Fake')), pngChunk('iTXt', bytesOf('XML:com.adobe.xmp\0', [0, 0], '\0\0', XMP_SAMPLE)), pngChunk('eXIf', buildExifTiff()), pngChunk('tIME', [7, 234, 1, 2, 3, 4, 5]))),
+    webp([riffChunk('EXIF', bytesOf('Exif\0\0', buildExifTiff())), riffChunk('XMP ', bytesOf(XMP_SAMPLE)), WEBP_IMAGE]),
+    jpegWith(jpegSegment(0xE1, bytesOf('http://ns.adobe.com/xap/1.0/\0', XMP_SAMPLE)), jpegSegment(0xFE, bytesOf('comment')))
+  ];
+  for (const sample of samples) {
+    for (let i = 0; i < 1500; i++) {
+      const mutated = Uint8Array.from(sample);
+      const flips = 1 + Math.floor(rand() * 6);
+      for (let k = 0; k < flips; k++) mutated[Math.floor(rand() * mutated.length)] = Math.floor(rand() * 256);
+      const r = scanMetadata(mutated);
+      if (r.findings.some(f => f.code === 'scan-error')) throw new Error('internal scan error on a corrupted file: ' + JSON.stringify(r.findings.find(f => f.code === 'scan-error')));
+    }
+  }
+});
+
 // ---- robustness: the scanner reads untrusted files, so it must never throw or hang ----
 check('scanMetadata: empty and unrecognized input are "unscannable", never "clean"', () => {
   for (const input of [new Uint8Array(0), bytesOf('hello world, definitely not an image'), Uint8Array.from({ length: 64 }, (_, i) => (i * 37) & 255)]) {
@@ -1049,6 +1188,372 @@ check('scanMetadata: the scanner block uses no browser APIs (pure bytes in, plai
   const codeOnly = scanMetadataCode.replace(/\/\/.*$/gm, '');
   const bad = codeOnly.match(/\b(document|window|navigator|localStorage|sessionStorage|FileReader|Blob|fetch|XMLHttpRequest|createObjectURL)\b/g);
   if (bad) throw new Error('scanner references browser API(s): ' + [...new Set(bad)].join(', '));
+});
+
+// --- metadata report + export verification (v1.2.1, step 3) --------------
+// Pure logic is extracted from index.html and run as shipped. The DOM
+// code (META_UI block) is run against a tiny hand-written fake `document`
+// -- enough to prove what gets rendered, that a blocked export never
+// reaches the download step, and that untrusted text is never turned
+// into markup. It is NOT a browser test: see the manual checklist in
+// the v1.2.1 CHANGELOG entry.
+
+const i18nMetaCode = extractBetween('// I18N_METADATA_START', '// I18N_METADATA_END', 'I18N_METADATA');
+const metaLogicCode = extractBetween('// META_LOGIC_START', '// META_LOGIC_END', 'META_LOGIC');
+const metaUiCode = extractBetween('// META_UI_START', '// META_UI_END', 'META_UI');
+const { I18N_METADATA } = new Function(`${i18nMetaCode}\nreturn { I18N_METADATA };`)();
+const { officeMetadataFindings, pdfInfoMetadataFindings, summarizeExportScan, describeFinding, describeField, formatPdfDate } =
+  new Function(`${scanMetadataCode}\n${metaLogicCode}\nreturn { officeMetadataFindings, pdfInfoMetadataFindings, summarizeExportScan, describeFinding, describeField, formatPdfDate };`)();
+const stripLineComments = code => code.replace(/\/\/.*$/gm, '');
+const LANGS = ['vi', 'en', 'fr', 'de'];
+
+// ---- i18n completeness: all four languages, every code ----
+check('i18n: EN/FR/DE/VI define exactly the same metadata keys, with the same value types', () => {
+  const ref = Object.keys(I18N_METADATA.en).sort();
+  for (const l of LANGS) {
+    const keys = Object.keys(I18N_METADATA[l]).sort();
+    if (JSON.stringify(keys) !== JSON.stringify(ref)) throw new Error(`${l} keys differ from en: ${keys.filter(k => !ref.includes(k)).concat(ref.filter(k => !keys.includes(k)).map(k => '-' + k)).join(', ')}`);
+    for (const k of ref) if (typeof I18N_METADATA[l][k] !== typeof I18N_METADATA.en[k]) throw new Error(`${l}.${k} has a different type than en.${k}`);
+  }
+});
+
+check('i18n: every finding code the app can produce has a label in all four languages, and no label is dead', () => {
+  const produced = new Set();
+  for (const m of scanMetadataCode.matchAll(/add\('([a-z-]+)'/g)) produced.add(m[1]);
+  for (const m of (metaLogicCode + metaUiCode).matchAll(/code: '([a-z-]+)'/g)) produced.add(m[1]);
+  for (const l of LANGS) {
+    const labelled = Object.keys(I18N_METADATA[l].metaCode);
+    for (const c of produced) if (!labelled.includes(c)) throw new Error(`${l}: no label for finding code "${c}"`);
+    for (const c of labelled) if (!produced.has(c)) throw new Error(`${l}: label "${c}" is never produced by any code path`);
+  }
+});
+
+check('i18n: translations are real (the headline strings differ from English in vi/fr/de) and no string is empty', () => {
+  for (const l of ['vi', 'fr', 'de']) {
+    for (const k of ['metaReportTitle', 'metaReportNone', 'metaReportFooter', 'metaGpsWarning', 'metaThumbnail']) {
+      if (I18N_METADATA[l][k] === I18N_METADATA.en[k]) throw new Error(`${l}.${k} is identical to English -- untranslated?`);
+    }
+  }
+  for (const l of LANGS) {
+    for (const [k, v] of Object.entries(I18N_METADATA[l])) {
+      if (typeof v === 'string' && !v.trim()) throw new Error(`${l}.${k} is empty`);
+      if (typeof v === 'object') for (const [ck, cv] of Object.entries(v)) if (!String(cv).trim()) throw new Error(`${l}.metaCode.${ck} is empty`);
+    }
+    for (const fn of ['verifyOk', 'verifyInfoNote', 'verifyBlockedSensitive', 'verifyBlockedUnscannable']) {
+      const out = I18N_METADATA[l][fn]('MARKER-123');
+      if (typeof out !== 'string' || !out.includes('MARKER-123')) throw new Error(`${l}.${fn} does not include its argument`);
+    }
+  }
+});
+
+check('i18n: the report title is neutral -- it is shown whether or not anything was found, so it must not claim that something was', () => {
+  const claims = { en: /found/i, vi: /tìm thấy/i, fr: /trouvé/i, de: /gefunden/i };
+  for (const l of LANGS) if (claims[l].test(I18N_METADATA[l].metaReportTitle)) throw new Error(`${l} title claims a finding: "${I18N_METADATA[l].metaReportTitle}"`);
+});
+
+// ---- officeMetadataFindings ----
+const OFFICE_CORE_DIRTY = '<cp:coreProperties xmlns:cp="x" xmlns:dc="y" xmlns:dcterms="z"><dc:creator>Fake Person</dc:creator><cp:lastModifiedBy>Other Fake</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">2026-01-02T03:04:05Z</dcterms:created><dc:title></dc:title><dc:subject>   </dc:subject><cp:keywords/></cp:coreProperties>';
+check('officeMetadataFindings: reports non-blank core/app fields by name, ignores empty or blank ones', () => {
+  const f = officeMetadataFindings(OFFICE_CORE_DIRTY, '<Properties><Application>FakeOffice</Application><Company>Fake GmbH</Company><Manager></Manager></Properties>', []);
+  const names = f.filter(x => x.code === 'office-field').map(x => x.detail).sort();
+  if (JSON.stringify(names) !== JSON.stringify(['Application', 'Company', 'Created', 'Creator', 'LastModifiedBy'])) throw new Error('got ' + JSON.stringify(names));
+  if (f.some(x => x.severity !== 'sensitive')) throw new Error('all office findings must be sensitive');
+});
+check('officeMetadataFindings: comments, custom properties and preview thumbnails are found from the archive entry names', () => {
+  const docx = officeMetadataFindings('', '', ['word/document.xml', 'word/comments.xml', 'docProps/custom.xml', 'docProps/thumbnail.jpeg']).map(f => f.code).sort();
+  if (JSON.stringify(docx) !== JSON.stringify(['office-comments', 'office-custom', 'office-thumbnail'])) throw new Error('docx: ' + JSON.stringify(docx));
+  const pptx = officeMetadataFindings('', '', ['ppt/slides/slide1.xml', 'ppt/comments/comment1.xml']).map(f => f.code);
+  if (JSON.stringify(pptx) !== '["office-comments"]') throw new Error('pptx: ' + JSON.stringify(pptx));
+});
+check('officeMetadataFindings: a bare document with no properties is clean', () => {
+  if (officeMetadataFindings('', '', ['word/document.xml', '[Content_Types].xml']).length) throw new Error('expected nothing');
+  if (officeMetadataFindings(undefined, undefined, undefined).length) throw new Error('undefined inputs must not throw or report');
+});
+
+// ---- pdfInfoMetadataFindings ----
+check('pdfInfoMetadataFindings: reports non-blank Info fields by name, plus XMP', () => {
+  const f = pdfInfoMetadataFindings({ Title: 'Fake', Author: '  ', Producer: 'FakePDF 1.0', PDFFormatVersion: '1.7', IsAcroFormPresent: false }, true);
+  const fields = f.filter(x => x.code === 'pdf-field').map(x => x.detail).sort();
+  if (JSON.stringify(fields) !== JSON.stringify(['Producer', 'Title'])) throw new Error('fields: ' + JSON.stringify(fields));
+  if (!f.some(x => x.code === 'pdf-xmp')) throw new Error('pdf-xmp missing');
+  if (pdfInfoMetadataFindings({}, false).length || pdfInfoMetadataFindings(null, false).length) throw new Error('empty/null info must be clean');
+});
+
+// ---- values in the office / PDF findings and in describeFinding ----
+check('office values: field values are carried (blank ones skipped, XML entities decoded, whitespace collapsed)', () => {
+  const f = officeMetadataFindings('<cp:coreProperties><dc:creator>Fake &amp; Co</dc:creator><cp:lastModifiedBy>  Other\n Fake </cp:lastModifiedBy><dc:title>   </dc:title></cp:coreProperties>', '<Properties><Company>Fake GmbH</Company></Properties>', []);
+  const by = Object.fromEntries(f.map(x => [x.detail, x.value]));
+  if (by.Creator !== 'Fake & Co' || by.LastModifiedBy !== 'Other Fake' || by.Company !== 'Fake GmbH' || 'Title' in by) throw new Error(JSON.stringify(by));
+});
+
+check('pdf values: Info field values are carried and dates are formatted', () => {
+  const f = pdfInfoMetadataFindings({ Producer: 'FakePDF 1.0', CreationDate: "D:20260105123000+01'00'", ModDate: 'D:20260105123000Z', Author: 'Fake Person' }, false);
+  const by = Object.fromEntries(f.map(x => [x.detail, x.value]));
+  if (by.Producer !== 'FakePDF 1.0' || by.Author !== 'Fake Person') throw new Error(JSON.stringify(by));
+  if (by.CreationDate !== '2026-01-05 12:30:00 +01:00' || by.ModDate !== '2026-01-05 12:30:00 UTC') throw new Error('dates: ' + JSON.stringify(by));
+});
+
+check('formatPdfDate: partial dates are padded; unparseable text is shown as written', () => {
+  if (formatPdfDate('D:20260105') !== '2026-01-05 00:00:00') throw new Error(formatPdfDate('D:20260105'));
+  if (formatPdfDate("D:20260105123000-05'30'") !== '2026-01-05 12:30:00 -05:30') throw new Error(formatPdfDate("D:20260105123000-05'30'"));
+  if (formatPdfDate('yesterday') !== 'yesterday') throw new Error('should return the raw text');
+});
+
+check('describeFinding: values are appended only on request; describeField follows the same switch', () => {
+  const t = I18N_METADATA.en;
+  const f = { code: 'pdf-field', severity: 'sensitive', detail: 'Producer', value: 'FakePDF 1.0' };
+  if (describeFinding(t, f) !== 'PDF field: Producer') throw new Error(describeFinding(t, f));
+  if (describeFinding(t, f, true) !== 'PDF field: Producer = FakePDF 1.0') throw new Error(describeFinding(t, f, true));
+  if (describeField({ name: 'Make', value: 'FakeCam' }, true) !== 'Make: FakeCam' || describeField({ name: 'Make', value: 'FakeCam' }, false) !== 'Make') throw new Error('describeField');
+});
+
+// ---- summarizeExportScan: the block / allow decision ----
+check('summarizeExportScan: clean = ok; ICC-only = ok with info; sensitive and unscannable both block', () => {
+  if (!summarizeExportScan(scanMetadata(JPEG_CLEAN)).ok) throw new Error('clean JPEG should pass');
+  const icc = summarizeExportScan(scanMetadata(JPEG_ICC_ONLY));
+  if (!icc.ok || icc.info.length !== 1) throw new Error('ICC-only should pass with 1 info finding: ' + JSON.stringify(icc));
+  const dirty = summarizeExportScan(scanMetadata(JPEG_DIRTY));
+  if (dirty.ok || dirty.reason !== 'sensitive') throw new Error('dirty JPEG must block as sensitive: ' + JSON.stringify(dirty));
+  const unknown = summarizeExportScan(scanMetadata(bytesOf('not a known format')));
+  if (unknown.ok || unknown.reason !== 'unscannable') throw new Error('unknown format must block as unscannable: ' + JSON.stringify(unknown));
+  const flagOnly = summarizeExportScan({ findings: [], hasSensitive: false, hasGps: false, unscannable: true });
+  if (flagOnly.ok) throw new Error('scan.unscannable alone must still block');
+});
+
+// ---- describeFinding ----
+check('describeFinding: localizes label and the EXIF thumbnail/unparsed tokens; unknown codes fall back to the code', () => {
+  for (const l of LANGS) {
+    const t = I18N_METADATA[l];
+    const text = describeFinding(t, { code: 'exif', severity: 'sensitive', detail: 'Make, GPS, thumbnail, unparsed' });
+    if (!text.startsWith(t.metaCode.exif)) throw new Error(`${l}: label missing: ${text}`);
+    if (!text.includes(t.metaThumbnail) || !text.includes(t.metaUnparsed) || !text.includes('Make, GPS')) throw new Error(`${l}: tokens not localized: ${text}`);
+  }
+  if (describeFinding(I18N_METADATA.en, { code: 'made-up', severity: 'info' }) !== 'made-up') throw new Error('unknown code should fall back to itself');
+});
+
+// ---- the UI block, against a fake DOM ----
+function makeUiHarness() {
+  const clicks = [];
+  const byId = new Map();
+  const makeEl = (tag) => ({
+    tag, children: [], style: {}, className: '', _text: '',
+    get textContent() { return this._text + this.children.map(c => c.textContent).join(''); },
+    set textContent(v) { this._text = String(v); this.children = []; },
+    appendChild(c) { this.children.push(c); return c; },
+    addEventListener(type, fn) { (this.listeners = this.listeners || {})[type] = fn; }
+  });
+  const doc = {
+    getElementById(id) { if (!byId.has(id)) byId.set(id, makeEl('div')); return byId.get(id); },
+    createElement(tag) { const el = makeEl(tag); if (tag === 'a') el.click = () => clicks.push({ download: el.download }); return el; },
+    body: { appendChild() {}, removeChild() {} }
+  };
+  const source = `
+    let currentLang = 'en';
+    ${i18nMetaCode}
+    const I18N = I18N_METADATA;
+    ${scanMetadataCode}
+    ${metaLogicCode}
+    ${metaUiCode}
+    return { deliverVerifiedFile, showInputMetaReport, readPdfMetadataFindings, clearVerify, resetInputMetaReport, rerenderMetadataUi, setLang: (l) => { currentLang = l; } };
+  `;
+  const api = new Function('document', source)(doc);
+  return { api, doc, clicks, byId, el: id => doc.getElementById(id) };
+}
+const fakeFile = (bytes, delayMs = 0) => ({ arrayBuffer: () => new Promise(res => setTimeout(() => res(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)), delayMs)) });
+
+await checkAsync('UI: a clean export is downloaded and shows the green "verified" line', async () => {
+  const h = makeUiHarness();
+  const doc = await createCleanPdf();
+  doc.addPage([100, 100]);
+  const ok = await h.api.deliverVerifiedFile(await saveCleanPdf(doc), 'application/pdf', 'redacted-document.pdf', 'pdfVerify');
+  const el = h.el('pdfVerify');
+  if (ok !== true || h.clicks.length !== 1 || h.clicks[0].download !== 'redacted-document.pdf') throw new Error('clean file was not downloaded: ' + JSON.stringify(h.clicks));
+  if (el.className !== 'export-verify ok' || !el.textContent.includes('Verified') || !el.textContent.includes('PDF')) throw new Error('verify line wrong: ' + el.className + ' / ' + el.textContent);
+});
+
+await checkAsync('UI: an export that still carries metadata is BLOCKED -- nothing is downloaded and the red line names what was found', async () => {
+  const h = makeUiHarness();
+  const ok = await h.api.deliverVerifiedFile(JPEG_DIRTY, 'image/jpeg', 'redacted-image.jpg', 'imgVerify');
+  const el = h.el('imgVerify');
+  if (ok !== false || h.clicks.length !== 0) throw new Error('a dirty file reached the download step');
+  if (el.className !== 'export-verify blocked' || !el.textContent.includes('DOWNLOAD BLOCKED') || !el.textContent.includes('EXIF')) throw new Error('blocked line wrong: ' + el.className + ' / ' + el.textContent);
+});
+
+await checkAsync('UI: a file that cannot be verified is BLOCKED too (fail closed)', async () => {
+  const h = makeUiHarness();
+  const ok = await h.api.deliverVerifiedFile(bytesOf('mystery bytes'), 'application/pdf', 'x.pdf', 'docxVerify');
+  if (ok !== false || h.clicks.length !== 0) throw new Error('an unverifiable file reached the download step');
+  if (!h.el('docxVerify').textContent.includes('could not be verified')) throw new Error(h.el('docxVerify').textContent);
+});
+
+await checkAsync('UI: an ICC-only JPEG is downloaded, with a note that only technical data remains', async () => {
+  const h = makeUiHarness();
+  const ok = await h.api.deliverVerifiedFile(JPEG_ICC_ONLY, 'image/jpeg', 'redacted-image.jpg', 'imgVerify');
+  if (ok !== true || h.clicks.length !== 1) throw new Error('ICC-only file should download');
+  if (!h.el('imgVerify').textContent.includes('Only technical data remains')) throw new Error(h.el('imgVerify').textContent);
+});
+
+await checkAsync('UI: switching language re-renders the verdict, and clearVerify hides it', async () => {
+  const h = makeUiHarness();
+  await h.api.deliverVerifiedFile(JPEG_DIRTY, 'image/jpeg', 'x.jpg', 'imgVerify');
+  const expectations = { de: 'DOWNLOAD BLOCKIERT', fr: 'TÉLÉCHARGEMENT BLOQUÉ', vi: 'ĐÃ CHẶN TẢI XUỐNG', en: 'DOWNLOAD BLOCKED' };
+  for (const [lang, needle] of Object.entries(expectations)) {
+    h.api.setLang(lang);
+    h.api.rerenderMetadataUi();
+    if (!h.el('imgVerify').textContent.includes(needle)) throw new Error(`${lang}: expected "${needle}" in "${h.el('imgVerify').textContent}"`);
+  }
+  h.api.clearVerify('imgVerify');
+  if (h.el('imgVerify').style.display !== 'none' || h.el('imgVerify').textContent !== '') throw new Error('clearVerify did not hide the line');
+});
+
+const findNode = (root, pred) => { const walk = n => [n, ...n.children.flatMap(walk)]; return walk(root).find(pred); };
+
+await checkAsync('UI: a clean file shows the neutral title with the "none found" line, with no contradiction', async () => {
+  const h = makeUiHarness();
+  await h.api.showInputMetaReport('image', fakeFile(JPEG_CLEAN));
+  const text = h.el('inputMetaReport').textContent;
+  if (!text.startsWith('Metadata of the original file') || !text.includes('No identifying metadata was found')) throw new Error(text);
+  if (/Metadata found/i.test(text)) throw new Error('title contradicts the body: ' + text);
+});
+
+await checkAsync('UI: the input report shows the VALUES (EXIF tags and GPS position), a Hide button, and the local-only note', async () => {
+  const h = makeUiHarness();
+  await h.api.showInputMetaReport('image', fakeFile(JPEG_DIRTY));
+  const text = h.el('inputMetaReport').textContent;
+  for (const needle of ['Metadata of the original file', 'EXIF', 'Make: FakeCam', 'Model: Model-X', 'GPSPosition: 10.500000, 20.250000', 'embedded thumbnail', 'This file contains GPS location data', 'Values are shown only on your computer', 'Hide values']) {
+    if (!text.includes(needle)) throw new Error(`"${needle}" missing from report: ${text}`);
+  }
+  await h.api.showInputMetaReport('image', fakeFile(JPEG_CLEAN));
+  const clean = h.el('inputMetaReport').textContent;
+  if (!clean.includes('No identifying metadata was found') || clean.includes('Hide values')) throw new Error('clean file: ' + clean);
+});
+
+await checkAsync('UI: the Hide values button masks every value (names stay), toggles back, and the choice survives the next file and a language switch', async () => {
+  const h = makeUiHarness();
+  await h.api.showInputMetaReport('image', fakeFile(JPEG_DIRTY));
+  const click = () => findNode(h.el('inputMetaReport'), n => n.tag === 'button').listeners.click();
+  click();
+  let text = h.el('inputMetaReport').textContent;
+  for (const secret of ['FakeCam', 'Model-X', 'FakeSoft', '10.500000', '2026:01:02']) if (text.includes(secret)) throw new Error(`value "${secret}" still visible after Hide: ${text}`);
+  for (const name of ['Make', 'Model', 'GPSPosition']) if (!text.includes(name)) throw new Error(`field name "${name}" should stay visible: ${text}`);
+  if (!text.includes('Show values') || text.includes('Values are shown only')) throw new Error('button/note not updated: ' + text);
+  await h.api.showInputMetaReport('image', fakeFile(JPEG_DIRTY));            // next file keeps the choice
+  if (h.el('inputMetaReport').textContent.includes('FakeCam')) throw new Error('hidden state was reset by a new file');
+  h.api.setLang('de'); h.api.rerenderMetadataUi();                            // language switch keeps it too
+  text = h.el('inputMetaReport').textContent;
+  if (text.includes('FakeCam') || !text.includes('Werte anzeigen')) throw new Error('de: ' + text);
+  findNode(h.el('inputMetaReport'), n => n.tag === 'button').listeners.click();
+  if (!h.el('inputMetaReport').textContent.includes('Make: FakeCam')) throw new Error('values should be back after the second click');
+});
+
+await checkAsync('UI: the export verdict names what was found but never repeats the values', async () => {
+  const h = makeUiHarness();
+  await h.api.deliverVerifiedFile(JPEG_DIRTY, 'image/jpeg', 'x.jpg', 'imgVerify');
+  const text = h.el('imgVerify').textContent;
+  if (!text.includes('DOWNLOAD BLOCKED') || !text.includes('Make')) throw new Error('verdict should still name the fields: ' + text);
+  for (const secret of ['FakeCam', 'Model-X', '10.500000', 'Fake Person']) if (text.includes(secret)) throw new Error(`verdict leaked a value: ${secret}`);
+});
+
+await checkAsync('UI: a hostile VALUE (markup in a text chunk) is rendered as text, never as an element', async () => {
+  const h = makeUiHarness();
+  const png = pngInsertAfterIhdr(pngChunk('tEXt', bytesOf('Note\0<b onclick=alert(1)>bold</b>')));
+  await h.api.showInputMetaReport('image', fakeFile(png));
+  if (findNode(h.el('inputMetaReport'), n => n.tag === 'b')) throw new Error('a <b> element was created from a metadata value');
+  if (!h.el('inputMetaReport').textContent.includes('<b onclick=alert(1)>bold</b>')) throw new Error('the hostile value should be visible as plain text');
+});
+
+await checkAsync('UI: a slow report for an older file cannot overwrite the report for a newer one', async () => {
+  const h = makeUiHarness();
+  const slowDirty = h.api.showInputMetaReport('image', fakeFile(JPEG_DIRTY, 40));
+  const fastClean = h.api.showInputMetaReport('image', fakeFile(JPEG_CLEAN, 0));
+  await Promise.all([slowDirty, fastClean]);
+  const text = h.el('inputMetaReport').textContent;
+  if (text.includes('EXIF') || !text.includes('No identifying metadata was found')) throw new Error('stale report won the race: ' + text);
+});
+
+await checkAsync('UI: text that came out of a scanned file is rendered as text, never as markup', async () => {
+  const h = makeUiHarness();
+  const evil = '<img src=x onerror=alert(1)>';
+  const png = pngInsertAfterIhdr(pngChunk('tEXt', bytesOf(evil + '\0v')));
+  await h.api.showInputMetaReport('image', fakeFile(png));
+  const walk = el => [el, ...el.children.flatMap(walk)];
+  const tags = walk(h.el('inputMetaReport')).map(n => n.tag);
+  if (tags.includes('img')) throw new Error('an <img> element was created from file metadata');
+  if (!h.el('inputMetaReport').textContent.includes(evil)) throw new Error('the hostile keyword should be visible as plain text');
+});
+
+// ---- PDF input report (regression: "doc.destroy is not a function") ----
+// pdf.js 6.x has no destroy() on the document object -- only on the loading
+// task. This fake mirrors that exact shape: if the code calls doc.destroy()
+// again, it throws here just like it did in the browser.
+function fakePdfjs({ info = {}, xmp = null, failMetadata = false } = {}) {
+  const state = { destroyed: false };
+  const doc = { async getMetadata() { if (failMetadata) throw new Error('boom'); return { info, metadata: xmp }; } }; // no destroy()
+  return { state, lib: { getDocument: () => ({ promise: Promise.resolve(doc), async destroy() { state.destroyed = true; } }) } };
+}
+const pdfFakeFile = { arrayBuffer: async () => new ArrayBuffer(8) };
+
+await checkAsync('PDF input report: lists the Info fields and XMP, and cleans up through the loading task (document has no destroy)', async () => {
+  const h = makeUiHarness();
+  const f = fakePdfjs({ info: { Author: 'Fake Person', Producer: 'FakePDF', Title: '' }, xmp: {} });
+  const findings = await h.api.readPdfMetadataFindings(pdfFakeFile, f.lib);
+  const fields = findings.filter(x => x.code === 'pdf-field').map(x => x.detail).sort();
+  if (JSON.stringify(fields) !== JSON.stringify(['Author', 'Producer'])) throw new Error('fields: ' + JSON.stringify(findings));
+  if (!findings.some(x => x.code === 'pdf-xmp')) throw new Error('XMP not reported');
+  if (!f.state.destroyed) throw new Error('loading task was not destroyed');
+});
+
+await checkAsync('PDF input report: a failure while reading still cleans up, and the error reaches the report as "scan error"', async () => {
+  const h = makeUiHarness();
+  const f = fakePdfjs({ failMetadata: true });
+  let threw = false;
+  try { await h.api.readPdfMetadataFindings(pdfFakeFile, f.lib); } catch (e) { threw = e.message === 'boom'; }
+  if (!threw) throw new Error('the read error should propagate to showInputMetaReport');
+  if (!f.state.destroyed) throw new Error('cleanup skipped after an error');
+});
+
+await checkAsync('PDF input report: a cleanup failure never replaces the metadata that was already read', async () => {
+  const originalWarn = console.warn;
+  console.warn = () => {}; // the cleanup failure is deliberate here; keep the test output quiet
+  try {
+    const h = makeUiHarness();
+    const f = fakePdfjs({ info: { Author: 'Fake Person' } });
+    const lib = { getDocument: (...a) => { const t = f.lib.getDocument(...a); t.destroy = async () => { throw new Error('destroy failed'); }; return t; } };
+    const findings = await h.api.readPdfMetadataFindings(pdfFakeFile, lib);
+    if (!findings.some(x => x.code === 'pdf-field' && x.detail === 'Author')) throw new Error('metadata lost to a cleanup error: ' + JSON.stringify(findings));
+  } finally { console.warn = originalWarn; }
+});
+
+// ---- static guards: the wiring itself ----
+check('guard: every export goes through deliverVerifiedFile (5 calls) and only 3 anchors assign a download name', () => {
+  const calls = html.split('await deliverVerifiedFile(').length - 1;
+  if (calls !== 5) throw new Error(`expected 5 "await deliverVerifiedFile(" calls (image, image->PDF, PDF, Word, PowerPoint), found ${calls}`);
+  const anchors = (html.match(/a\.download\s*=/g) || []).length;
+  if (anchors !== 3) throw new Error(`expected exactly 3 "a.download =" assignments (custom-terms JSON, text export, deliverVerifiedFile), found ${anchors} -- a new download path must go through deliverVerifiedFile`);
+});
+
+check('guard: deliverVerifiedFile returns before creating the download when the summary is not ok', () => {
+  const body = metaUiCode.slice(metaUiCode.indexOf('async function deliverVerifiedFile'));
+  const guardAt = body.indexOf('if (!summary.ok) return false;');
+  const blobAt = body.indexOf('new Blob(');
+  if (guardAt === -1 || blobAt === -1 || guardAt > blobAt) throw new Error('the not-ok early return must come before the Blob/anchor download code');
+});
+
+check('guard: the UI block never writes untrusted text as markup (no innerHTML / insertAdjacentHTML / outerHTML / document.write)', () => {
+  const bad = stripLineComments(metaUiCode).match(/\b(innerHTML|outerHTML|insertAdjacentHTML|document\.write)\b/g);
+  if (bad) throw new Error('markup-writing API used in the metadata UI block: ' + [...new Set(bad)].join(', '));
+});
+
+check('guard: routeFile resets the old verdict, shows the new report, and the 4 clear/scan handlers reset their verdict; HTML has the containers', () => {
+  for (const needle of ['clearAllExportVerify();', 'resetInputMetaReport();', 'showInputMetaReport(type, file);', 'rerenderMetadataUi();']) {
+    if (!html.includes(needle)) throw new Error(`missing wiring: ${needle}`);
+  }
+  for (const id of ['inputMetaReport', 'imgVerify', 'pdfVerify', 'docxVerify', 'pptxVerify']) {
+    if (!html.includes(`id="${id}"`)) throw new Error(`missing HTML element #${id}`);
+  }
+  for (const id of ['imgVerify', 'pdfVerify', 'docxVerify', 'pptxVerify']) {
+    if (html.split(`clearVerify('${id}');`).length - 1 < 2) throw new Error(`clearVerify('${id}') should be called from both its scan and clear handlers`);
+  }
 });
 
 // --- report ------------------------------------------------------------
