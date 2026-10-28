@@ -1531,6 +1531,38 @@ document.getElementById('langSelect').addEventListener('change', (e) => {
 });
 
 // ============================================================
+// CLEAN PDF OUTPUT (v1.2.1)
+// Every PDF this tool exports is built from scratch with pdf-lib, so
+// nothing is ever *copied* from the uploaded file. But pdf-lib itself,
+// left on its defaults, stamps each new document's Info dictionary
+// with its own Producer and Creator strings plus CreationDate and
+// ModDate set to "now" -- a fingerprint of this tool and of the exact
+// moment the person ran it. `updateMetadata: false` stops pdf-lib from
+// writing any of that, so the exported file has no Info dictionary at
+// all (and, since we never add XMP, no /Metadata stream either).
+//
+// `useObjectStreams: false` on save keeps every dictionary as plain,
+// uncompressed bytes. It doesn't change what the PDF says; it makes
+// the output byte-scannable, so a check like "does this file contain
+// /Producer" can't be fooled by a field hiding inside one of pdf-lib's
+// compressed object streams (its default packing, which is exactly how
+// the default Producer string stayed invisible to a raw-byte grep).
+//
+// All three export paths (image -> PDF, flattened PDF, Word/PowerPoint
+// -> PDF) MUST go through these two helpers. test/run-tests.mjs fails
+// if a direct pdf-lib document constructor call or a direct save call
+// on an output document ever reappears elsewhere in this file.
+// ============================================================
+// CLEAN_PDF_HELPERS_START
+function createCleanPdf() {
+  return PDFLib.PDFDocument.create({ updateMetadata: false });
+}
+function saveCleanPdf(doc) {
+  return doc.save({ useObjectStreams: false });
+}
+// CLEAN_PDF_HELPERS_END
+
+// ============================================================
 // IMAGE / SCREENSHOT REDACTION
 // OCR runs fully offline against the vendored engine + language
 // files under /vendor — nothing is uploaded anywhere. Each OCR word
@@ -2096,11 +2128,11 @@ imgDownloadPdfBtn.addEventListener('click', async () => {
   const pngBytes = await new Promise((resolve) => {
     imgCanvas.toBlob((blob) => { blob.arrayBuffer().then(buf => resolve(new Uint8Array(buf))); }, 'image/png');
   });
-  const outPdf = await PDFLib.PDFDocument.create();
+  const outPdf = await createCleanPdf();
   const pngImage = await outPdf.embedPng(pngBytes);
   const page = outPdf.addPage([imgCanvas.width, imgCanvas.height]);
   page.drawImage(pngImage, { x: 0, y: 0, width: imgCanvas.width, height: imgCanvas.height });
-  const pdfBytes = await outPdf.save();
+  const pdfBytes = await saveCleanPdf(outPdf);
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2451,7 +2483,7 @@ pdfScanBtn.addEventListener('click', async () => {
     if (ocrWorker) await ocrWorker.terminate();
 
     pdfProgressEl.textContent = t.pdfProgressAssembling;
-    const outPdf = await PDFLib.PDFDocument.create();
+    const outPdf = await createCleanPdf();
     for (let i = 0; i < pdfPageCanvases.length; i++) {
       const canvas = pdfPageCanvases[i];
       const page = await pdfDoc.getPage(i + 1);
@@ -2463,7 +2495,7 @@ pdfScanBtn.addEventListener('click', async () => {
       const outPage = outPdf.addPage([unscaled.width, unscaled.height]);
       outPage.drawImage(pngImage, { x: 0, y: 0, width: unscaled.width, height: unscaled.height });
     }
-    pdfOutputBytes = await outPdf.save();
+    pdfOutputBytes = await saveCleanPdf(outPdf);
 
     let progressMsg = totalRedacted > 0 ? t.pdfProgressDone(totalRedacted, numPages) : t.pdfProgressNone;
     if (totalSuspects > 0) progressMsg += ' ' + t.officeEntropyHint(totalSuspects);
@@ -2692,7 +2724,7 @@ function loadDocxFontBytes() {
 // correctly — the 14 standard PDF fonts can't. No layout, tables, or
 // images from the source document are carried over.
 async function buildSimplePdfFromText(text, fontBytes) {
-  const outPdf = await PDFLib.PDFDocument.create();
+  const outPdf = await createCleanPdf();
   outPdf.registerFontkit(fontkit);
   const font = await outPdf.embedFont(fontBytes);
   const fontSize = 11;
@@ -2723,7 +2755,7 @@ async function buildSimplePdfFromText(text, fontBytes) {
     });
     if (line) drawLine(line);
   });
-  return outPdf.save();
+  return saveCleanPdf(outPdf);
 }
 
 const docxFileNameEl = document.getElementById('docxFileName');

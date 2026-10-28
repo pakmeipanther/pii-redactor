@@ -672,6 +672,98 @@ check('findEntropyMatches: known false-positive class — a long camelCase compo
   if (matches.length !== 1) throw new Error(`expected this known false positive to still occur (documenting current behavior), got ${matches.length} suspect(s) — if this now passes with 0, the threshold changed; update this test and the README note together`);
 });
 
+// --- clean PDF output (v1.2.1) ------------------------------------------
+// Every exported PDF must carry no document metadata. pdf-lib, left on
+// its defaults, writes its own Producer/Creator strings and "now" as
+// CreationDate/ModDate; index.html routes all three PDF export paths
+// through createCleanPdf()/saveCleanPdf() to prevent that. These tests
+// run the *real* helpers pulled out of index.html against the vendored
+// pdf-lib build, plus a negative control proving the byte scan below
+// really can see the leak when the helpers are NOT used (a scanner
+// that has never been shown a dirty sample can't be trusted to say
+// "clean"). All fixtures are synthetic.
+
+const pdfLibSource = readFileSync(path.join(__dirname, '..', 'vendor', 'pdf', 'pdf-lib.min.js'), 'utf8');
+const pdfLibModule = { exports: {} };
+new Function('module', 'exports', 'self', 'window', pdfLibSource + ';')(pdfLibModule, pdfLibModule.exports, globalThis, globalThis);
+const PDFLib = pdfLibModule.exports.PDFDocument ? pdfLibModule.exports : globalThis.PDFLib;
+
+const cleanPdfHelpersCode = extractBetween(
+  '// CLEAN_PDF_HELPERS_START',
+  '// CLEAN_PDF_HELPERS_END',
+  'createCleanPdf + saveCleanPdf'
+);
+const { createCleanPdf, saveCleanPdf } = new Function('PDFLib', `${cleanPdfHelpersCode}\nreturn { createCleanPdf, saveCleanPdf };`)(PDFLib);
+
+// Smallest valid PNG (1x1), so the image->PDF path (embedPng) is exercised too.
+const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+
+// Anything in this list appearing in the raw bytes of an exported PDF is a leak.
+// (These are PDF name tokens, always plain ASCII; the *values* pdf-lib writes
+// are hex-encoded UTF-16, so scanning for the tool's name as text would miss it.)
+const PDF_METADATA_MARKERS = ['/Info', '/Producer', '/Creator', '/CreationDate', '/ModDate', '/Author', '/Title', '/Subject', '/Keywords', '/Metadata'];
+function pdfMetadataMarkersIn(bytes) {
+  const raw = Buffer.from(bytes).toString('latin1');
+  return PDF_METADATA_MARKERS.filter(m => raw.includes(m));
+}
+
+async function checkAsync(name, fn) {
+  try {
+    await fn();
+    passed++;
+  } catch (err) {
+    failed++;
+    failures.push({ name, error: err.message });
+  }
+}
+
+check('clean PDF guard: index.html has exactly one direct pdf-lib document constructor call, and it is inside createCleanPdf', () => {
+  const direct = html.split('PDFLib.PDFDocument.create(').length - 1;
+  if (direct !== 1) throw new Error(`expected exactly 1 direct "PDFLib.PDFDocument.create(" call (inside createCleanPdf), found ${direct} -- every export path must call createCleanPdf() instead`);
+  if (!cleanPdfHelpersCode.includes('PDFLib.PDFDocument.create({ updateMetadata: false })')) {
+    throw new Error('createCleanPdf no longer passes { updateMetadata: false } to pdf-lib');
+  }
+});
+
+check('clean PDF guard: no direct save() call on an output PDF document remains outside saveCleanPdf', () => {
+  if (/\boutPdf\.save\(/.test(html)) throw new Error('found a direct outPdf.save( call -- use saveCleanPdf(outPdf) so the byte-scannable, no-object-streams layout is kept');
+  const viaHelper = html.split('saveCleanPdf(outPdf)').length - 1;
+  if (viaHelper !== 3) throw new Error(`expected 3 saveCleanPdf(outPdf) calls (image->PDF, flattened PDF, Word/PowerPoint->PDF), found ${viaHelper}`);
+  if (!cleanPdfHelpersCode.includes('useObjectStreams: false')) throw new Error('saveCleanPdf no longer disables object streams');
+});
+
+await checkAsync('createCleanPdf + saveCleanPdf: blank-page PDF has no metadata markers', async () => {
+  const doc = await createCleanPdf();
+  doc.addPage([200, 200]);
+  const found = pdfMetadataMarkersIn(await saveCleanPdf(doc));
+  if (found.length) throw new Error('metadata markers found in clean PDF output: ' + found.join(', '));
+});
+
+await checkAsync('createCleanPdf + saveCleanPdf: PDF with an embedded PNG page (the image/flattened-PDF path) has no metadata markers', async () => {
+  const doc = await createCleanPdf();
+  const png = await doc.embedPng(TINY_PNG);
+  const page = doc.addPage([200, 200]);
+  page.drawImage(png, { x: 0, y: 0, width: 200, height: 200 });
+  const found = pdfMetadataMarkersIn(await saveCleanPdf(doc));
+  if (found.length) throw new Error('metadata markers found in clean PDF output: ' + found.join(', '));
+});
+
+await checkAsync('negative control: pdf-lib defaults (no helpers) DO leak Producer, Creator and dates -- proves the scan can see a leak', async () => {
+  const doc = await PDFLib.PDFDocument.create();
+  doc.addPage([200, 200]);
+  const found = pdfMetadataMarkersIn(await doc.save({ useObjectStreams: false }));
+  for (const needed of ['/Producer', '/Creator', '/CreationDate', '/ModDate']) {
+    if (!found.includes(needed)) throw new Error(`scan failed to detect ${needed} in a default pdf-lib PDF -- the clean-output tests above would prove nothing`);
+  }
+});
+
+await checkAsync('documents the trap: with pdf-lib default object streams the Producer string is NOT visible to a raw byte scan', async () => {
+  const doc = await PDFLib.PDFDocument.create();
+  doc.addPage([200, 200]);
+  const found = pdfMetadataMarkersIn(await doc.save());
+  if (found.includes('/Producer')) throw new Error('the default-packing PDF now shows /Producer in raw bytes; the vendored pdf-lib behavior changed -- re-evaluate why saveCleanPdf sets useObjectStreams: false and update this test and the comment above createCleanPdf together');
+});
+
 // --- report ------------------------------------------------------------
 
 console.log(`\n${passed} passed, ${failed} failed (${passed + failed} total)\n`);
