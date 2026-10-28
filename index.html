@@ -359,6 +359,8 @@
   .meta-report .meta-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .meta-report .meta-toggle { font-size: 11px; padding: 2px 8px; }
   .meta-report ul ul { margin: 2px 0 2px 16px; }
+  .meta-report summary { cursor: pointer; }
+  .meta-report pre { white-space: pre-wrap; font-size: 11px; max-height: 220px; overflow: auto; margin: 8px 0 0; }
   .meta-report li { margin: 2px 0; }
   .meta-report li.meta-info { color: var(--muted); }
   .meta-report .meta-warn { color: var(--danger); margin-top: 4px; }
@@ -388,7 +390,7 @@
     <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
          overwrites a [data-i18n] element's whole textContent on every
          language switch, which would wipe out a nested span instantly. -->
-    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.2.0</span></h1>
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.2.1</span></h1>
     <div class="subtitle" data-i18n="subtitle">Loại bỏ thông tin nhạy cảm khỏi văn bản trước khi đưa cho AI xử lý.</div>
   </div>
   <select id="langSelect" aria-label="Language">
@@ -448,10 +450,18 @@
     <button id="imgDownloadPdfBtn" class="secondary" data-i18n="imgDownloadPdfBtn" disabled>Tải dưới dạng PDF</button>
     <button id="imgClearBtn" class="secondary" data-i18n="clearBtn">Xóa tất cả</button>
   </div>
+  <label class="custom-options">
+    <input type="checkbox" id="imgThoroughCheckbox" checked>
+    <span data-i18n="imgThoroughLabel">Thorough scan (slower)</span>
+  </label>
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="imgProgress"></div>
   <div class="export-verify" id="imgVerify" style="display:none;" role="status"></div>
   <div id="imgCanvasWrap"><canvas id="imgCanvas"></canvas></div>
+  <details class="meta-report" id="imgOcrTextDetails" style="display:none;">
+    <summary data-i18n="imgOcrTextTitle">What the OCR read</summary>
+    <pre id="imgOcrText"></pre>
+  </details>
   <div id="imgSuspectList" class="suspect-list" style="display:none;"></div>
 </div>
 
@@ -1215,6 +1225,41 @@ const I18N_METADATA = {
 };
 // I18N_METADATA_END
 for (const lang of Object.keys(I18N_METADATA)) Object.assign(I18N[lang], I18N_METADATA[lang]);
+
+// ---- Image scan: thorough mode, diagnostics, language hint (v1.2.1) ----
+// I18N_OCR_START
+const I18N_OCR = {
+  vi: {
+    imgThoroughLabel: 'Quét kỹ (chậm hơn) — đọc ảnh thêm vài lượt với cách xử lý màu khác nhau, để bắt chữ trên nền màu, chữ sáng trên nền đậm và kiểu chữ cách điệu',
+    imgPassProgress: (n, total, pct) => `Lượt ${n}/${total} — đang nhận diện chữ… ${pct}%`,
+    imgLangMismatchHint: 'Từ khóa riêng của bạn có chữ có dấu nhưng ngôn ngữ OCR đang là English — hãy chọn đúng ngôn ngữ của ảnh để không bị sót.',
+    imgOcrTextTitle: 'Chữ mà OCR đã đọc được (và lý do mỗi vùng bị đè đen)',
+    wasmUnavailable: 'OCR ảnh cần WebAssembly, nhưng trình duyệt này đang tắt nó (ví dụ Safari khi bật Lockdown Mode). Hãy dùng trình duyệt khác như Firefox hoặc Chrome, hoặc loại trừ trang này khỏi Lockdown Mode (trong Safari: Settings for this website). Văn bản, báo cáo metadata, Word và PowerPoint không cần WebAssembly nên vẫn dùng được.'
+  },
+  en: {
+    imgThoroughLabel: 'Thorough scan (slower) — reads the image a few more times with different colour handling, to catch text on coloured backgrounds, light-on-dark headings and stylised fonts',
+    imgPassProgress: (n, total, pct) => `Pass ${n}/${total} — recognizing text… ${pct}%`,
+    imgLangMismatchHint: 'Your custom terms contain accented letters but the OCR language is English — pick the language of the image so nothing is missed.',
+    imgOcrTextTitle: 'What the OCR read (and why each region was blacked out)',
+    wasmUnavailable: 'Image OCR needs WebAssembly, which this browser has switched off (for example Safari in Lockdown Mode). Use another browser such as Firefox or Chrome, or exclude this site from Lockdown Mode (in Safari: Settings for this website). Text, the metadata report, Word and PowerPoint do not need WebAssembly and still work.'
+  },
+  fr: {
+    imgThoroughLabel: "Analyse approfondie (plus lente) — relit l'image plusieurs fois avec un traitement des couleurs différent, pour repérer le texte sur fond coloré, les titres clairs sur fond foncé et les polices stylisées",
+    imgPassProgress: (n, total, pct) => `Passe ${n}/${total} — reconnaissance du texte… ${pct} %`,
+    imgLangMismatchHint: "Vos termes personnalisés contiennent des lettres accentuées alors que la langue OCR est l'anglais — choisissez la langue de l'image pour ne rien manquer.",
+    imgOcrTextTitle: "Ce que l'OCR a lu (et pourquoi chaque zone a été noircie)",
+    wasmUnavailable: "L'OCR des images nécessite WebAssembly, que ce navigateur a désactivé (par exemple Safari en mode Isolement / Lockdown Mode). Utilisez un autre navigateur comme Firefox ou Chrome, ou excluez ce site du mode Isolement (dans Safari : réglages du site web). Le texte, le rapport de métadonnées, Word et PowerPoint n'en ont pas besoin et restent utilisables."
+  },
+  de: {
+    imgThoroughLabel: 'Gründliche Analyse (langsamer) — liest das Bild mehrfach mit unterschiedlicher Farbverarbeitung, um Text auf farbigem Hintergrund, helle Überschriften auf dunklem Grund und Zierschriften zu erfassen',
+    imgPassProgress: (n, total, pct) => `Durchgang ${n}/${total} — Text wird erkannt… ${pct} %`,
+    imgLangMismatchHint: 'Deine eigenen Begriffe enthalten Buchstaben mit Akzenten, die OCR-Sprache ist aber Englisch — wähle die Sprache des Bildes, damit nichts übersehen wird.',
+    imgOcrTextTitle: 'Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)',
+    wasmUnavailable: 'Die Bilderkennung (OCR) benötigt WebAssembly, das dieser Browser abgeschaltet hat (z. B. Safari im Blockierungsmodus / Lockdown Mode). Nutze einen anderen Browser wie Firefox oder Chrome oder nimm diese Website vom Blockierungsmodus aus (in Safari: Einstellungen für diese Website). Text, Metadaten-Bericht, Word und PowerPoint brauchen WebAssembly nicht und funktionieren weiterhin.'
+  }
+};
+// I18N_OCR_END
+for (const lang of Object.keys(I18N_OCR)) Object.assign(I18N[lang], I18N_OCR[lang]);
 
 let currentLang = 'en';
 
@@ -2484,6 +2529,7 @@ const imgDownloadPdfBtn = document.getElementById('imgDownloadPdfBtn');
 const imgClearBtn = document.getElementById('imgClearBtn');
 const imgProgressEl = document.getElementById('imgProgress');
 const ocrLangSelect = document.getElementById('ocrLangSelect');
+const imgThoroughCheckbox = document.getElementById('imgThoroughCheckbox');
 
 let originalImageBitmap = null;
 // What format the "download processed image" button hands back —
@@ -2526,7 +2572,8 @@ function loadImageFile(file) {
     imgScanBtn.disabled = false;
     imgDownloadBtn.disabled = true;
     imgDownloadPdfBtn.disabled = true;
-    imgProgressEl.textContent = '';
+    // Say so as soon as an image is loaded if OCR cannot run here (e.g. Lockdown Mode).
+    imgProgressEl.textContent = wasmAvailable(window) ? '' : I18N[currentLang].wasmUnavailable;
     URL.revokeObjectURL(img.src);
   };
   img.src = URL.createObjectURL(file);
@@ -2713,6 +2760,194 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+// ============================================================
+// OCR SUPPORT (v1.2.1)
+// Pure, DOM-free helpers behind the image panel's matching and its
+// "thorough scan". Three things go wrong when custom terms meet OCR:
+//
+//  1. Accents. OCR often reads "TOÀN" as "TOAN" (the marks are the
+//     smallest detail in a heading), and the same letters can arrive
+//     composed or decomposed. foldForMatch() compares without accents
+//     (and, unless the case-sensitive box is ticked, without case).
+//  2. Phrases split across lines. "an" at the end of one line and
+//     "toàn" at the start of the next is the term "an toàn", but no
+//     single OCR line contains it -- and the OCR engine's own
+//     paragraph/line grouping is unreliable on designed layouts (text
+//     from different boxes merges into one "line", stray noise words
+//     appear in between). findPhraseWordMatches() therefore matches
+//     multi-word terms word by word using the boxes' GEOMETRY.
+//  3. Text the engine cannot see in the original colours: white on
+//     orange, orange on grey. planOcrPasses() / ocrGrayPixels() describe
+//     extra passes over the same image with the colour channels handled
+//     differently, and scaleWords() maps their boxes back.
+// ============================================================
+// OCR_SUPPORT_START
+// Length-preserving fold: one UTF-16 unit in, one out, so spans found
+// in the folded text are valid in the original. Callers NFC-normalize
+// first so composed/decomposed input compares equal.
+function foldForMatch(text, caseSensitive) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    let f;
+    if (c === 'đ') f = 'd';
+    else if (c === 'Đ') f = 'D';
+    else f = c.normalize('NFD')[0];
+    if (!caseSensitive) {
+      const lower = f.toLowerCase();
+      if (lower.length === 1) f = lower;
+    }
+    out += f;
+  }
+  return out;
+}
+
+// Spans of `joined` (already NFC) where a custom term matches without
+// regard to accents (and case, unless caseSensitive).
+function foldedCustomSpans(joined, terms, caseSensitive) {
+  const spans = [];
+  const hay = foldForMatch(joined, caseSensitive);
+  for (const term of terms) {
+    const needle = foldForMatch(String(term).normalize('NFC').replace(/\s+/g, ' ').trim(), caseSensitive);
+    if (!needle) continue;
+    let idx = 0;
+    while ((idx = hay.indexOf(needle, idx)) !== -1) {
+      spans.push({ start: idx, end: idx + needle.length });
+      idx += needle.length;
+    }
+  }
+  return spans;
+}
+
+const PHRASE_EDGE_PUNCT = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
+function phraseWordKey(text, caseSensitive) {
+  return foldForMatch(String(text).normalize('NFC').replace(PHRASE_EDGE_PUNCT, ''), caseSensitive);
+}
+
+// Does word b follow word a in reading order? Either b sits on the same
+// text line just to the right of a, or it is the start of the next line
+// (below a and starting further left than a: a wrapped line).
+function wordsAreConsecutive(a, b) {
+  const ha = a.bbox.y1 - a.bbox.y0;
+  const hb = b.bbox.y1 - b.bbox.y0;
+  const h = Math.max(1, ha, hb);
+  const overlap = Math.min(a.bbox.y1, b.bbox.y1) - Math.max(a.bbox.y0, b.bbox.y0);
+  if (overlap > 0.5 * Math.min(ha, hb)) {
+    const gap = b.bbox.x0 - a.bbox.x1;
+    return gap >= -0.3 * h && gap <= 1.5 * h;
+  }
+  const below = b.bbox.y0 - a.bbox.y1;
+  return below >= -0.3 * h && below <= 1.8 * h && b.bbox.x0 + 0.5 * h < a.bbox.x0;
+}
+
+// Indices (into `words`) of every word that is part of a match of a
+// MULTI-word custom term, found by geometry rather than by the OCR
+// engine's line grouping. `words` is every word of the scan, in any order.
+function findPhraseWordMatches(words, terms, caseSensitive) {
+  const hits = new Set();
+  const keys = words.map(w => phraseWordKey(w.text, caseSensitive));
+  let budget = 50000; // hard stop against pathological inputs
+  for (const term of terms) {
+    const tokens = String(term).normalize('NFC').trim().split(/\s+/).map(t => phraseWordKey(t, caseSensitive)).filter(Boolean);
+    if (tokens.length < 2) continue;
+    const extend = (chain) => {
+      if (budget-- <= 0) return;
+      if (chain.length === tokens.length) { chain.forEach(i => hits.add(i)); return; }
+      const last = words[chain[chain.length - 1]];
+      const want = tokens[chain.length];
+      for (let j = 0; j < words.length; j++) {
+        if (keys[j] === want && !chain.includes(j) && wordsAreConsecutive(last, words[j])) extend(chain.concat(j));
+      }
+    };
+    for (let i = 0; i < words.length; i++) if (keys[i] === tokens[0]) extend([i]);
+  }
+  return hits;
+}
+
+// Fraction of box a's area that lies inside box b (0..1).
+function boxOverlapFraction(a, b) {
+  const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+  const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+  const area = (a.x1 - a.x0) * (a.y1 - a.y0);
+  return (w > 0 && h > 0 && area > 0) ? (w * h) / area : 0;
+}
+
+// Grayscale versions of an RGBA pixel array for the extra OCR passes.
+// A single luminance value squeezes colours with similar brightness
+// together (white text on orange differs by little in luminance); taking
+// the darkest channel instead separates them strongly, because orange
+// has almost no blue. 'min-inverted' flips the result for light text on
+// a saturated or dark background, which OCR engines read best as dark on light.
+function ocrGrayPixels(rgba, mode) {
+  const out = new Uint8ClampedArray(rgba.length);
+  for (let i = 0; i < rgba.length; i += 4) {
+    const r = rgba[i], g = rgba[i + 1], b = rgba[i + 2];
+    let v = mode === 'max' ? Math.max(r, g, b) : Math.min(r, g, b);
+    if (mode === 'min-inverted') v = 255 - v;
+    out[i] = out[i + 1] = out[i + 2] = v;
+    out[i + 3] = 255;
+  }
+  return out;
+}
+
+// The OCR passes to run. The first is always the untouched original, as
+// before. "Thorough" adds two passes over a 2x enlargement (unless the
+// image is already large) in sparse-text mode, which looks for text
+// anywhere instead of assuming page layout.
+function planOcrPasses(width, height, thorough) {
+  const passes = [{ id: 'original', mode: null, scale: 1, psm: null }];
+  if (!thorough) return passes;
+  const scale = Math.max(width, height) * 2 <= 4000 ? 2 : 1;
+  passes.push({ id: 'min', mode: 'min', scale, psm: '11' });
+  passes.push({ id: 'min-inverted', mode: 'min-inverted', scale, psm: '11' });
+  return passes;
+}
+
+// Word boxes found on an enlarged canvas, mapped back to the original image.
+function scaleWords(words, factor) {
+  if (factor === 1) return words;
+  return words.map(w => ({ ...w, bbox: { x0: w.bbox.x0 / factor, y0: w.bbox.y0 / factor, x1: w.bbox.x1 / factor, y1: w.bbox.y1 / factor } }));
+}
+
+// Custom terms with accents + an English-only OCR language is a classic
+// way to miss text: warn about it.
+function ocrLangMismatch(terms, lang) {
+  return lang === 'eng' && terms.some(t => /[^\u0000-\u007f]/.test(t));
+}
+// The OCR engine is WebAssembly. Some environments switch WebAssembly
+// off on purpose -- Safari in Apple's Lockdown Mode is the common one --
+// and the engine then fails with a cryptic "Can't find variable:
+// WebAssembly". Detect it up front, so the person gets a clear
+// explanation (and a way out) instead.
+function wasmAvailable(scope) {
+  return !!scope && typeof scope.WebAssembly === 'object' && scope.WebAssembly !== null && typeof scope.WebAssembly.instantiate === 'function';
+}
+function isWasmError(err) {
+  return /WebAssembly/i.test(String((err && err.message) || err));
+}
+// Pattern-based rules (phone, card numbers) are easy to trigger by noise:
+// an extra OCR pass can read decoration or thick strokes as "1111110)",
+// which is a perfectly valid phone-number pattern. In the lower-trust
+// extra passes such a match must at least look like real digits (four
+// different ones or more -- real numbers essentially always have that;
+// repeated 1s and 0s from vertical bars do not). Custom terms are
+// precise by nature and are never filtered here.
+function plausibleRuleMatch(ruleId, text) {
+  if (ruleId === 'phone' || ruleId === 'creditcard') {
+    return new Set(String(text).replace(/\D/g, '')).size >= 4;
+  }
+  return true;
+}
+
+// One line per blacked-out region -- why it was filled, which OCR pass
+// read it, and the text the OCR saw there -- so any unexpected black box
+// can be explained. (The text came out of an image: show it as text only.)
+function formatRegions(regions) {
+  if (!regions || !regions.length) return '';
+  return '[blacked-out regions: reason | pass | OCR text]\n' + regions.map(r => (r.why || '?') + ' | ' + (r.pass || 1) + ' | ' + r.text).join('\n');
+}
+// OCR_SUPPORT_END
+
 // Walks tesseract.js's nested blocks → paragraphs → lines → words
 // structure and returns each OCR line as its own array of words (with
 // bounding boxes), rather than one flat list. Keeping the line
@@ -2756,7 +2991,7 @@ function collectLines(data) {
 //    a pixel fill, until the user ticks them in the suspect checklist.
 //    wordIndices is a Set because, like a certain match, a suspect
 //    span can cover more than one OCR word box.
-function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled) {
+function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled, trust) {
   let joined = '';
   const spans = [];
   lineWords.forEach((word, i) => {
@@ -2768,7 +3003,7 @@ function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnab
       joined += looksLikeOneWordSplitInTwo ? '' : ' ';
     }
     const start = joined.length;
-    joined += word.text;
+    joined += word.text.normalize('NFC');
     spans.push({ start, end: joined.length });
   });
 
@@ -2777,19 +3012,31 @@ function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnab
   // its own (catches a match a prior fix's whole-line rejoin happens
   // to miss). Kept as explicit {start,end} spans — not just the word-
   // index Set below — because findEntropyMatches needs real character
-  // ranges to know what NOT to suspect.
-  const certainSpans = findMatches(joined, activeRules, terms, caseSensitive)
-    .map(m => ({ start: m.start, end: m.end }));
-  lineWords.forEach((word, i) => {
-    if (findMatches(word.text, activeRules, terms, caseSensitive).length > 0) {
-      certainSpans.push(spans[i]);
-    }
-  });
+  // ranges to know what NOT to suspect. Each span also records WHY it
+  // matched ('custom' or a rule id), so a region can be explained later.
+  // `trust` is 'low' for lines from the extra OCR passes: there, a
+  // pattern-based rule match must look plausible (see plausibleRuleMatch).
+  const lowTrust = trust === 'low';
+  const certainSpans = [];
+  const addMatches = (text, offset, wholeSpan) => {
+    findMatches(text, activeRules, terms, caseSensitive).forEach(m => {
+      if (lowTrust && m.ruleId !== 'custom' && !plausibleRuleMatch(m.ruleId, text.slice(m.start, m.end))) return;
+      certainSpans.push(wholeSpan ? { start: wholeSpan.start, end: wholeSpan.end, why: m.ruleId } : { start: offset + m.start, end: offset + m.end, why: m.ruleId });
+    });
+  };
+  addMatches(joined, 0, null);
+  // OCR often drops or alters accents; custom terms also match without them.
+  foldedCustomSpans(joined, terms, caseSensitive).forEach(span => certainSpans.push({ start: span.start, end: span.end, why: 'custom' }));
+  lineWords.forEach((word, i) => addMatches(word.text, 0, spans[i]));
 
   const flagged = new Set();
+  const reasons = new Map();
   certainSpans.forEach(cs => {
     spans.forEach((span, i) => {
-      if (span.start < cs.end && span.end > cs.start) flagged.add(i);
+      if (span.start < cs.end && span.end > cs.start) {
+        flagged.add(i);
+        if (!reasons.has(i)) reasons.set(i, cs.why);
+      }
     });
   });
 
@@ -2804,7 +3051,7 @@ function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnab
     });
   }
 
-  return { flagged, suspects };
+  return { flagged, suspects, reasons };
 }
 
 // Creates a Tesseract worker pointed at the vendored (local-only) engine
@@ -2843,15 +3090,28 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
   let redactedCount = 0;
   const suspects = [];
   const pad = 2;
-  lines.forEach((lineWords, lineIdx) => {
-    const { flagged, suspects: lineSuspects } = wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled);
-
+  // A word can be found by several routes (its own line, the phrase
+  // matcher, another OCR pass). A region that is already filled is not
+  // filled -- or counted -- again, even when the second finding is a
+  // different word object covering the same spot (another pass).
+  const drawnBoxes = [];
+  const regions = []; // why / which pass / what the OCR read, for every filled region
+  const fillWord = (word, why, pass) => {
+    if (drawnBoxes.some(box => boxOverlapFraction(word.bbox, box) > 0.7)) return;
+    drawnBoxes.push(word.bbox);
+    regions.push({ text: word.text, why, pass });
+    const { x0, y0, x1, y1 } = word.bbox;
     ctx.fillStyle = '#000000';
-    flagged.forEach(i => {
-      const { x0, y0, x1, y1 } = lineWords[i].bbox;
-      ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
-      redactedCount++;
-    });
+    ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
+    redactedCount++;
+  };
+  lines.forEach((lineWords, lineIdx) => {
+    // Lines from the extra "thorough" passes (see planOcrPasses) never
+    // produce entropy suspects: the same text was already examined in the
+    // first pass, and noisy re-reads would only add duplicate or bogus ones.
+    const { flagged, suspects: lineSuspects, reasons } = wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled && !lineWords.extraPass, lineWords.extraPass ? 'low' : 'full');
+
+    flagged.forEach(i => fillWord(lineWords[i], reasons.get(i), lineWords.passId));
 
     lineSuspects.forEach(s => {
       // Stable across re-renders of the SAME scan (line index + word
@@ -2865,6 +3125,7 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
       const x1 = Math.max(...boxes.map(b => b.x1));
       const y1 = Math.max(...boxes.map(b => b.y1));
       if (confirmedIds.has(id)) {
+        regions.push({ text: s.text, why: 'entropy (confirmed)', pass: lineWords.passId });
         ctx.fillStyle = '#000000';
         ctx.fillRect(x0 - pad, y0 - pad, (x1 - x0) + pad * 2, (y1 - y0) + pad * 2);
         redactedCount++;
@@ -2878,7 +3139,14 @@ function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entr
       suspects.push({ id, text: s.text });
     });
   });
-  return { redactedCount, suspects };
+  // Multi-word custom terms can be split across a line break or have
+  // stray OCR noise between their words; match them by geometry over
+  // every word of the scan (all passes), not per OCR line.
+  const flat = [];
+  const flatPass = [];
+  lines.forEach(lineWords => lineWords.forEach(word => { flat.push(word); flatPass.push(lineWords.passId); }));
+  findPhraseWordMatches(flat, terms, caseSensitive).forEach(i => fillWord(flat[i], 'custom (phrase)', flatPass[i]));
+  return { redactedCount, suspects, regions };
 }
 
 // State kept from the most recent OCR pass, so a checklist toggle can
@@ -2903,15 +3171,18 @@ function renderImageRedactions() {
   imgCanvas.height = originalImageBitmap.naturalHeight;
   imgCtx.drawImage(originalImageBitmap, 0, 0);
 
-  const { redactedCount, suspects } = redactWordsOnCanvas(
+  const { redactedCount, suspects, regions } = redactWordsOnCanvas(
     imgCtx, lastImgLines, lastImgActiveRules, customTerms, customCaseSensitiveEl.checked,
     lastImgEntropyEnabled, confirmedImgSuspects
   );
+  lastImgRegionsText = formatRegions(regions);
+  renderImgOcrText();
   renderImgSuspectChecklist(suspects);
 
   const unconfirmed = suspects.length - confirmedImgSuspects.size;
   let msg = redactedCount > 0 ? t.imgProgressDone(redactedCount) : t.imgProgressNone;
   if (unconfirmed > 0) msg += ' · ' + t.statsSuspects(unconfirmed);
+  if (ocrLangMismatch(customTerms, ocrLangSelect.value)) msg += ' · ' + t.imgLangMismatchHint;
   imgProgressEl.textContent = msg;
   imgDownloadBtn.disabled = false;
   imgDownloadPdfBtn.disabled = false;
@@ -2955,10 +3226,43 @@ function renderImgSuspectChecklist(suspects) {
   });
 }
 
+// What the OCR read, kept so the person can see why a term was missed
+// (shown in a collapsible box under the image).
+let lastImgOcrText = '';
+let lastImgRegionsText = ''; // why each black box was drawn (see formatRegions)
+const imgOcrTextDetailsEl = document.getElementById('imgOcrTextDetails');
+const imgOcrTextEl = document.getElementById('imgOcrText');
+function renderImgOcrText() {
+  const text = [lastImgOcrText, lastImgRegionsText].filter(Boolean).join('\n\n');
+  imgOcrTextEl.textContent = text;
+  imgOcrTextDetailsEl.style.display = text ? 'block' : 'none';
+}
+
+// An enlarged, grayscale-by-channel copy of the image for the extra OCR
+// passes (see planOcrPasses / ocrGrayPixels). Composited on white first
+// so transparent PNGs don't turn black.
+function buildPassCanvas(bitmap, pass) {
+  const w = Math.round(bitmap.naturalWidth * pass.scale);
+  const h = Math.round(bitmap.naturalHeight * pass.scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  const pixels = ctx.getImageData(0, 0, w, h);
+  pixels.data.set(ocrGrayPixels(pixels.data, pass.mode));
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
+
 imgScanBtn.addEventListener('click', async () => {
   clearVerify('imgVerify');
   const t = I18N[currentLang];
   if (!originalImageBitmap) return;
+  if (!wasmAvailable(window)) { imgProgressEl.textContent = t.wasmUnavailable; return; }
   imgScanBtn.disabled = true;
   imgDownloadBtn.disabled = true;
   imgDownloadPdfBtn.disabled = true;
@@ -2972,18 +3276,44 @@ imgScanBtn.addEventListener('click', async () => {
   imgCtx.drawImage(originalImageBitmap, 0, 0);
 
   try {
+    const passes = planOcrPasses(originalImageBitmap.naturalWidth, originalImageBitmap.naturalHeight, imgThoroughCheckbox.checked);
+    let currentPass = 0;
     const worker = await createTesseractWorker(ocrLangSelect.value, (m) => {
       if (m.status === 'recognizing text') {
-        imgProgressEl.textContent = t.imgProgressRecognizing(Math.round((m.progress || 0) * 100));
+        const pct = Math.round((m.progress || 0) * 100);
+        imgProgressEl.textContent = passes.length > 1 ? t.imgPassProgress(currentPass + 1, passes.length, pct) : t.imgProgressRecognizing(pct);
       } else {
         imgProgressEl.textContent = t.imgProgressLoading;
       }
     });
 
-    const { data } = await worker.recognize(imgCanvas, {}, { blocks: true });
+    // Pass 1 is the untouched image, exactly as before. The extra passes
+    // (thorough mode) re-read an enlarged, channel-separated copy; their
+    // word boxes are mapped back to original coordinates and tagged
+    // `extraPass`. A failure in an extra pass must not lose pass 1.
+    const allLines = [];
+    const ocrTextParts = [];
+    for (let p = 0; p < passes.length; p++) {
+      currentPass = p;
+      const pass = passes[p];
+      try {
+        if (pass.psm) await worker.setParameters({ tessedit_pageseg_mode: pass.psm });
+        const source = pass.mode ? buildPassCanvas(originalImageBitmap, pass) : imgCanvas;
+        const { data } = await worker.recognize(source, {}, { blocks: true });
+        const passLines = collectLines(data).map(words => scaleWords(words, pass.scale));
+        passLines.forEach(words => { words.passId = p + 1; if (p > 0) words.extraPass = true; });
+        allLines.push(...passLines);
+        ocrTextParts.push('[pass ' + (p + 1) + '/' + passes.length + ': ' + pass.id + ']\n' + passLines.map(words => words.map(w => w.text).join(' ')).join('\n'));
+      } catch (passError) {
+        if (p === 0) throw passError;
+        console.warn('Extra OCR pass failed, continuing with the passes that worked:', passError);
+      }
+    }
     await worker.terminate();
+    lastImgOcrText = ocrTextParts.join('\n\n');
+    renderImgOcrText();
 
-    lastImgLines = collectLines(data);
+    lastImgLines = allLines;
     lastImgActiveRules = getActiveRules();
     lastImgEntropyEnabled = isEntropyEnabled();
     renderImageRedactions();
@@ -2993,7 +3323,7 @@ imgScanBtn.addEventListener('click', async () => {
     // worker crash, etc.) is visible instead of only a generic string.
     console.error('OCR processing failed:', err);
     const detail = (err && (err.message || err.toString())) || 'unknown error';
-    imgProgressEl.textContent = t.imgProgressError + ' [' + detail + ']';
+    imgProgressEl.textContent = isWasmError(err) ? t.wasmUnavailable : t.imgProgressError + ' [' + detail + ']';
   } finally {
     imgScanBtn.disabled = false;
   }
@@ -3033,6 +3363,9 @@ imgDownloadPdfBtn.addEventListener('click', async () => {
 imgClearBtn.addEventListener('click', () => {
   clearVerify('imgVerify');
   resetInputMetaReport();
+  lastImgOcrText = '';
+  lastImgRegionsText = '';
+  renderImgOcrText();
   originalImageBitmap = null;
   originalImageMimeType = 'image/png';
   imgCanvasWrap.style.display = 'none';
@@ -3293,6 +3626,9 @@ pdfScanBtn.addEventListener('click', async () => {
   clearVerify('pdfVerify');
   const t = I18N[currentLang];
   if (!pdfOriginalBytes) return;
+  // Never silently skip a pass the person asked for: a PDF that was supposed to be OCR'd
+  // but wasn't would look safely processed.
+  if (pdfOcrCheckbox.checked && !wasmAvailable(window)) { pdfProgressEl.textContent = t.wasmUnavailable; return; }
   pdfScanBtn.disabled = true;
   pdfDownloadBtn.disabled = true;
   pdfPageCanvases = [];

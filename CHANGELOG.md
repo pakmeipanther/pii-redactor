@@ -8,6 +8,87 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [1.2.1] — 2026-10-28
+
+### Added
+
+- **Metadata report.** As soon as a file is loaded, a box lists the
+  metadata it carries, with the values: EXIF tags and GPS position,
+  XMP, IPTC, PNG text chunks and JPEG comments (images); Info
+  dictionary fields with formatted dates (PDF, via `pdf.js`);
+  core/app properties, comments, custom properties and preview
+  thumbnail (Word/PowerPoint, via JSZip). A Show/Hide button masks the
+  values; they are only ever displayed on the page.
+- **Export verification.** Every export path (image, image → PDF,
+  flattened PDF, Word/PowerPoint → PDF) now goes through
+  `deliverVerifiedFile()`, which scans the exact bytes about to be
+  downloaded. The download is blocked if anything identifying remains
+  or the file cannot be verified (fail closed); a clean file shows a
+  green "verified" line. The verdict names fields but never repeats
+  their values. ICC colour profiles are reported but do not block.
+- `scanMetadata(bytes)`: a pure-JS, DOM-free metadata scanner for JPEG,
+  PNG, WebP and PDF, with stable finding codes, bounds-checked and
+  capped parsing, and fail-closed handling of unknown formats,
+  encrypted PDFs and compressed PDF object streams.
+- **Thorough scan** for images (on by default): the image is read two
+  more times, enlarged 2x, once in darkest-channel grayscale and once
+  inverted, in sparse-text mode, to catch text the OCR engine misses in
+  the original colours (white on orange, orange on grey). Boxes are
+  mapped back to the original image; a failure in an extra pass never
+  loses the first pass.
+- A collapsible **"What the OCR read"** box under the image, to
+  diagnose a missed term, and a hint when custom terms contain accents
+  but the OCR language is English.
+- UI strings for the report and the verification messages in English,
+  Français, Deutsch and Tiếng Việt, plus a new "metadata check" step in
+  the four user guides.
+
+### Fixed
+
+- **Exported PDFs carried pdf-lib's default metadata.** All three PDF
+  export paths wrote pdf-lib's own `Producer` and `Creator` strings and
+  the current date as `CreationDate`/`ModDate`. They now build documents
+  with `updateMetadata: false` and save without object streams, so the
+  output has no Info dictionary and stays byte-scannable. (The README
+  previously said no metadata was written; that was only true of
+  metadata copied from the original file.)
+- **Image redaction let custom terms through.** Reported on a
+  Vietnamese flyer where several "an toàn" occurrences stayed visible.
+  Causes found and fixed: custom terms were matched with exact accents
+  and case against OCR text (OCR often drops accents), now they match
+  without regard to accents (and to case unless the case-sensitive box
+  is ticked); a multi-word term split across a line break, or
+  interrupted by stray OCR noise words, was never matched, now
+  multi-word terms are also matched by the words' geometry; text the
+  engine cannot read in the original colours is covered by the thorough
+  scan above. A region found by more than one route is filled and
+  counted once. Checked by replaying real Tesseract output for a
+  synthetic flyer through the old and new code: the cross-line case was
+  missed before and found after, and a heavily degraded copy needed the
+  extra passes.
+- **A stray black box in image redaction.** Noise read by an extra OCR pass could match a pattern rule (replaying real Tesseract output showed "1111110)", read from decoration, matching the phone rule). In the extra passes, phone and card-number matches must now contain at least four different digits; custom terms and the first pass are unaffected. The box under the image now also lists every blacked-out region with its reason, the OCR pass that read it and the text it saw, so any black box can be explained. Across 8 degradation levels of a synthetic flyer the bogus region appeared twice before the change and never after.
+- **Safari in Lockdown Mode** (WebAssembly switched off) failed image OCR with `Can't find variable: WebAssembly`, shown under a misleading "run via a local server" message. The image panel now checks up front and explains that OCR needs WebAssembly and what to do (another browser, or excluding the site); the PDF panel refuses a requested OCR pass instead of silently skipping it.
+- `doc.destroy is not a function` in the PDF metadata report: with the
+  vendored pdf.js the loading task, not the document, is destroyed, and
+  a cleanup failure can no longer replace the metadata that was read.
+- The report title no longer says "found" when nothing was found.
+
+### Security
+
+- Text that comes out of an uploaded file is treated as untrusted and
+  is rendered with `textContent` only; a test fails if `innerHTML` and
+  similar APIs appear in the metadata UI.
+
+### Testing
+
+- Test suite grown from 58 to 161 tests: metadata fixtures built from
+  synthetic bytes (clean and dirty variants), negative controls,
+  random-corruption fuzzing, a fake-DOM harness for the report and the
+  blocked-download path, i18n completeness checks, static wiring
+  guards, and consistency checks for version labels and the four
+  guides. Tests were also checked by deliberately breaking the code to
+  confirm they fail.
+
 ## [1.2.0] — 2026-10-23
 
 ### Added
@@ -116,6 +197,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.2.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1
 [1.2.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.0.0

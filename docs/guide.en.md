@@ -136,9 +136,21 @@ The screenshot and PDF features need one extra small technical step, due to a br
 
 > If you've done everything right and still get an error, your computer may need a restart for the change to take effect.
 
+## Step 4 (automatic) — The metadata check
+
+"Metadata" is information hidden inside a file that you can't see when you open it: who created it, with which program, when — and sometimes even where (a photo can carry the GPS location where it was taken).
+
+- **When you drop a file** (an image, PDF, Word or PowerPoint file), a box called "Metadata of the original file" appears under the "Detected:" line. It lists what the file is carrying, with the actual values, so you can see exactly what would have been shared. Click "Hide values" if you want to hide the values (for example when sharing your screen); the field names stay visible. These values are only shown on your own computer.
+- **The file you download is rebuilt from scratch**, so none of that information is copied into it.
+- **Before every download, the tool checks the result again.** If everything is clean you'll see a green line: "Verified: the exported file contains no identifying metadata." If anything is left — or the tool can't be sure — the download is **blocked** and a red line explains why. Nothing is downloaded in that case.
+- A photo's colour profile (ICC) may be listed in grey: it is technical information that doesn't identify you, and it doesn't block anything.
+- The check can't look inside the picture itself, so it can't detect things like invisible watermarks.
+
 ## A few more notes
 
 - The software is a helper, not a replacement for your own care — always review the highlighted parts before trusting them completely, since no automated tool catches 100% of cases.
 - Want to verify for yourself that "no data is sent anywhere"? Turn off your Wi-Fi/network entirely before opening the software — you'll see it still works normally, proving no internet connection is being used.
 - Run into an error you don't understand? Take a screenshot of it and ask someone tech-savvy (a friend, a family member) for help rather than guessing.
 - Everything you upload and any "custom terms" (e.g. a company name to hide) are stored only on your own machine — nobody else can see them.
+- For images and screenshots, keep "Thorough scan" ticked: it is slower, but it also finds text on coloured backgrounds. Pick the OCR language that matches the image, and if something was missed, open "What the OCR read" under the picture to see whether the software read that text at all. It also lists why each black box was drawn.
+- Safari with Lockdown Mode turned on switches off a technology (WebAssembly) that reading text in images needs. If you see a message about WebAssembly, use Firefox or Chrome for images; text, Word and PowerPoint files are not affected.

@@ -136,9 +136,21 @@ Les fonctions de traitement des captures d'écran et des fichiers PDF nécessite
 
 > Si vous avez bien suivi toutes les étapes et qu'une erreur persiste, il est possible que votre ordinateur doive redémarrer pour prendre en compte les changements.
 
+## Étape 4 (automatique) — La vérification des métadonnées
+
+Les « métadonnées » sont des informations cachées à l'intérieur d'un fichier, que vous ne voyez pas quand vous l'ouvrez : qui l'a créé, avec quel logiciel, quand — et parfois même où (une photo peut contenir la position GPS du lieu de prise de vue).
+
+- **Quand vous déposez un fichier** (image, PDF, Word ou PowerPoint), un cadre « Métadonnées du fichier d'origine » apparaît sous la ligne « Détecté : ». Il liste ce que le fichier transporte, avec les valeurs réelles, pour que vous voyiez exactement ce qui aurait été partagé. Cliquez sur « Masquer les valeurs » pour les cacher (par exemple pendant un partage d'écran) ; les noms des champs restent visibles. Ces valeurs ne s'affichent que sur votre propre ordinateur.
+- **Le fichier que vous téléchargez est reconstruit de zéro**, donc rien de tout cela n'y est copié.
+- **Avant chaque téléchargement, l'outil vérifie à nouveau le résultat.** Si tout est propre, vous voyez une ligne verte : « Vérifié : le fichier exporté ne contient aucune métadonnée identifiante. » S'il reste quelque chose — ou si l'outil ne peut pas en être sûr — le téléchargement est **bloqué** et une ligne rouge en explique la raison. Rien n'est alors téléchargé.
+- Le profil colorimétrique (ICC) d'une photo peut apparaître en gris : c'est une information technique qui ne vous identifie pas et qui ne bloque rien.
+- La vérification ne voit pas l'intérieur de l'image elle-même ; elle ne détecte donc pas, par exemple, les filigranes invisibles.
+
 ## Quelques remarques supplémentaires
 
 - Le logiciel est une aide, il ne remplace pas votre propre vigilance — vérifiez toujours les parties surlignées avant de leur faire entièrement confiance, car aucun outil automatique ne détecte 100 % des cas.
 - Vous voulez vérifier par vous-même qu'"aucune donnée n'est envoyée nulle part" ? Désactivez complètement le Wi-Fi/réseau de votre machine avant d'ouvrir le logiciel — vous constaterez qu'il fonctionne toujours normalement, preuve qu'aucune connexion Internet n'est utilisée.
 - Vous rencontrez une erreur que vous ne comprenez pas ? Faites une capture d'écran du message d'erreur et demandez de l'aide à une personne à l'aise avec la technique (un ami, un proche) plutôt que d'essayer de deviner.
 - Toutes les données téléchargées et les "termes personnalisés" (par exemple le nom d'une entreprise à masquer) sont stockés uniquement sur votre propre machine — personne d'autre ne peut les voir.
+- Pour les images et les captures d'écran, laissez cochée « Analyse approfondie » : elle est plus lente, mais elle repère aussi le texte sur fond coloré. Choisissez la langue OCR qui correspond à l'image et, si quelque chose a été oublié, ouvrez « Ce que l'OCR a lu » sous l'image pour voir si le logiciel a bien lu ce texte. Il indique aussi pourquoi chaque case noire a été tracée.
+- Safari avec le Lockdown Mode (mode Isolement) activé désactive une technologie (WebAssembly) dont la lecture du texte dans les images a besoin. Si vous voyez un message mentionnant WebAssembly, utilisez Firefox ou Chrome pour les images ; le texte et les fichiers Word et PowerPoint ne sont pas concernés.

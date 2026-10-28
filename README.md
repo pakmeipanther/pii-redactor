@@ -1,4 +1,4 @@
-# PII Redactor <sup>v1.2.0</sup>
+# PII Redactor <sup>v1.2.1</sup>
 
 A single-file, client-side tool that strips personal data and internal
 infrastructure secrets out of text, Word documents, PowerPoint decks,
@@ -6,13 +6,16 @@ PDFs, and screenshots **before** that content is pasted into any AI
 tool — so sensitive information never leaves your machine in the
 first place.
 
-> Status (v1.2.0): one unified input (paste text, or drop/pick an
+> Status (v1.2.1): one unified input (paste text, or drop/pick an
 > image, PDF, Word, or PowerPoint file — the type is auto-detected,
 > no need to pick the right box yourself), text redaction (regex +
 > custom term list + entropy-based secret detection), image/screenshot
 > OCR redaction, PDF redaction, Word (.docx) → redacted-PDF
 > conversion, and PowerPoint (.pptx) → redacted-PDF conversion are all
 > working, with a synthetic-data test suite and a demo GIF above.
+> Since v1.2.1 it also reports the metadata a loaded file carries and
+> re-scans every export before download (see
+> [Architecture](#architecture)).
 > Local NER was investigated and deferred for now — see
 > [Known limitations](#known-limitations) for why. Looking for an
 > earlier release instead? See [Versioning](#versioning) below.
@@ -232,6 +235,55 @@ through the identical `redactParagraphs` pipeline and
 DejaVu Sans font, same "built from scratch, nothing from the original
 file copied over" guarantee, same PDF-only output.
 
+**Image matching and the thorough scan (v1.2.1):** custom terms are
+matched on the OCR text without regard to accents (OCR often drops them:
+"TOÀN" read as "TOAN") and, unless the case-sensitive box is ticked,
+without regard to case. A multi-word term is also matched by the words'
+geometry rather than only by OCR lines, so "an" ending one line and
+"toàn" starting the next is caught even when the engine's own line
+grouping merges unrelated text or puts stray noise words in between. The
+"Thorough scan" option (on by default, slower) reads the image twice
+more — enlarged 2×, once in darkest-channel grayscale and once inverted,
+in sparse-text mode — to catch text the engine misses in the original
+colours, such as white on orange or orange on grey. Boxes from those
+passes are mapped back to the original image, a region is never filled
+or counted twice, and the extra passes never add entropy suspects. In those extra passes a pattern-based match (phone or card number) must also look like real digits, because noise such as "1111110)" would otherwise blacken a bogus box. A collapsible box under the image shows what the OCR actually read and lists every blacked-out region with its reason, the pass that read it and the text it saw, so both a miss and an unexpected black box can be explained.
+
+**Metadata report and export verification (v1.2.1):** two checks wrap
+every file, both built on one pure, DOM-free function,
+`scanMetadata(bytes)`.
+
+- *Before processing* — as soon as a file is loaded, the input report
+  lists the metadata it carries, with the values: EXIF tags and the GPS
+  position, XMP, IPTC, PNG text chunks and JPEG comments (images); the
+  Info dictionary fields with formatted dates (PDF, read through
+  `pdf.js`); the core and app properties, comments, custom properties
+  and preview thumbnail (Word/PowerPoint, read through JSZip). A
+  Show/Hide button masks the values (screen sharing, demos); they are
+  only ever shown on the page and never leave the machine.
+- *At download* — every export path (image, image → PDF, flattened PDF,
+  Word/PowerPoint → PDF) goes through one function,
+  `deliverVerifiedFile()`, which scans the exact bytes about to be
+  handed to the browser. The download is **blocked** if anything
+  identifying is found or the file cannot be verified at all (unknown
+  format, encrypted PDF, compressed PDF object streams, internal error)
+  — it fails closed. Technical-only items such as an ICC colour profile
+  do not block. The verdict names the fields but never repeats their
+  values.
+
+The scanner reads JPEG segments, PNG chunks, WebP RIFF chunks and PDF
+name tokens directly. Every read is bounds-checked and capped (IFD and
+entry counts, value sizes), values are cut to 300 characters and
+stripped of control characters, and all text that came out of a file is
+rendered with `textContent`, never `innerHTML`. For PDFs it also matters
+*how* the output is written: pdf-lib, left on its defaults, stamps its
+own Producer and Creator strings and the current date into every new
+document, and packs them into compressed object streams where a plain
+byte scan cannot see them. `createCleanPdf()` (`updateMetadata: false`)
+and `saveCleanPdf()` (`useObjectStreams: false`) remove the fields and
+keep the output scannable; the test suite fails if any export path
+bypasses them.
+
 See the demo GIF near the top of this README for the full flow in
 action (text → scan → custom term → multilingual UI).
 
@@ -328,17 +380,22 @@ restriction.
 
 ## Testing
 
-`test/run-tests.mjs` is a small, dependency-free regression suite for
-the detection pipeline (the regex rules, the custom-term list, entropy
-detection, and how they all merge by priority) plus the Word/PowerPoint
-text-extraction functions. It doesn't duplicate that logic into a
-second file — it extracts the real `RULES`/`findMatches`/
-`findCustomMatches`/`findEntropyMatches`/`extractDocxParagraphs`/
-`extractPptxParagraphs`/`redactParagraphs` code straight out of
-`index.html` and runs it as-is, so a test failure always means the
-shipped file actually changed behavior. All fixtures are
-synthetic/fake data invented for the test, never real secrets. As of
-v1.1.0: 57 tests, all passing.
+`test/run-tests.mjs` is a small, dependency-free regression suite. It
+doesn't duplicate the shipped logic into a second file — it extracts the
+real code straight out of `index.html` (the detection pipeline:
+`RULES`/`findMatches`/`findCustomMatches`/`findEntropyMatches`; the
+Word/PowerPoint text extraction; the clean-PDF helpers; `scanMetadata`;
+and the metadata report/verification logic and UI block) and runs it
+as-is, so a test failure always means the shipped file actually changed
+behavior. All fixtures are synthetic/fake data invented for the test,
+never real secrets. Since v1.2.1 that includes metadata fixtures built
+byte by byte (JPEG, PNG and WebP with EXIF/GPS, XMP, IPTC and text
+chunks), a clean case for every dirty one, negative controls that prove
+the scanner can see a leak, about 6,000 randomly corrupted files to
+check the scanner never crashes, a tiny fake DOM to exercise the report
+and the blocked-download path, i18n completeness checks for all four
+languages, and static guards on the wiring (for example: every export
+must go through `deliverVerifiedFile`). As of v1.2.1: 161 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -379,6 +436,12 @@ node test/run-tests.mjs
       box; `detectFileType()` sorts the file by MIME type, extension,
       and (as the final, unspoofable check) its own magic bytes, then
       opens the matching result panel automatically
+- [x] **v1.2.1** Metadata: every exported PDF is built without pdf-lib's
+      default Producer/Creator/dates; a pure-JS `scanMetadata()` reads
+      JPEG/PNG/WebP/PDF metadata; an input report lists what a loaded
+      file carries (with values and a Show/Hide toggle); every export is
+      re-scanned and the download is blocked if anything identifying
+      remains (EN/FR/DE/VI)
 
 ## Versioning
 
@@ -393,11 +456,16 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   secret detection, and native-format image export with an optional
   PDF option. Tag:
   [`v1.1.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.1.0).
-- **v1.2.0** (current) — merges the five separate text/image/PDF/Word/
+- **v1.2.0** — merges the five separate text/image/PDF/Word/
   PowerPoint drop zones into one unified input with automatic file-type
   detection; no change to the underlying detection/redaction pipelines.
   Tag:
   [`v1.2.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.0).
+- **v1.2.1** (current) — metadata report and export verification: shows the
+  metadata a loaded file carries, builds every PDF without pdf-lib's default
+  Producer/Creator/dates, and re-scans every export, blocking the download
+  if anything identifying is left. Tag:
+  [`v1.2.1`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.2.1).
 
 To use a specific version instead of the latest `main`, download the
 `index.html` (plus the matching `vendor/` folder) from that tag's
@@ -528,6 +596,45 @@ underneath you, even as `main` keeps moving forward.
   still found. See [test/run-tests.mjs](test/run-tests.mjs)'s
   `wordsToRedact` tests.
 
+- **Metadata scanning is byte-level and bounded, not a full parser.**
+  XMP and IPTC values come from a forgiving extractor rather than a real
+  XML/IIM parser, so an unusual packet may show fewer fields than it
+  holds; PNG `zTXt` and compressed `iTXt` values are deflated and are
+  reported by keyword only.
+- **OCR can still miss text.** Stylised or very small type, strong
+  gradients, textures and low-contrast text can defeat the engine even
+  with the thorough scan, which raises coverage but is not a guarantee.
+  It was checked against real Tesseract output for synthetic flyers (a
+  phrase split across lines was missed before and found after; a heavily
+  degraded copy needed the extra passes), not against every kind of
+  real-world design. In replays of blurred, JPEG-compressed copies the most common miss was a short word such as "an" being dropped while the word after it was read, so a multi-word term was not matched. Always look at the result, and open "What the OCR read" under the image to see whether the engine read the text at all.
+- **Image OCR needs WebAssembly.** Browsers or modes that switch it off
+  — most commonly Safari with Apple's Lockdown Mode — cannot run the OCR
+  engine. The image panel (and the PDF panel's optional OCR pass) then
+  says so and refuses, instead of failing obscurely or quietly skipping
+  OCR. Text redaction, the metadata report and Word/PowerPoint
+  conversion are plain JavaScript and keep working. Use another browser
+  (Firefox is not subject to Lockdown Mode) or exclude the site from
+  Lockdown Mode in Safari — Apple's exclusion has been reported not to
+  restore WebAssembly on some iOS versions, and excluding a site weakens
+  the protection it was turned on for.
+- **It cannot see inside pixels or page content.** Invisible watermarks,
+  steganography and printer tracking dots are out of scope for the
+  scanner (and for the tool).
+- **Original PDFs are read through pdf.js, not the byte scanner**,
+  because most carry compressed object streams that a byte scan cannot
+  see into. The byte scanner is for the files the tool *produces*; it
+  reports a compressed or encrypted PDF as "cannot be verified" and
+  blocks it.
+- **The export gate can block a download that is actually fine** if a
+  browser's canvas encoder writes unexpected metadata or trailing bytes
+  into an exported JPEG/PNG/WebP. That is the intended failure direction
+  (fail closed); the red line names the field so it can be investigated.
+  Chrome is the browser this was developed against; the image workflow was also verified in Firefox on macOS. Safari's exported-file output has not been checked.
+- **Values appear on screen** in the input report (GPS positions, author
+  names...). They stay on the machine, but use the Hide button before
+  screen sharing or recording a demo.
+
 ## Security notes
 
 - The `Content-Security-Policy` meta tag blocks outbound network requests
@@ -552,7 +659,15 @@ underneath you, even as `main` keeps moving forward.
 - The output PDF is assembled from scratch with pdf-lib rather than by
   editing the uploaded file in place, so no original PDF object,
   embedded font, or metadata field (e.g. author, producer, XMP data)
-  is ever copied into the exported file.
+  is ever copied into the exported file. pdf-lib itself, left on its
+  defaults, would add its own Producer/Creator strings and the current
+  date; since v1.2.1 every export path disables that (see
+  [Architecture](#architecture)) and every export is scanned again
+  before download.
+- Text that comes out of an uploaded file (metadata values, PNG text
+  keywords...) is untrusted: the metadata report renders it with
+  `textContent` only, never `innerHTML`, and the test suite enforces
+  that.
 
 ## Author
 

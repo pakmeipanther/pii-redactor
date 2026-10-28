@@ -136,9 +136,21 @@ Die beiden Funktionen für Screenshots und PDF-Dateien benötigen aufgrund einer
 
 > Wenn Sie alle Schritte korrekt ausgeführt haben und trotzdem ein Fehler auftritt, muss der Rechner möglicherweise einmal neu gestartet werden, damit die Änderung wirksam wird.
 
+## Schritt 4 (automatisch) — Die Metadaten-Prüfung
+
+„Metadaten" sind Informationen, die unsichtbar in einer Datei stecken: wer sie erstellt hat, mit welchem Programm, wann — und manchmal sogar wo (ein Foto kann den GPS-Standort der Aufnahme enthalten).
+
+- **Sobald du eine Datei hineinziehst** (Bild, PDF, Word oder PowerPoint), erscheint unter der Zeile „Erkannt:" ein Kasten „Metadaten der Originaldatei". Er listet auf, was die Datei mitbringt, samt der echten Werte — so siehst du genau, was weitergegeben worden wäre. Mit „Werte ausblenden" kannst du die Werte verbergen (z. B. beim Bildschirmteilen); die Feldnamen bleiben sichtbar. Die Werte werden nur auf deinem eigenen Computer angezeigt.
+- **Die heruntergeladene Datei wird komplett neu aufgebaut**, daher wird nichts davon übernommen.
+- **Vor jedem Download prüft das Tool das Ergebnis erneut.** Ist alles sauber, siehst du eine grüne Zeile: „Verifiziert: Die exportierte Datei enthält keine identifizierenden Metadaten." Bleibt etwas übrig — oder kann das Tool es nicht sicher beurteilen —, wird der Download **blockiert** und eine rote Zeile nennt den Grund. Dann wird nichts heruntergeladen.
+- Das Farbprofil (ICC) eines Fotos kann grau aufgeführt werden: Es ist rein technisch, identifiziert dich nicht und blockiert nichts.
+- Die Prüfung kann nicht ins Bild selbst hineinschauen und erkennt daher z. B. unsichtbare Wasserzeichen nicht.
+
 ## Noch ein paar Hinweise
 
 - Die Software unterstützt Sie nur, sie ersetzt nicht Ihre eigene Sorgfalt — überprüfen Sie die markierten Stellen immer, bevor Sie ihnen vollständig vertrauen, denn kein automatisches Werkzeug erkennt 100 % der Fälle.
 - Möchten Sie selbst überprüfen, dass "keine Daten irgendwohin gesendet werden"? Schalten Sie WLAN/Netzwerk Ihres Rechners komplett aus, bevor Sie die Software öffnen — Sie werden sehen, dass sie weiterhin normal funktioniert, was beweist, dass keine Internetverbindung genutzt wird.
 - Ein Fehler, den Sie nicht verstehen? Machen Sie einen Screenshot der Fehlermeldung und bitten Sie eine technisch versierte Person (Freund, Familienmitglied) um Hilfe, anstatt zu raten.
 - Alle heruntergeladenen Daten und "eigene Suchbegriffe" (z. B. ein zu verbergender Firmenname) werden ausschließlich auf Ihrem eigenen Rechner gespeichert — niemand sonst kann sie sehen.
+- Lass bei Bildern und Screenshots „Gründliche Analyse" angekreuzt: Sie ist langsamer, findet aber auch Text auf farbigem Hintergrund. Wähle die OCR-Sprache passend zum Bild, und öffne bei einem übersehenen Treffer das Feld „Was die OCR gelesen hat" unter dem Bild, um zu sehen, ob die Software den Text überhaupt gelesen hat. Dort steht auch, warum jedes schwarze Feld gezeichnet wurde.
+- Safari mit aktiviertem Lockdown Mode (Blockierungsmodus) schaltet eine Technik (WebAssembly) ab, die das Lesen von Text in Bildern braucht. Wenn du eine Meldung zu WebAssembly siehst, nutze für Bilder Firefox oder Chrome; Text, Word- und PowerPoint-Dateien sind nicht betroffen.

@@ -136,9 +136,21 @@ Hai tính năng xử lý ảnh chụp màn hình và file PDF cần thêm một 
 
 > Nếu đã làm đúng các bước mà vẫn báo lỗi, rất có thể máy cần khởi động lại (restart) một lần để nhận thay đổi.
 
+## Bước 4 (tự động) — Kiểm tra metadata
+
+"Metadata" là thông tin nằm ẩn bên trong một file mà bạn không thấy khi mở nó ra: ai tạo file, bằng phần mềm nào, vào lúc nào — và đôi khi cả nơi chốn (một tấm ảnh có thể mang theo vị trí GPS nơi nó được chụp).
+
+- **Khi bạn thả một file vào** (ảnh, PDF, Word hoặc PowerPoint), một khung tên "Metadata của file gốc" sẽ hiện ra bên dưới dòng "Đã nhận diện:". Khung này liệt kê những gì file đang mang theo, kèm giá trị thật, để bạn thấy chính xác điều gì sẽ bị chia sẻ nếu không xử lý. Bấm "Ẩn giá trị" nếu muốn che các giá trị (ví dụ khi chia sẻ màn hình); tên các trường vẫn hiện. Các giá trị này chỉ hiển thị trên máy của bạn.
+- **File bạn tải xuống được dựng lại từ đầu**, nên không mang theo bất kỳ thông tin nào ở trên.
+- **Trước mỗi lần tải xuống, phần mềm kiểm tra lại kết quả.** Nếu mọi thứ sạch, bạn sẽ thấy một dòng màu xanh: "Đã xác minh: file xuất ra không còn metadata nhận dạng." Nếu còn sót thứ gì — hoặc phần mềm không chắc chắn được — việc tải xuống sẽ bị **chặn** và một dòng màu đỏ giải thích lý do. Khi đó không có gì được tải về.
+- Hồ sơ màu của ảnh (ICC) có thể hiện bằng chữ xám: đó là thông tin kỹ thuật, không nhận dạng được bạn và không chặn việc tải xuống.
+- Phần kiểm tra không nhìn được vào bên trong bức ảnh, nên không phát hiện được những thứ như hình mờ vô hình.
+
 ## Một vài lưu ý
 
 - Phần mềm chỉ hỗ trợ, không thay thế sự cẩn thận của bạn — luôn xem lại phần được tô đỏ trước khi tin tưởng hoàn toàn, vì không có công cụ tự động nào bắt được 100% các trường hợp.
 - Muốn tự kiểm chứng việc "không gửi dữ liệu đi đâu"? Tắt hẳn wifi/mạng của máy trước khi mở phần mềm lên dùng — sẽ thấy nó vẫn hoạt động bình thường, chứng tỏ không có kết nối Internet nào được dùng.
 - Gặp lỗi không hiểu được? Chụp lại màn hình báo lỗi và nhờ người rành kỹ thuật (bạn bè, người thân) xem giúp, thay vì cố đoán.
 - Mọi thông tin đã tải xuống và "từ khóa riêng" (ví dụ tên công ty cần che) chỉ được lưu ngay trên máy của bạn, không ai khác xem được.
+- Với ảnh và ảnh chụp màn hình, hãy để nguyên ô "Quét kỹ": chậm hơn nhưng bắt được cả chữ trên nền màu. Chọn ngôn ngữ OCR đúng với ảnh, và nếu có chỗ bị sót, hãy mở khung "Chữ mà OCR đã đọc được" dưới bức ảnh để xem phần mềm có đọc được chữ đó hay không. Khung này cũng cho biết lý do mỗi ô đen được vẽ.
+- Safari khi bật Lockdown Mode sẽ tắt một công nghệ (WebAssembly) mà việc đọc chữ trong ảnh cần đến. Nếu thấy thông báo nhắc đến WebAssembly, hãy dùng Firefox hoặc Chrome cho ảnh; văn bản, file Word và PowerPoint không bị ảnh hưởng.

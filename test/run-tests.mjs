@@ -70,7 +70,7 @@ const textItemBBoxAndPadCode = extractBetween(
   'textItemBBox + redactionPadX'
 );
 const wordsToRedactCode = extractBetween(
-  'function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled) {',
+  'function wordsToRedact(lineWords, activeRules, terms, caseSensitive, entropyEnabled, trust) {',
   '\n\n// Creates a Tesseract worker',
   'wordsToRedact'
 );
@@ -90,8 +90,15 @@ const pptxPureFunctionsCode = extractBetween(
   'extractPptxParagraphs'
 );
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${wordsToRedactCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs };`;
-const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs } = new Function(combined)();
+const ocrSupportCode = extractBetween('// OCR_SUPPORT_START', '// OCR_SUPPORT_END', 'OCR_SUPPORT');
+const redactWordsOnCanvasCode = extractBetween(
+  'function redactWordsOnCanvas(',
+  '\n\n// State kept from the most recent OCR pass',
+  'redactWordsOnCanvas'
+);
+
+const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions };`;
+const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -1554,6 +1561,307 @@ check('guard: routeFile resets the old verdict, shows the new report, and the 4 
   for (const id of ['imgVerify', 'pdfVerify', 'docxVerify', 'pptxVerify']) {
     if (html.split(`clearVerify('${id}');`).length - 1 < 2) throw new Error(`clearVerify('${id}') should be called from both its scan and clear handlers`);
   }
+});
+
+// --- OCR matching and thorough scan (v1.2.1) -----------------------------
+// Pure helpers behind the image panel. The fixture below is REAL Tesseract
+// output (4.1.1 with the vendored Vietnamese model) for a synthetic flyer I
+// drew for this purpose: a white-on-orange heading "AN TOÀN", and a card
+// where "an" ends one line and "toàn" starts the next. The engine put the
+// two stray noise words "r" and "." into the same OCR "line" as that card's
+// first line, between "an" and "toàn" -- exactly the kind of mess that makes
+// per-line matching miss a phrase. Coordinates are left, top, right, bottom.
+
+const W = (text, x0, y0, x1, y1) => ({ text, bbox: { x0, y0, x1, y1 } });
+const REAL_LINE_1 = [W('AN', 150, 439, 211, 468), W('TOÀN', 228, 431, 350, 468), W('(Điều', 492, 442, 547, 464), W('21)', 558, 444, 591, 464), W('&', 601, 445, 616, 461), W('bối', 626, 442, 655, 461), W('cảnh', 665, 443, 716, 461), W('an', 726, 449, 750, 461)];
+const REAL_LINE_2 = [W('r', 189, 491, 202, 496), W('.', 326, 491, 339, 496), W('toàn', 490, 475, 538, 493), W('dữ', 548, 476, 575, 493), W('liệu', 583, 475, 619, 497)];
+const REAL_LINE_3 = [W('KY', 154, 499, 210, 528), W('THUẠT', 224, 499, 375, 536)];
+const REAL_WORDS = [...REAL_LINE_1, ...REAL_LINE_2, ...REAL_LINE_3];
+
+check('foldForMatch: accents and case fold, length is preserved, composed and decomposed input agree', () => {
+  if (foldForMatch('TOÀN', false) !== 'toan') throw new Error(foldForMatch('TOÀN', false));
+  if (foldForMatch('TOÀN', true) !== 'TOAN') throw new Error('case-sensitive mode must keep case: ' + foldForMatch('TOÀN', true));
+  if (foldForMatch('Đường đi', false) !== 'duong di' || foldForMatch('Đường', true) !== 'Duong') throw new Error('đ/Đ not folded');
+  const sample = 'Phạm Nguyễn Hải Đăng — Köln, François';
+  if (foldForMatch(sample, false).length !== sample.length) throw new Error('length changed');
+  if (foldForMatch('toa\u0300n'.normalize('NFC'), false) !== 'toan') throw new Error('decomposed input not handled after NFC');
+});
+
+check('foldedCustomSpans: a term with accents matches the same letters without accents, in any case', () => {
+  const spans = foldedCustomSpans('x AN TOAN y an toàn z', ['an toàn'], false);
+  if (spans.length !== 2 || spans[0].start !== 2 || spans[0].end !== 9) throw new Error(JSON.stringify(spans));
+  if (foldedCustomSpans('AN TOAN', ['an toàn'], true).length !== 0) throw new Error('case-sensitive mode matched a different case');
+  if (foldedCustomSpans('an toan', ['an toàn'], true).length !== 1) throw new Error('case-sensitive mode should still ignore accents');
+});
+
+check('wordsToRedact: OCR that dropped the accents ("AN TOAN") still matches the custom term "an toàn"', () => {
+  const words = [W('AN', 0, 0, 30, 20), W('TOAN', 45, 0, 110, 20)];
+  const { flagged } = wordsToRedact(words, [], ['an toàn'], false, false);
+  if (flagged.size !== 2) throw new Error('flagged ' + [...flagged]);
+  const strict = wordsToRedact(words, [], ['an toàn'], true, false);
+  if (strict.flagged.size !== 0) throw new Error('case-sensitive "an toàn" must not match "AN TOAN"');
+});
+
+check('wordsToRedact: decomposed (NFD) OCR text matches a composed custom term', () => {
+  const words = [W('toa\u0300n', 0, 0, 60, 20)];
+  if (wordsToRedact(words, [], ['toàn'], false, false).flagged.size !== 1) throw new Error('NFD word not matched');
+});
+
+check('findPhraseWordMatches: "an" ending one line and "toàn" starting the next match despite OCR noise between them', () => {
+  const hits = findPhraseWordMatches(REAL_WORDS, ['an toàn'], false);
+  const got = [...hits].sort((a, b) => a - b).map(i => REAL_WORDS[i].text + '@' + REAL_WORDS[i].bbox.x0);
+  const want = ['AN@150', 'TOÀN@228', 'an@726', 'toàn@490'];
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error('got ' + JSON.stringify(got));
+});
+
+check('findPhraseWordMatches: accents/case folding, trailing punctuation and 3-word terms', () => {
+  const line = [W('trực', 0, 0, 40, 20), W('tuyến', 55, 0, 110, 20), W('AN', 125, 0, 150, 20), W('TOAN,', 165, 0, 220, 20)];
+  const hits = findPhraseWordMatches(line, ['tuyến an toàn'], false);
+  if (hits.size !== 3 || hits.has(0)) throw new Error('got ' + [...hits]);
+});
+
+check('findPhraseWordMatches: the wrong order, a word to the right of a wrapped line, or words far apart do not match', () => {
+  if (findPhraseWordMatches([W('toàn', 0, 0, 50, 20), W('an', 65, 0, 90, 20)], ['an toàn'], false).size !== 0) throw new Error('wrong order matched');
+  // "toàn" on the next line but starting RIGHT of "an": not a wrapped continuation
+  if (findPhraseWordMatches([W('an', 100, 0, 130, 20), W('toàn', 300, 30, 350, 50)], ['an toàn'], false).size !== 0) throw new Error('unwrapped lower-right word matched');
+  if (findPhraseWordMatches([W('an', 100, 0, 130, 20), W('toàn', 20, 400, 70, 420)], ['an toàn'], false).size !== 0) throw new Error('distant word matched');
+  if (findPhraseWordMatches([W('an', 100, 0, 130, 20), W('toàn', 150, 100, 200, 120)], ['an toàn'], false).size !== 0) throw new Error('word far below matched');
+});
+
+check('findPhraseWordMatches: single-word terms are left to the normal matcher, and the search is bounded', () => {
+  if (findPhraseWordMatches(REAL_WORDS, ['toàn'], false).size !== 0) throw new Error('single-word term handled here');
+  const many = Array.from({ length: 400 }, (_, i) => W('a', i * 12, 0, i * 12 + 10, 20));
+  findPhraseWordMatches(many, ['a a a a a a a a a a'], false); // must return (budgeted), not hang
+});
+
+check('planOcrPasses: one untouched pass normally; two enlarged channel passes in thorough mode (not enlarged when the image is large)', () => {
+  const normal = planOcrPasses(910, 1217, false);
+  if (normal.length !== 1 || normal[0].mode !== null || normal[0].scale !== 1 || normal[0].psm !== null) throw new Error(JSON.stringify(normal));
+  const thorough = planOcrPasses(910, 1217, true);
+  if (thorough.length !== 3 || thorough[0].id !== 'original') throw new Error(JSON.stringify(thorough));
+  if (thorough[1].scale !== 2 || thorough[2].scale !== 2 || thorough[1].psm !== '11' || thorough[2].mode !== 'min-inverted') throw new Error(JSON.stringify(thorough));
+  if (planOcrPasses(2600, 1800, true)[1].scale !== 1) throw new Error('large image must not be enlarged');
+});
+
+check('ocrGrayPixels: darkest-channel gray separates white text from an orange background far better than luminance', () => {
+  const px = Uint8ClampedArray.from([255, 255, 255, 255,  230, 120, 30, 255,  20, 40, 90, 255,  235, 235, 240, 255]);
+  const min = ocrGrayPixels(px, 'min');
+  if (min[0] !== 255 || min[4] !== 30 || min[8] !== 20 || min[12] !== 235 || min[3] !== 255) throw new Error('min: ' + [...min]);
+  const inv = ocrGrayPixels(px, 'min-inverted');
+  if (inv[0] !== 0 || inv[4] !== 225) throw new Error('min-inverted: ' + [...inv]);
+  const max = ocrGrayPixels(px, 'max');
+  if (max[4] !== 230) throw new Error('max: ' + [...max]);
+  const lum = c => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  const lumContrast = lum([255, 255, 255]) - lum([230, 120, 30]);
+  if (!(min[0] - min[4] > 1.8 * lumContrast)) throw new Error(`channel contrast ${min[0] - min[4]} should clearly beat luminance contrast ${lumContrast}`);
+});
+
+check('scaleWords: boxes found on an enlarged canvas map back to the original size without touching the input', () => {
+  const words = [{ text: 'an', confidence: 90, bbox: { x0: 200, y0: 100, x1: 260, y1: 140 } }];
+  const back = scaleWords(words, 2);
+  if (JSON.stringify(back[0].bbox) !== JSON.stringify({ x0: 100, y0: 50, x1: 130, y1: 70 }) || back[0].text !== 'an' || back[0].confidence !== 90) throw new Error(JSON.stringify(back));
+  if (words[0].bbox.x0 !== 200) throw new Error('input was modified');
+  if (scaleWords(words, 1) !== words) throw new Error('scale 1 should return the same words');
+});
+
+check('ocrLangMismatch: accented custom terms with an English-only OCR language are flagged', () => {
+  if (!ocrLangMismatch(['an toàn'], 'eng') || ocrLangMismatch(['an toan'], 'eng') || ocrLangMismatch(['an toàn'], 'vie')) throw new Error('wrong mismatch result');
+});
+
+check('wasmAvailable / isWasmError: Lockdown-Mode style environments are recognised, the real error messages of each engine too', () => {
+  if (wasmAvailable({}) || wasmAvailable(null) || wasmAvailable({ WebAssembly: {} }) || wasmAvailable({ WebAssembly: null })) throw new Error('missing/broken WebAssembly reported as available');
+  if (!wasmAvailable({ WebAssembly: { instantiate() {} } })) throw new Error('a working WebAssembly reported as unavailable');
+  if (!wasmAvailable(globalThis)) throw new Error('Node itself has WebAssembly');
+  for (const message of ["ReferenceError: Can't find variable: WebAssembly", 'WebAssembly is not defined', "undefined is not an object (evaluating 'WebAssembly.validate')"]) {
+    if (!isWasmError(new Error(message)) || !isWasmError(message)) throw new Error('not recognised: ' + message);
+  }
+  if (isWasmError(new Error('Failed to fetch')) || isWasmError(null) || isWasmError(undefined)) throw new Error('unrelated error recognised as a WebAssembly error');
+});
+
+// ---- the whole redaction step, with a recording canvas context ----
+function recordingCtx() {
+  const fills = [];
+  return { fills, fillStyle: '', strokeStyle: '', lineWidth: 0, fillRect(...a) { fills.push(a); }, strokeRect() {}, save() {}, restore() {} };
+}
+
+check('redactWordsOnCanvas: the phrase split across lines and the accent-less heading are both filled, each region once', () => {
+  const ctx = recordingCtx();
+  const { redactedCount } = redactWordsOnCanvas(ctx, [REAL_LINE_1, REAL_LINE_2, REAL_LINE_3], [], ['an toàn'], false, false);
+  // AN, TOÀN (heading, same OCR line), an (end of line), toàn (next line): 4 regions, no more
+  if (redactedCount !== 4 || ctx.fills.length !== 4) throw new Error(`expected 4 regions, got ${redactedCount} / ${ctx.fills.length}`);
+  const xs = ctx.fills.map(f => f[0] + 2).sort((a, b) => a - b);
+  if (JSON.stringify(xs) !== JSON.stringify([150, 228, 490, 726])) throw new Error('filled the wrong words: ' + xs);
+});
+
+check('redactWordsOnCanvas: the same text found again by an extra OCR pass is not filled or counted twice, and extra passes add no entropy suspects', () => {
+  const ctx = recordingCtx();
+  const pass2 = REAL_LINE_1.map(w => ({ ...w, bbox: { ...w.bbox } }));
+  pass2.extraPass = true;
+  const noisy = [W('Zk9qLm3VxQ7rTb2Np', 10, 600, 200, 620)];
+  noisy.extraPass = true;
+  const { redactedCount, suspects } = redactWordsOnCanvas(ctx, [REAL_LINE_1, REAL_LINE_2, pass2, noisy], [], ['an toàn'], false, true);
+  if (redactedCount !== 4) throw new Error('duplicates were counted: ' + redactedCount);
+  if (suspects.length !== 0) throw new Error('an extra pass produced entropy suspects: ' + JSON.stringify(suspects));
+});
+
+check('redactWordsOnCanvas: a custom term is not filled where the text does not contain it', () => {
+  const ctx = recordingCtx();
+  const { redactedCount } = redactWordsOnCanvas(ctx, [[W('hello', 0, 0, 50, 20), W('world', 60, 0, 110, 20)]], [], ['an toàn'], false, false);
+  if (redactedCount !== 0 || ctx.fills.length) throw new Error('filled without a match');
+});
+
+// ---- extra-pass noise (v1.2.1 follow-up) ----
+// Found by replaying real Tesseract output for a faithful synthetic copy of
+// the flyer through the shipped code: in the inverted extra pass, at 2 of 8
+// degradation levels, the engine read decoration as the token "1111110)" /
+// "111111)" (51x14 px). That is a valid phone-number pattern, so the phone
+// rule filled a bogus black box. Extra-pass pattern matches must look real.
+
+check('plausibleRuleMatch: repeated-digit noise is rejected for phone/card patterns; real numbers and other rules pass', () => {
+  for (const noise of ['1111110)', '111111)', '1111111', '0000 0000']) if (plausibleRuleMatch('phone', noise)) throw new Error('noise accepted as a phone number: ' + noise);
+  for (const real of ['0912 345 678', '+49 221 1234567', '(030) 123-4567']) if (!plausibleRuleMatch('phone', real)) throw new Error('real number rejected: ' + real);
+  if (plausibleRuleMatch('creditcard', '1111 1111 1111 1111') || !plausibleRuleMatch('creditcard', '4539 1488 0343 6467')) throw new Error('creditcard plausibility wrong');
+  for (const rule of ['email', 'ipv4', 'ipv6', 'apikey', 'dburi', 'dbkv', 'dbport', 'custom']) if (!plausibleRuleMatch(rule, '1.1.1.1')) throw new Error(rule + ' must not be filtered');
+});
+
+check('wordsToRedact: in a low-trust (extra pass) line digit noise is not redacted; the same line in the first pass still is, and custom terms are never filtered', () => {
+  const noise = [W('1111110)', 536, 613, 587, 627)];
+  const phone = RULES.filter(r => r.id === 'phone');
+  if (wordsToRedact(noise, phone, [], false, false, 'low').flagged.size !== 0) throw new Error('noise redacted in a low-trust line');
+  if (wordsToRedact(noise, phone, [], false, false, 'full').flagged.size !== 1) throw new Error('first-pass behaviour changed');
+  if (wordsToRedact(noise, phone, [], false, false).flagged.size !== 1) throw new Error('default trust must stay "full"');
+  const real = [W('0912', 0, 0, 40, 20), W('345', 50, 0, 80, 20), W('678', 90, 0, 120, 20)];
+  if (wordsToRedact(real, phone, [], false, false, 'low').flagged.size !== 3) throw new Error('a real phone number must still be found in an extra pass');
+  if (wordsToRedact([W('an', 0, 0, 30, 20), W('toàn', 45, 0, 100, 20)], phone, ['an toàn'], false, false, 'low').flagged.size !== 2) throw new Error('custom terms must be trusted in extra passes');
+});
+
+check('wordsToRedact: it says WHY each word was flagged (custom term vs rule id)', () => {
+  const { flagged, reasons } = wordsToRedact([W('mail', 0, 0, 40, 20), W('a@b.co', 60, 0, 130, 20), W('AN', 150, 0, 180, 20), W('TOAN', 195, 0, 250, 20)], RULES, ['an toàn'], false, false);
+  const why = [...flagged].sort((a, b) => a - b).map(i => reasons.get(i));
+  if (JSON.stringify(why) !== JSON.stringify(['email', 'custom', 'custom'])) throw new Error(JSON.stringify(why));
+});
+
+check('redactWordsOnCanvas: noise from an extra pass leaves no black box and is not counted; the same noise in the main pass is still redacted (unchanged behaviour)', () => {
+  const phone = RULES.filter(r => r.id === 'phone');
+  const extra = [W('1111110)', 536, 613, 587, 627)]; extra.extraPass = true; extra.passId = 3;
+  const ctx = recordingCtx();
+  const r = redactWordsOnCanvas(ctx, [extra], phone, [], false, false);
+  if (r.redactedCount !== 0 || ctx.fills.length !== 0) throw new Error('extra-pass noise was filled');
+  const main = [W('1111110)', 536, 613, 587, 627)]; main.passId = 1;
+  const r2 = redactWordsOnCanvas(recordingCtx(), [main], phone, [], false, false);
+  if (r2.redactedCount !== 1) throw new Error('main-pass behaviour changed');
+});
+
+check('redactWordsOnCanvas: every filled region is logged with its reason, pass and OCR text; formatRegions prints them', () => {
+  const l1 = [W('x', 0, 0, 10, 10), W('an', 726, 449, 750, 461)]; l1.passId = 1;
+  const l2 = [W('toàn', 490, 475, 538, 493)]; l2.passId = 2; l2.extraPass = true;
+  const mail = [W('a@b.co', 0, 100, 60, 120)]; mail.passId = 1;
+  const { regions } = redactWordsOnCanvas(recordingCtx(), [l1, l2, mail], RULES, ['an toàn'], false, false);
+  const got = regions.map(r => `${r.why}|${r.pass}|${r.text}`).sort();
+  const want = ['custom (phrase)|1|an', 'custom (phrase)|2|toàn', 'email|1|a@b.co'].sort();
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(JSON.stringify(got));
+  const text = formatRegions(regions);
+  if (!text.startsWith('[blacked-out regions') || !text.includes('email | 1 | a@b.co') || formatRegions([]) !== '') throw new Error(text);
+});
+
+check('replay of the real noise token: the shipped code no longer fills it, in any pass, with every rule active', () => {
+  const lines = [[W('1111110)', 536, 613, 587, 627)], [W('111111)', 536, 613, 587, 627)]];
+  lines.forEach(l => { l.extraPass = true; l.passId = 3; });
+  const ctx = recordingCtx();
+  const { redactedCount } = redactWordsOnCanvas(ctx, lines, RULES, ['an toàn'], false, true);
+  if (redactedCount !== 0) throw new Error('filled ' + redactedCount + ' bogus region(s)');
+});
+
+check('guard: the diagnostic box shows the region log with textContent, and the scan tags each pass', () => {
+  if (!html.includes('lastImgRegionsText = formatRegions(regions);')) throw new Error('the region log is not wired into the image render');
+  if (!html.includes('words.passId = p + 1;')) throw new Error('passes are not tagged, so regions cannot name their pass');
+  const body = html.slice(html.indexOf('function renderImgOcrText()'), html.indexOf('function buildPassCanvas'));
+  if (!body.includes('[lastImgOcrText, lastImgRegionsText]') || /innerHTML/.test(body)) throw new Error('renderImgOcrText must combine both texts via textContent');
+});
+
+// ---- i18n + wiring for the image panel ----
+const i18nOcrCode = extractBetween('// I18N_OCR_START', '// I18N_OCR_END', 'I18N_OCR');
+const { I18N_OCR } = new Function(`${i18nOcrCode}\nreturn { I18N_OCR };`)();
+
+check('i18n: the thorough-scan / diagnostics strings exist in all four languages with the same shape', () => {
+  const ref = Object.keys(I18N_OCR.en).sort();
+  for (const l of LANGS) {
+    if (JSON.stringify(Object.keys(I18N_OCR[l]).sort()) !== JSON.stringify(ref)) throw new Error(`${l} keys differ`);
+    for (const k of ref) {
+      if (typeof I18N_OCR[l][k] !== typeof I18N_OCR.en[k]) throw new Error(`${l}.${k} type differs`);
+      if (l !== 'en' && typeof I18N_OCR[l][k] === 'string' && I18N_OCR[l][k] === I18N_OCR.en[k]) throw new Error(`${l}.${k} identical to English`);
+    }
+    const p = I18N_OCR[l].imgPassProgress(2, 3, 45);
+    if (!p.includes('2') || !p.includes('3') || !p.includes('45')) throw new Error(`${l}.imgPassProgress does not show its numbers: ${p}`);
+  }
+});
+
+check('guard: the image scan runs the planned passes, thorough mode is on by default, and the OCR text box exists', () => {
+  if (!/id="imgThoroughCheckbox" checked>/.test(html)) throw new Error('the thorough-scan checkbox must exist and be ticked by default');
+  for (const needle of ['planOcrPasses(originalImageBitmap.naturalWidth', 'scaleWords(words, pass.scale)', 'words.extraPass = true', 'renderImgOcrText();', 'findPhraseWordMatches(flat, terms, caseSensitive)', 'foldedCustomSpans(joined, terms, caseSensitive)', 'ocrLangMismatch(customTerms, ocrLangSelect.value)']) {
+    if (!html.includes(needle)) throw new Error('missing wiring: ' + needle);
+  }
+  for (const id of ['imgOcrTextDetails', 'imgOcrText']) if (!html.includes(`id="${id}"`)) throw new Error('missing #' + id);
+  const scanBody = html.slice(html.indexOf("imgScanBtn.addEventListener('click'"));
+  if (scanBody.indexOf('if (p === 0) throw passError;') === -1) throw new Error('a failing extra pass must not lose the first pass');
+});
+
+check('guard: the image and PDF OCR paths explain a missing WebAssembly instead of failing obscurely or silently skipping OCR', () => {
+  const imgScan = html.slice(html.indexOf("imgScanBtn.addEventListener('click'"));
+  if (imgScan.indexOf('if (!wasmAvailable(window)) { imgProgressEl.textContent = t.wasmUnavailable; return; }') === -1) throw new Error('the image scan does not check for WebAssembly first');
+  if (!html.includes('isWasmError(err) ? t.wasmUnavailable')) throw new Error('the image error handler does not recognise a WebAssembly error');
+  if (!html.includes("imgProgressEl.textContent = wasmAvailable(window) ? '' : I18N[currentLang].wasmUnavailable;")) throw new Error('an image loaded without WebAssembly gives no early message');
+  if (!html.includes('if (pdfOcrCheckbox.checked && !wasmAvailable(window)) { pdfProgressEl.textContent = t.wasmUnavailable; return; }')) throw new Error('the PDF OCR option may be silently skipped without WebAssembly');
+});
+
+check('guard: the OCR text box is filled with textContent (what the engine read is untrusted text)', () => {
+  const body = html.slice(html.indexOf('function renderImgOcrText()'), html.indexOf('function buildPassCanvas'));
+  if (/innerHTML|insertAdjacentHTML|outerHTML/.test(body)) throw new Error('renderImgOcrText writes markup');
+  if (!body.includes('textContent')) throw new Error('renderImgOcrText should use textContent');
+});
+
+// --- release consistency (v1.2.1, step 4) --------------------------------
+// Small guards so the things a reader sees -- version labels, quoted UI
+// strings in the guides, test counts -- cannot silently drift from the code.
+
+const readRepoFile = rel => readFileSync(path.join(__dirname, '..', rel), 'utf8');
+const readmeText = readRepoFile('README.md');
+const changelogText = readRepoFile('CHANGELOG.md');
+
+check('release: the version label in the UI, README title, README "current" entry and CHANGELOG all agree', () => {
+  const ui = (html.match(/<span class="version-tag">v(\d+\.\d+\.\d+)<\/span>/) || [])[1];
+  const readmeTitle = (readmeText.match(/^# PII Redactor <sup>v(\d+\.\d+\.\d+)<\/sup>/m) || [])[1];
+  const readmeCurrent = (readmeText.match(/- \*\*v(\d+\.\d+\.\d+)\*\* \(current\)/) || [])[1];
+  const changelogTop = (changelogText.match(/^## \[(\d+\.\d+\.\d+)\]/m) || [])[1];
+  const versions = { ui, readmeTitle, readmeCurrent, changelogTop };
+  if (!ui || new Set(Object.values(versions)).size !== 1) throw new Error('version labels disagree: ' + JSON.stringify(versions));
+  if (!changelogText.includes(`[${ui}]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v${ui}`)) throw new Error(`CHANGELOG has no link reference for ${ui}`);
+});
+
+check('release: the four user guides have the same structure and quote the exact UI labels of their own language', () => {
+  const counts = {};
+  for (const l of LANGS) {
+    const text = readRepoFile(`docs/guide.${l}.md`);
+    counts[l] = (text.match(/^## /gm) || []).length;
+    for (const key of ['metaReportTitle', 'metaHideValues']) {
+      if (!text.includes(I18N_METADATA[l][key])) throw new Error(`docs/guide.${l}.md does not quote the UI string ${key}: "${I18N_METADATA[l][key]}"`);
+    }
+    if (!/ICC/.test(text)) throw new Error(`docs/guide.${l}.md does not mention the ICC note`);
+    if (!/WebAssembly/.test(text) || !/Lockdown/.test(text)) throw new Error(`docs/guide.${l}.md does not mention WebAssembly / Lockdown Mode`);
+    for (const [what, label] of [['thorough scan label', I18N_OCR[l].imgThoroughLabel], ['OCR text box title', I18N_OCR[l].imgOcrTextTitle]]) {
+      const quoted = label.split(' (')[0];
+      if (!text.includes(quoted)) throw new Error(`docs/guide.${l}.md does not quote the ${what}: "${quoted}"`);
+    }
+  }
+  if (new Set(Object.values(counts)).size !== 1) throw new Error('guides have different numbers of sections: ' + JSON.stringify(counts));
+});
+
+check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
+  const total = passed + failed + 1; // + this check itself
+  const readmeClaim = Number((readmeText.match(/As of v\d+\.\d+\.\d+:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);
+  const changelogClaim = Number((changelogText.match(/grown from \d+ to (\d+) tests/) || [])[1]);
+  if (readmeClaim !== total) throw new Error(`README says ${readmeClaim} tests, the suite has ${total}`);
+  if (changelogClaim !== total) throw new Error(`CHANGELOG says ${changelogClaim} tests, the suite has ${total}`);
 });
 
 // --- report ------------------------------------------------------------
