@@ -742,7 +742,7 @@ underneath you, even as `main` keeps moving forward.
 
 ## Author
 
-**Nguyễn Tiến Trung** — tientrung.nguyen.de@gmail.com
+**Tien Trung NGUYEN** (Nguyễn Tiến Trung) — tientrung.nguyen.de@gmail.com
 
 Built with the help of Claude (Anthropic) as a coding assistant —
 architecture decisions, detection-pipeline design, and the "real
