@@ -369,6 +369,7 @@
   .result-note { font-size: 12px; color: #facf6f; margin-top: 8px; line-height: 1.5; min-height: 1em; }
   /* A masked value in the cleaned preview: what a reader of the copied text will see. */
   .text-out { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .text-out-box {
     width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
@@ -528,9 +529,12 @@
   <div class="text-out" id="imgTextOut" style="display:none;">
     <div class="result-head">
       <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
-      <button id="imgCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      <div class="btn-row">
+        <button id="imgRestoreBtn" class="secondary" style="display:none;" data-i18n="restoreMaskedBtn">Khôi phục bản đã che</button>
+        <button id="imgCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      </div>
     </div>
-    <textarea id="imgTextBox" class="text-out-box" readonly></textarea>
+    <textarea id="imgTextBox" class="text-out-box" spellcheck="false"></textarea>
     <div class="result-note" id="imgTextNote" role="status"></div>
   </div>
 </div>
@@ -561,9 +565,12 @@
   <div class="text-out" id="pdfTextOut" style="display:none;">
     <div class="result-head">
       <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
-      <button id="pdfCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      <div class="btn-row">
+        <button id="pdfRestoreBtn" class="secondary" style="display:none;" data-i18n="restoreMaskedBtn">Khôi phục bản đã che</button>
+        <button id="pdfCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      </div>
     </div>
-    <textarea id="pdfTextBox" class="text-out-box" readonly></textarea>
+    <textarea id="pdfTextBox" class="text-out-box" spellcheck="false"></textarea>
     <div class="result-note" id="pdfTextNote" role="status"></div>
   </div>
   <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
@@ -583,9 +590,12 @@
   <div class="text-out" id="docxTextOut" style="display:none;">
     <div class="result-head">
       <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
-      <button id="docxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      <div class="btn-row">
+        <button id="docxRestoreBtn" class="secondary" style="display:none;" data-i18n="restoreMaskedBtn">Khôi phục bản đã che</button>
+        <button id="docxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      </div>
     </div>
-    <textarea id="docxTextBox" class="text-out-box" readonly></textarea>
+    <textarea id="docxTextBox" class="text-out-box" spellcheck="false"></textarea>
     <div class="result-note" id="docxTextNote" role="status"></div>
   </div>
 </div>
@@ -604,9 +614,12 @@
   <div class="text-out" id="pptxTextOut" style="display:none;">
     <div class="result-head">
       <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
-      <button id="pptxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      <div class="btn-row">
+        <button id="pptxRestoreBtn" class="secondary" style="display:none;" data-i18n="restoreMaskedBtn">Khôi phục bản đã che</button>
+        <button id="pptxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+      </div>
     </div>
-    <textarea id="pptxTextBox" class="text-out-box" readonly></textarea>
+    <textarea id="pptxTextBox" class="text-out-box" spellcheck="false"></textarea>
     <div class="result-note" id="pptxTextNote" role="status"></div>
   </div>
 </div>
@@ -793,6 +806,9 @@ const I18N = {
     maskRegion: '[ĐÃ ẨN]',
     ocrTextCaution: 'Văn bản này do OCR đọc từ ảnh nên có thể sai chữ — hãy đọc lại trước khi dùng. Vùng bạn tự vẽ cũng được che nếu nằm trên chữ.',
     noTextLayerHint: n => `${n} trang không có lớp chữ (PDF dạng scan). Bật OCR rồi quét lại để lấy văn bản.`,
+    restoreMaskedBtn: 'Khôi phục bản đã che',
+    editedNote: 'Bạn đã sửa văn bản này. Khi bạn đổi vùng che, phần bạn sửa được giữ nguyên — bấm "Khôi phục bản đã che" để lấy lại bản mới nhất. Phần bạn tự gõ KHÔNG được quét lại.',
+    editedSensitiveWarn: n => `⚠ Văn bản bạn sửa có ${n} chuỗi nhạy cảm chưa được che. Đã sao chép — hãy kiểm tra lại trước khi dán đi.`,
     statsNoText: 'Chưa có văn bản để quét.',
     statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
     statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
@@ -920,6 +936,9 @@ const I18N = {
     maskRegion: '[REDACTED]',
     ocrTextCaution: 'This text was read from the picture by OCR, so some words may be wrong — proofread it before use. Areas you drew by hand are masked too when they cover text.',
     noTextLayerHint: n => `${n} page(s) have no text layer (scanned PDF). Turn on OCR and scan again to get their text.`,
+    restoreMaskedBtn: 'Restore masked text',
+    editedNote: 'You edited this text. If you change the covered areas, your edits are kept — click "Restore masked text" to get the latest version back. What you typed yourself is NOT scanned again.',
+    editedSensitiveWarn: n => `⚠ Your edited text contains ${n} sensitive string(s) that are not masked. It was copied — check it before pasting it anywhere.`,
     statsNoText: 'No text to scan yet.',
     statsNoMatch: 'No matches found for the selected types.',
     statsFound: n => `Found ${n} sensitive region(s) —`,
@@ -1047,6 +1066,9 @@ const I18N = {
     maskRegion: '[MASQUÉ]',
     ocrTextCaution: 'Ce texte a été lu sur l\'image par OCR : certains mots peuvent être faux — relisez-le avant de l\'utiliser. Les zones dessinées à la main sont aussi masquées lorsqu\'elles couvrent du texte.',
     noTextLayerHint: n => `${n} page(s) sans couche de texte (PDF numérisé). Activez l'OCR et relancez l'analyse pour obtenir leur texte.`,
+    restoreMaskedBtn: 'Rétablir le texte masqué',
+    editedNote: 'Vous avez modifié ce texte. Si vous changez les zones masquées, vos modifications sont conservées — cliquez sur « Rétablir le texte masqué » pour récupérer la dernière version. Ce que vous avez tapé n\'est PAS analysé à nouveau.',
+    editedSensitiveWarn: n => `⚠ Votre texte modifié contient ${n} chaîne(s) sensible(s) non masquée(s). Il a été copié — vérifiez-le avant de le coller.`,
     statsNoText: 'Aucun texte à analyser.',
     statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
     statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
@@ -1174,6 +1196,9 @@ const I18N = {
     maskRegion: '[ABGEDECKT]',
     ocrTextCaution: 'Dieser Text wurde per OCR aus dem Bild gelesen, einzelne Wörter können falsch sein — bitte vor der Verwendung prüfen. Von Hand gezeichnete Bereiche werden ebenfalls abgedeckt, wenn sie Text überdecken.',
     noTextLayerHint: n => `${n} Seite(n) ohne Textebene (gescanntes PDF). OCR einschalten und erneut scannen, um den Text zu erhalten.`,
+    restoreMaskedBtn: 'Abgedeckten Text wiederherstellen',
+    editedNote: 'Du hast diesen Text bearbeitet. Wenn du die abgedeckten Bereiche änderst, bleiben deine Änderungen erhalten — mit „Abgedeckten Text wiederherstellen“ holst du die neueste Version zurück. Was du selbst getippt hast, wird NICHT erneut geprüft.',
+    editedSensitiveWarn: n => `⚠ Dein bearbeiteter Text enthält ${n} sensible Zeichenkette(n), die nicht abgedeckt sind. Er wurde kopiert — prüfe ihn, bevor du ihn einfügst.`,
     statsNoText: 'Noch kein Text zum Scannen.',
     statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
     statsFound: n => `${n} sensible Bereich(e) gefunden —`,
@@ -2278,32 +2303,67 @@ document.getElementById('copyCleanedBtn').addEventListener('click', async () => 
 // ---- Masked text box for the file panels (image, PDF, Word, PowerPoint) ----
 // Next to the download buttons: the same result as plain, copyable text.
 const TEXT_OUT_PANELS = ['img', 'pdf', 'docx', 'pptx'];
-function showTextOut(prefix, text, note) {
-  document.getElementById(prefix + 'TextOut').style.display = 'block';
+const textOutState = {};   // prefix -> { generated, note, edited }
+TEXT_OUT_PANELS.forEach(prefix => { textOutState[prefix] = { generated: '', note: '', edited: false }; });
+
+function renderTextOutNote(prefix) {
+  const st = textOutState[prefix];
+  const t = I18N[currentLang];
+  document.getElementById(prefix + 'TextNote').textContent = [st.note, st.edited ? t.editedNote : ''].filter(Boolean).join(' ');
+  document.getElementById(prefix + 'RestoreBtn').style.display = st.edited ? '' : 'none';
+}
+// force = a fresh scan: its result always replaces the box. Otherwise text
+// the person has edited is kept (see nextTextOutValue).
+function showTextOut(prefix, text, note, force) {
+  const st = textOutState[prefix];
   const box = document.getElementById(prefix + 'TextBox');
-  if (box.value !== text) box.value = text;   // keep a selection when nothing changed
-  document.getElementById(prefix + 'TextNote').textContent = note || '';
-  document.getElementById(prefix + 'CopyBtn').disabled = !text;
+  const next = nextTextOutValue(st.edited, box.value, text, force);
+  st.generated = text;
+  st.note = note || '';
+  st.edited = next.edited;
+  document.getElementById(prefix + 'TextOut').style.display = 'block';
+  if (box.value !== next.value) box.value = next.value;   // keep a selection when nothing changed
+  document.getElementById(prefix + 'CopyBtn').disabled = !box.value;
+  renderTextOutNote(prefix);
 }
 function hideTextOut(prefix) {
+  textOutState[prefix] = { generated: '', note: '', edited: false };
   document.getElementById(prefix + 'TextOut').style.display = 'none';
   document.getElementById(prefix + 'TextBox').value = '';
   document.getElementById(prefix + 'TextNote').textContent = '';
+  document.getElementById(prefix + 'RestoreBtn').style.display = 'none';
 }
 TEXT_OUT_PANELS.forEach(prefix => {
+  const box = document.getElementById(prefix + 'TextBox');
   const btn = document.getElementById(prefix + 'CopyBtn');
   let timer = null;
+  box.addEventListener('input', () => {
+    const st = textOutState[prefix];
+    st.edited = box.value !== st.generated;
+    btn.disabled = !box.value;
+    renderTextOutNote(prefix);
+  });
+  document.getElementById(prefix + 'RestoreBtn').addEventListener('click', () => {
+    const st = textOutState[prefix];
+    box.value = st.generated;
+    st.edited = false;
+    btn.disabled = !box.value;
+    renderTextOutNote(prefix);
+  });
   btn.addEventListener('click', async () => {
-    const text = document.getElementById(prefix + 'TextBox').value;
+    const text = box.value;
     const t = I18N[currentLang];
     let ok = false;
     try { await navigator.clipboard.writeText(text); ok = true; } catch (err) { ok = legacyCopy(text); }
     clearTimeout(timer);
-    if (ok) {
-      btn.textContent = t.copiedCleanedBtn;
-      timer = setTimeout(() => { btn.textContent = I18N[currentLang].copyCleanedBtn; }, 1800);
-    } else {
-      document.getElementById(prefix + 'TextNote').textContent = t.copyFailed;
+    if (!ok) { document.getElementById(prefix + 'TextNote').textContent = t.copyFailed; return; }
+    btn.textContent = t.copiedCleanedBtn;
+    timer = setTimeout(() => { btn.textContent = I18N[currentLang].copyCleanedBtn; }, 1800);
+    // Text the person typed or pasted themselves has not been scanned:
+    // check it with the same rules and say so, but never block the copy.
+    if (textOutState[prefix].edited) {
+      const found = findMatches(text, getActiveRules(), customTerms, customCaseSensitiveEl.checked).length;
+      if (found > 0) document.getElementById(prefix + 'TextNote').textContent = t.editedSensitiveWarn(found);
     }
   });
 });
@@ -3835,6 +3895,13 @@ function maskedLinesText(lines, boxes, mask) {
     return out.join(' ');
   }).join('\n');
 }
+// What the editable "masked text" box should show after the tool produced
+// a result. A new scan (force) always replaces the box; any other refresh
+// (for example the person switching an image region on or off) must NOT
+// throw away text they have edited by hand.
+function nextTextOutValue(edited, currentValue, newText, force) {
+  return (edited && !force) ? { value: currentValue, edited: true } : { value: newText, edited: false };
+}
 // TEXT_EXPORT_END
 
 // ============================================================
@@ -5193,7 +5260,7 @@ pdfScanBtn.addEventListener('click', async () => {
     pdfProgressEl.textContent = progressMsg;
     pdfDownloadBtn.disabled = false;
     pdfPagesWrap.style.display = 'block';
-    showTextOut('pdf', pageTexts.filter(Boolean).join('\n\n'), pagesWithoutText > 0 ? t.noTextLayerHint(pagesWithoutText) : '');
+    showTextOut('pdf', pageTexts.filter(Boolean).join('\n\n'), pagesWithoutText > 0 ? t.noTextLayerHint(pagesWithoutText) : '', true);
   } catch (err) {
     console.error('PDF processing failed:', err);
     const detail = (err && (err.message || err.toString())) || 'unknown error';
@@ -5495,7 +5562,7 @@ docxScanBtn.addEventListener('click', async () => {
     const caseSensitive = customCaseSensitiveEl.checked;
     const entropyEnabled = isEntropyEnabled();
     const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
-    showTextOut('docx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '');
+    showTextOut('docx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '', true);
 
     docxProgressEl.textContent = t.docxProgressBuildingPdf;
     const fontBytes = await loadDocxFontBytes();
@@ -5589,7 +5656,7 @@ pptxScanBtn.addEventListener('click', async () => {
     const caseSensitive = customCaseSensitiveEl.checked;
     const entropyEnabled = isEntropyEnabled();
     const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
-    showTextOut('pptx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '');
+    showTextOut('pptx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '', true);
 
     pptxProgressEl.textContent = t.pptxProgressBuildingPdf;
     const fontBytes = await loadDocxFontBytes(); // same embedded DejaVu Sans font, no need for a second copy

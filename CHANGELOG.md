@@ -32,6 +32,12 @@ one never removes an older one.
   mask, following the regions as edited (areas drawn by hand and regions
   switched off included). The box is emptied by "Clear all", by a new scan and
   by a new file.
+- **The masked text can be edited before it is copied.** A "Restore masked
+  text" button brings the generated version back. Edits are kept when the
+  covered areas of an image change, and replaced by a new scan. Text the
+  person typed is not part of the scan, so when an edited text is copied it is
+  checked with the current rules and a warning appears if something sensitive
+  is in it (the copy itself is never blocked).
 - **Live preview for pasted text, and a "Copy masked text" button.** The text
   is scanned automatically while it is typed or pasted (and again when a rule,
   the custom term list or the case switch changes). The result shows two boxes:
@@ -55,10 +61,10 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 228 tests: the city table, nearest-city lookup
+- Test suite grown from 212 to 230 tests: the city table, nearest-city lookup
   (including "no city within 200 km"), strict GPS parsing, the report line,
   HEIC metadata and decoding, "a new file clears the old results", the
-  live preview's stale-result guard, and the masked-text boxes.
+  live preview's stale-result guard, the masked-text boxes and editing them.
 
 ## [1.3.2] — 2026-10-28
 

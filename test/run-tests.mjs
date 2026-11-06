@@ -2860,7 +2860,7 @@ check('live preview: wiring — auto-scan on input, copy and download re-scan wh
 // ---- Masked text box for image / PDF / Word / PowerPoint ----
 const textExportCode = extractBetween('// TEXT_EXPORT_START', '// TEXT_EXPORT_END', 'TEXT_EXPORT');
 const ocrSupportForText = extractBetween('// OCR_SUPPORT_START', '// OCR_SUPPORT_END', 'OCR_SUPPORT');
-const { maskedLinesText } = new Function(`${ocrSupportForText}\n${textExportCode}\nreturn { maskedLinesText };`)();
+const { maskedLinesText, nextTextOutValue } = new Function(`${ocrSupportForText}\n${textExportCode}\nreturn { maskedLinesText, nextTextOutValue };`)();
 const TW = (text, x0, x1, y0 = 0, y1 = 10) => ({ text, bbox: { x0, y0, x1, y1 } });
 
 check('masked text: covered words become one mask, others stay, thorough-pass duplicates are skipped', () => {
@@ -2888,6 +2888,29 @@ check('wiring: every file panel has a copyable masked-text box, filled by its sc
     if (html.split(`hideTextOut('${pre}')`).length < 3) throw new Error(pre + ': a new scan does not empty the old text first');
   }
   if (!html.includes('maskedLinesText(lastImgLines, boxesToPaint(lastImgEffective)')) throw new Error('image text must follow the effective (edited) regions');
+});
+
+
+check('editable masked text: edits survive an automatic refresh, but a new scan always replaces them', () => {
+  const kept = nextTextOutValue(true, 'my edited text', 'regenerated', false);
+  if (kept.value !== 'my edited text' || kept.edited !== true) throw new Error('edit lost on refresh: ' + JSON.stringify(kept));
+  const fresh = nextTextOutValue(true, 'my edited text', 'new scan result', true);
+  if (fresh.value !== 'new scan result' || fresh.edited !== false) throw new Error('a new scan must replace the box: ' + JSON.stringify(fresh));
+  const plain = nextTextOutValue(false, 'old', 'new', false);
+  if (plain.value !== 'new' || plain.edited) throw new Error('unedited box must follow the result');
+});
+
+check('editable masked text: the boxes are editable, have a Restore button, and every scan passes force=true', () => {
+  for (const pre of ['img', 'pdf', 'docx', 'pptx']) {
+    const tag = html.slice(html.indexOf(`<textarea id="${pre}TextBox"`), html.indexOf('</textarea>', html.indexOf(`<textarea id="${pre}TextBox"`)));
+    if (!tag || /readonly/i.test(tag)) throw new Error(pre + ' text box is missing or read-only');
+    if (!html.includes(`id="${pre}RestoreBtn"`)) throw new Error(pre + ' has no Restore button');
+  }
+  for (const pre of ['pdf', 'docx', 'pptx']) {
+    const call = new RegExp(`showTextOut\\('${pre}',[^\\n]*, true\\);`);
+    if (!call.test(html)) throw new Error(pre + ' scan must force-replace the box');
+  }
+  if (/showTextOut\('img'[^\n]*true\)/.test(html)) throw new Error('image refresh (region changes) must not force-replace edits');
 });
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
