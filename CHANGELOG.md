@@ -23,6 +23,12 @@ one never removes an older one.
 
 ### Added
 
+- **Light, dark and "follow the system" themes.** A Theme selector next to the
+  language selector offers System (default), Light and Dark. The choice is
+  remembered in this browser only, and "System" follows the operating system
+  when it switches. The theme is applied before the page is painted, so there
+  is no dark flash. All colours are now variables defined in one place per
+  theme.
 - **Copyable masked text for images, PDF, Word and PowerPoint.** After a scan,
   each file panel also shows the result as plain text with a "Copy masked text"
   button, next to the download buttons, so the file download is optional.
@@ -61,10 +67,10 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 230 tests: the city table, nearest-city lookup
+- Test suite grown from 212 to 233 tests: the city table, nearest-city lookup
   (including "no city within 200 km"), strict GPS parsing, the report line,
   HEIC metadata and decoding, "a new file clears the old results", the
-  live preview's stale-result guard, the masked-text boxes and editing them.
+  live preview's stale-result guard, the masked-text boxes and editing them, and the theme variables.
 
 ## [1.3.2] — 2026-10-28
 

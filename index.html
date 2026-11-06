@@ -23,8 +23,25 @@
 <title>PII Redactor</title>
 <!-- Favicon: the same logo as docs/images/logo.svg, embedded as a data: URI so no file is fetched (img-src allows data:). -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='66 66 1800 1800' role='img' aria-label='PII Redactor logo: a shield around a document with one line blacked out'%3E%3Crect x='66' y='66' width='1800' height='1800' rx='280' fill='%23fff'/%3E%3Cpath fill='%23183a6e' d='M619 320 L965 192 L1585 382 V1050 C1585 1400 1280 1630 965 1740 C650 1630 347 1400 347 1050 V618 H483 V1030 C483 1300 700 1480 965 1596 C1230 1480 1449 1300 1449 1030 V492 L965 339 L619 459 Z'/%3E%3Cpath fill='%23ffaa28' d='M347 382 L579 331 V468 L483 490 V580 H347 Z'/%3E%3Cpath fill='%23fff' stroke='%23183a6e' stroke-width='57' stroke-linejoin='miter' d='M647 595 H1140 L1283 738 V1362 H647 Z'/%3E%3Cpath fill='none' stroke='%23183a6e' stroke-width='57' d='M1140 595 V725 H1283'/%3E%3Crect x='773' y='811' width='259' height='59' fill='%23183a6e'/%3E%3Crect x='773' y='946' width='386' height='116' fill='%23000'/%3E%3Crect x='773' y='1130' width='259' height='58' fill='%23183a6e'/%3E%3C/svg%3E">
+<script>
+/* Sets the theme before the page is painted, so a light-theme user never sees a dark flash.
+   The same rule lives in resolveTheme() further down; the tests keep them equal. */
+(function () {
+  var pref = 'system';
+  try { var v = localStorage.getItem('pii-theme'); if (v === 'light' || v === 'dark') pref = v; } catch (e) { /* storage blocked: follow the system */ }
+  var dark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', pref === 'system' ? (dark ? 'dark' : 'light') : pref);
+})();
+</script>
 <style>
+  /* Colours are variables so the light and dark themes differ only in this
+     block and the one right below it. The theme is chosen by the
+     data-theme attribute on <html> ("light" or "dark"), which is set by a
+     tiny script in <head> before first paint and by the Theme selector.
+     The *-rgb variables hold bare "r, g, b" triples so translucent tints
+     can be written as rgba(var(--accent-rgb), 0.12). */
   :root {
+    color-scheme: dark;
     --bg: #0f1115;
     --panel: #171a21;
     --border: #2a2e38;
@@ -32,9 +49,43 @@
     --muted: #8b8f99;
     --accent: #4f8cff;
     --danger: #ff5c5c;
-    --danger-bg: rgba(255, 92, 92, 0.18);
+    --danger-bg: rgba(var(--danger-rgb), 0.18);
     --ok: #3ddc84;
+    --field-bg: #0d0f13;
+    --accent-text: #9db8ff;
+    --warn: #facf6f;
+    --masked-text: #aab4ff;
+    --accent-rgb: 79, 140, 255;
+    --danger-rgb: 255, 92, 92;
+    --ok-rgb: 61, 220, 132;
+    --warn-rgb: 250, 199, 117;
+    --masked-rgb: 124, 140, 255;
+    --shade-1: rgba(0, 0, 0, 0.25);
+    --shade-2: rgba(255, 255, 255, 0.03);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --border: #d3d8e0;
+    --text: #1c2230;
+    --muted: #586174;
+    --accent: #2563d9;
+    --danger: #c62828;
+    --danger-bg: rgba(var(--danger-rgb), 0.12);
+    --ok: #1b7a43;
+    --field-bg: #f1f3f7;
+    --accent-text: #1f4fb5;
+    --warn: #8a5700;
+    --masked-text: #3a43b0;
+    --accent-rgb: 37, 99, 217;
+    --danger-rgb: 198, 40, 40;
+    --ok-rgb: 27, 122, 67;
+    --warn-rgb: 176, 112, 0;
+    --masked-rgb: 90, 100, 220;
+    --shade-1: rgba(0, 0, 0, 0.06);
+    --shade-2: rgba(0, 0, 0, 0.03);
   }
   * { box-sizing: border-box; }
   body {
@@ -45,6 +96,8 @@
     max-width: 900px;
     margin-inline: auto;
   }
+  .topbar-controls { display: flex; gap: 8px; flex: none; justify-content: flex-end; }
+  @media (max-width: 560px) { .topbar-controls { flex-direction: column; } }
   .topbar {
     display: flex;
     justify-content: space-between;
@@ -70,7 +123,7 @@
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
   @media (max-width: 560px) { .brand .logo { width: 44px; height: 44px; } .tagline { font-size: 15px; } }
   .footer-author { margin-top: 4px; }
-  select#langSelect {
+  select#langSelect, select#themeSelect {
     background: var(--panel);
     color: var(--text);
     border: 1px solid var(--border);
@@ -83,9 +136,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(61, 220, 132, 0.12);
+    background: rgba(var(--ok-rgb), 0.12);
     color: var(--ok);
-    border: 1px solid rgba(61, 220, 132, 0.3);
+    border: 1px solid rgba(var(--ok-rgb), 0.3);
     padding: 3px 10px;
     border-radius: 999px;
     font-size: 12px;
@@ -109,7 +162,7 @@
   textarea {
     width: 100%;
     min-height: 160px;
-    background: #0d0f13;
+    background: var(--field-bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -131,7 +184,7 @@
     gap: 8px;
     font-size: 13px;
     padding: 6px 10px;
-    background: #0d0f13;
+    background: var(--field-bg);
     border: 1px solid var(--border);
     border-radius: 6px;
   }
@@ -143,7 +196,7 @@
   }
   .custom-row input[type="text"] {
     flex: 1;
-    background: #0d0f13;
+    background: var(--field-bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -169,9 +222,9 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(79, 140, 255, 0.12);
-    color: #9db8ff;
-    border: 1px solid rgba(79, 140, 255, 0.3);
+    background: rgba(var(--accent-rgb), 0.12);
+    color: var(--accent-text);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     padding: 4px 6px 4px 10px;
     border-radius: 999px;
     font-size: 12px;
@@ -182,7 +235,7 @@
     cursor: pointer;
     line-height: 1;
     padding: 2px 4px;
-    color: #9db8ff;
+    color: var(--accent-text);
     font-size: 13px;
   }
   .chip button:hover { color: var(--danger); }
@@ -196,9 +249,9 @@
   .clear-confirm .custom-io { margin-top: 8px; }
   .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .warn-banner {
-    background: rgba(250, 199, 117, 0.12);
-    color: #facf6f;
-    border: 1px solid rgba(250, 199, 117, 0.35);
+    background: rgba(var(--warn-rgb), 0.12);
+    color: var(--warn);
+    border: 1px solid rgba(var(--warn-rgb), 0.35);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 12px;
@@ -206,7 +259,7 @@
     line-height: 1.5;
   }
   .warn-banner code {
-    background: rgba(0,0,0,0.25);
+    background: var(--shade-1);
     padding: 1px 5px;
     border-radius: 4px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -228,8 +281,8 @@
   .detected-type {
     font-size: 12px;
     color: var(--accent);
-    background: rgba(79, 140, 255, 0.1);
-    border: 1px solid rgba(79, 140, 255, 0.3);
+    background: rgba(var(--accent-rgb), 0.1);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     border-radius: 8px;
     padding: 8px 12px;
     margin-top: 10px;
@@ -237,11 +290,11 @@
   .detected-type.unknown {
     color: var(--danger);
     background: var(--danger-bg);
-    border-color: rgba(255, 92, 92, 0.35);
+    border-color: rgba(var(--danger-rgb), 0.35);
   }
   .img-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
   .img-row select {
-    background: #0d0f13;
+    background: var(--field-bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -253,7 +306,7 @@
     overflow: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: #0d0f13;
+    background: var(--field-bg);
     display: none;
   }
   #imgCanvasWrap canvas { display: block; max-width: 100%; }
@@ -263,7 +316,7 @@
   #imgCanvasWrap #imgOverlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; pointer-events: none; }
   #imgCanvasWrap #imgOverlay.drawing { pointer-events: auto; cursor: crosshair; touch-action: none; }
   #imgDrawToggle::before { content: '\270E  '; }
-  #imgDrawToggle.active { outline: 2px solid var(--accent); background: rgba(79, 140, 255, 0.18); }
+  #imgDrawToggle.active { outline: 2px solid var(--accent); background: rgba(var(--accent-rgb), 0.18); }
   .region-list { font-size: 12px; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   .region-list-title { font-weight: 600; margin-bottom: 6px; }
   .region-list-empty { color: var(--muted); }
@@ -282,7 +335,7 @@
     overflow: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: #0d0f13;
+    background: var(--field-bg);
     padding: 10px;
   }
   .pdf-page-item { margin-bottom: 14px; }
@@ -329,18 +382,18 @@
      cursor says so. */
   mark[data-suspect-idx] { cursor: pointer; }
   mark.suspect {
-    background: rgba(250, 199, 117, 0.18);
-    color: #facf6f;
-    border: 1px dashed rgba(250, 199, 117, 0.6);
+    background: rgba(var(--warn-rgb), 0.18);
+    color: var(--warn);
+    border: 1px dashed rgba(var(--warn-rgb), 0.6);
   }
   .suspect-list {
     margin-top: 10px;
-    border: 1px solid rgba(250, 199, 117, 0.35);
+    border: 1px solid rgba(var(--warn-rgb), 0.35);
     border-radius: 8px;
     padding: 10px 12px;
-    background: rgba(250, 199, 117, 0.06);
+    background: rgba(var(--warn-rgb), 0.06);
   }
-  .suspect-list-title { font-size: 12px; font-weight: 600; color: #facf6f; margin-bottom: 4px; }
+  .suspect-list-title { font-size: 12px; font-weight: 600; color: var(--warn); margin-bottom: 4px; }
   .suspect-list-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
   .suspect-item {
     display: flex;
@@ -350,14 +403,14 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     padding: 4px 0;
   }
-  .suspect-item input[type="checkbox"] { accent-color: #facf6f; }
+  .suspect-item input[type="checkbox"] { accent-color: var(--warn); }
   #highlighted, #cleanedPreview {
     white-space: pre-wrap;
     word-break: break-word;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px;
     line-height: 1.6;
-    background: #0d0f13;
+    background: var(--field-bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px;
@@ -366,16 +419,16 @@
   .result-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px; }
   .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
   .result-head .result-label { margin: 8px 0 6px; }
-  .result-note { font-size: 12px; color: #facf6f; margin-top: 8px; line-height: 1.5; min-height: 1em; }
+  .result-note { font-size: 12px; color: var(--warn); margin-top: 8px; line-height: 1.5; min-height: 1em; }
   /* A masked value in the cleaned preview: what a reader of the copied text will see. */
   .text-out { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .text-out-box {
     width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
-    background: #0d0f13; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    background: var(--field-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
   }
-  .masked { background: rgba(124, 140, 255, 0.18); color: #aab4ff; border-radius: 3px; padding: 0 2px; font-weight: 600; }
+  .masked { background: rgba(var(--masked-rgb), 0.18); color: var(--masked-text); border-radius: 3px; padding: 0 2px; font-weight: 600; }
   .masked[data-suspect-idx] { cursor: pointer; }
   footer {
     color: var(--muted);
@@ -388,7 +441,7 @@
      the verdict of the post-export scan. */
   .meta-report {
     font-size: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--shade-2);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 12px;
@@ -413,13 +466,13 @@
   }
   .export-verify.ok {
     color: var(--ok);
-    background: rgba(61, 220, 132, 0.1);
-    border: 1px solid rgba(61, 220, 132, 0.3);
+    background: rgba(var(--ok-rgb), 0.1);
+    border: 1px solid rgba(var(--ok-rgb), 0.3);
   }
   .export-verify.blocked {
     color: var(--danger);
     background: var(--danger-bg);
-    border: 1px solid rgba(255, 92, 92, 0.5);
+    border: 1px solid rgba(var(--danger-rgb), 0.5);
   }
 </style>
 </head>
@@ -438,12 +491,19 @@
     <div class="subtitle" data-i18n="subtitle">Remove personal data and secrets from text, images, PDFs, Word and PowerPoint files — entirely in your browser. Nothing leaves your computer.</div>
     </div>
   </div>
-  <select id="langSelect" aria-label="Language">
-    <option value="en">English</option>
-    <option value="fr">Français</option>
-    <option value="de">Deutsch</option>
-    <option value="vi">Tiếng Việt</option>
-  </select>
+  <div class="topbar-controls">
+    <select id="themeSelect" aria-label="Theme">
+      <option value="system" data-i18n="themeSystem">System</option>
+      <option value="light" data-i18n="themeLight">Light</option>
+      <option value="dark" data-i18n="themeDark">Dark</option>
+    </select>
+    <select id="langSelect" aria-label="Language">
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="vi">Tiếng Việt</option>
+    </select>
+  </div>
 </div>
 
 <div class="badge" data-i18n="badge">● Không có kết nối mạng nào được thực hiện — mọi xử lý diễn ra trong trình duyệt của bạn</div>
@@ -807,6 +867,10 @@ const I18N = {
     ocrTextCaution: 'Văn bản này do OCR đọc từ ảnh nên có thể sai chữ — hãy đọc lại trước khi dùng. Vùng bạn tự vẽ cũng được che nếu nằm trên chữ.',
     noTextLayerHint: n => `${n} trang không có lớp chữ (PDF dạng scan). Bật OCR rồi quét lại để lấy văn bản.`,
     restoreMaskedBtn: 'Khôi phục bản đã che',
+    themeLabel: 'Giao diện',
+    themeSystem: 'Theo hệ thống',
+    themeLight: 'Sáng',
+    themeDark: 'Tối',
     editedNote: 'Bạn đã sửa văn bản này. Khi bạn đổi vùng che, phần bạn sửa được giữ nguyên — bấm "Khôi phục bản đã che" để lấy lại bản mới nhất. Phần bạn tự gõ KHÔNG được quét lại.',
     editedSensitiveWarn: n => `⚠ Văn bản bạn sửa có ${n} chuỗi nhạy cảm chưa được che. Đã sao chép — hãy kiểm tra lại trước khi dán đi.`,
     statsNoText: 'Chưa có văn bản để quét.',
@@ -937,6 +1001,10 @@ const I18N = {
     ocrTextCaution: 'This text was read from the picture by OCR, so some words may be wrong — proofread it before use. Areas you drew by hand are masked too when they cover text.',
     noTextLayerHint: n => `${n} page(s) have no text layer (scanned PDF). Turn on OCR and scan again to get their text.`,
     restoreMaskedBtn: 'Restore masked text',
+    themeLabel: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     editedNote: 'You edited this text. If you change the covered areas, your edits are kept — click "Restore masked text" to get the latest version back. What you typed yourself is NOT scanned again.',
     editedSensitiveWarn: n => `⚠ Your edited text contains ${n} sensitive string(s) that are not masked. It was copied — check it before pasting it anywhere.`,
     statsNoText: 'No text to scan yet.',
@@ -1067,6 +1135,10 @@ const I18N = {
     ocrTextCaution: 'Ce texte a été lu sur l\'image par OCR : certains mots peuvent être faux — relisez-le avant de l\'utiliser. Les zones dessinées à la main sont aussi masquées lorsqu\'elles couvrent du texte.',
     noTextLayerHint: n => `${n} page(s) sans couche de texte (PDF numérisé). Activez l'OCR et relancez l'analyse pour obtenir leur texte.`,
     restoreMaskedBtn: 'Rétablir le texte masqué',
+    themeLabel: 'Thème',
+    themeSystem: 'Système',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
     editedNote: 'Vous avez modifié ce texte. Si vous changez les zones masquées, vos modifications sont conservées — cliquez sur « Rétablir le texte masqué » pour récupérer la dernière version. Ce que vous avez tapé n\'est PAS analysé à nouveau.',
     editedSensitiveWarn: n => `⚠ Votre texte modifié contient ${n} chaîne(s) sensible(s) non masquée(s). Il a été copié — vérifiez-le avant de le coller.`,
     statsNoText: 'Aucun texte à analyser.',
@@ -1197,6 +1269,10 @@ const I18N = {
     ocrTextCaution: 'Dieser Text wurde per OCR aus dem Bild gelesen, einzelne Wörter können falsch sein — bitte vor der Verwendung prüfen. Von Hand gezeichnete Bereiche werden ebenfalls abgedeckt, wenn sie Text überdecken.',
     noTextLayerHint: n => `${n} Seite(n) ohne Textebene (gescanntes PDF). OCR einschalten und erneut scannen, um den Text zu erhalten.`,
     restoreMaskedBtn: 'Abgedeckten Text wiederherstellen',
+    themeLabel: 'Darstellung',
+    themeSystem: 'System',
+    themeLight: 'Hell',
+    themeDark: 'Dunkel',
     editedNote: 'Du hast diesen Text bearbeitet. Wenn du die abgedeckten Bereiche änderst, bleiben deine Änderungen erhalten — mit „Abgedeckten Text wiederherstellen“ holst du die neueste Version zurück. Was du selbst getippt hast, wird NICHT erneut geprüft.',
     editedSensitiveWarn: n => `⚠ Dein bearbeiteter Text enthält ${n} sensible Zeichenkette(n), die nicht abgedeckt sind. Er wurde kopiert — prüfe ihn, bevor du ihn einfügst.`,
     statsNoText: 'Noch kein Text zum Scannen.',
@@ -5695,7 +5771,35 @@ function clearPptxPanel() {
 }
 pptxClearBtn.addEventListener('click', clearPptxPanel);
 
+// THEME_START
+// "system" follows the operating system's light/dark setting.
+function resolveTheme(pref, systemIsDark) {
+  if (pref === 'light' || pref === 'dark') return pref;
+  return systemIsDark ? 'dark' : 'light';
+}
+// THEME_END
+const THEME_KEY = 'pii-theme';
+const themeSelectEl = document.getElementById('themeSelect');
+const systemDarkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function loadThemePref() {
+  try { const v = localStorage.getItem(THEME_KEY); return (v === 'light' || v === 'dark') ? v : 'system'; } catch (e) { return 'system'; }
+}
+function applyTheme(pref) {
+  document.documentElement.setAttribute('data-theme', resolveTheme(pref, !!(systemDarkQuery && systemDarkQuery.matches)));
+}
+themeSelectEl.addEventListener('change', () => {
+  const pref = themeSelectEl.value;
+  try { if (pref === 'system') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, pref); } catch (e) { /* storage blocked: still applies for this visit */ }
+  applyTheme(pref);
+});
+// With "System" selected the page follows the OS when it switches (for example at sunset).
+if (systemDarkQuery && systemDarkQuery.addEventListener) {
+  systemDarkQuery.addEventListener('change', () => { if (themeSelectEl.value === 'system') applyTheme('system'); });
+}
+
 // Initialization
+themeSelectEl.value = loadThemePref();
+applyTheme(themeSelectEl.value);
 document.getElementById('langSelect').value = currentLang;
 buildRuleCheckboxes();
 applyI18n();

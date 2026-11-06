@@ -2913,6 +2913,39 @@ check('editable masked text: the boxes are editable, have a Restore button, and 
   if (/showTextOut\('img'[^\n]*true\)/.test(html)) throw new Error('image refresh (region changes) must not force-replace edits');
 });
 
+
+// ---- Light / dark / system theme ----
+const themeCode = extractBetween('// THEME_START', '// THEME_END', 'THEME');
+const { resolveTheme } = new Function(`${themeCode}\nreturn { resolveTheme };`)();
+
+check('theme: "system" follows the OS, "light" and "dark" are fixed', () => {
+  const cases = [['system', true, 'dark'], ['system', false, 'light'], ['light', true, 'light'], ['dark', false, 'dark'], ['junk', true, 'dark'], [undefined, false, 'light']];
+  for (const [pref, sys, want] of cases) if (resolveTheme(pref, sys) !== want) throw new Error(`${pref}/${sys} -> ${resolveTheme(pref, sys)}, wanted ${want}`);
+  // the early script in <head> must use the same rule
+  const head = html.slice(html.indexOf('<script>'), html.indexOf('</script>'));
+  if (!head.includes("pref === 'system' ? (dark ? 'dark' : 'light') : pref") || !head.includes("'pii-theme'")) throw new Error('head script differs from resolveTheme()');
+});
+
+check('theme: the light palette redefines every colour variable of the dark one, and no colour is hard-coded outside them', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  const block = (open) => { const i = style.indexOf(open); return style.slice(i, style.indexOf('\n  }', i)); };
+  const names = (b) => [...b.matchAll(/(--[a-z0-9-]+):/g)].map(m => m[1]).sort();
+  const dark = names(block('  :root {')), light = names(block('  :root[data-theme="light"] {'));
+  if (JSON.stringify(dark) !== JSON.stringify(light)) throw new Error('variable sets differ: ' + dark.filter(n => !light.includes(n)).concat(light.filter(n => !dark.includes(n))).join(', '));
+  const outside = style.replace(block('  :root {'), '').replace(block('  :root[data-theme="light"] {'), '');
+  const stray = [...outside.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g)].map(m => m[0]).filter(c => !/var\(/.test(c));
+  // allowed: white text on the accent button, the black/white used as plain neutrals
+  const bad = stray.filter(c => !['#fff', '#ffffff', '#000', '#000000'].includes(c.toLowerCase()));
+  if (bad.length) throw new Error('hard-coded colours outside the theme blocks: ' + [...new Set(bad)].join(', '));
+});
+
+check('theme: the selector offers system / light / dark in all four languages, and the choice is stored locally only', () => {
+  for (const v of ['system', 'light', 'dark']) if (!html.includes(`<option value="${v}" data-i18n="theme`)) throw new Error('missing option ' + v);
+  const i18nBlock = html.slice(html.indexOf('const I18N = {'), html.indexOf('const I18N = {') + 200000);
+  for (const key of ['themeLabel', 'themeSystem', 'themeLight', 'themeDark']) if ((i18nBlock.match(new RegExp('\\b' + key + ':', 'g')) || []).length < 4) throw new Error(key + ' missing in a language');
+  if (!html.includes("localStorage.setItem(THEME_KEY, pref)")) throw new Error('choice not stored');
+});
+
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
   const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);
