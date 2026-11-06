@@ -2685,6 +2685,96 @@ function describeField(field, showValues) {
 }
 // META_LOGIC_END
 
+// GEO_START
+// ---- Place name for a GPS position (offline) ----
+// The EXIF position is only two numbers. To show "Köln, Germany" the tool
+// looks them up in a table of ~24,000 cities (vendor/geo/cities15000.tsv,
+// GeoNames, CC BY 4.0) that ships with the tool and is read from this
+// folder — no map service is contacted, the coordinates never leave the
+// computer (and the CSP would block it anyway). The answer is the NEAREST
+// LISTED CITY, not an address: a photo taken in a small village shows the
+// bigger town nearby, together with the distance.
+let citiesTable = null;     // [{ name, lat, lon, cc }] once loaded
+let citiesPromise = null;
+const GEO_MAX_KM = 200;     // farther than this the "nearest city" would mislead
+
+function parseCitiesTsv(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line) continue;
+    const p = line.split('\t');
+    const lat = Number(p[1]), lon = Number(p[2]);
+    if (p.length < 4 || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    rows.push({ name: p[0], lat, lon, cc: p[3] });
+  }
+  return rows;
+}
+
+// "50.937500, 6.960300" (the GPSPosition field) -> { lat, lon }, or null.
+function parseGpsPosition(value) {
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(String(value));
+  if (!m) return null;
+  const lat = Number(m[1]), lon = Number(m[2]);
+  return (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) ? { lat, lon } : null;
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+function nearestCity(rows, lat, lon) {
+  let best = null, bestKm = Infinity;
+  for (const r of rows) {
+    const km = haversineKm(lat, lon, r.lat, r.lon);
+    if (km < bestKm) { bestKm = km; best = r; }
+  }
+  return best && bestKm <= GEO_MAX_KM ? { city: best, km: bestKm } : null;
+}
+
+function countryName(cc, lang) {
+  try { return new Intl.DisplayNames([lang], { type: 'region' }).of(cc) || cc; } catch (e) { return cc; }
+}
+
+function formatPlace(hit, lang) {
+  const dist = hit.km < 1 ? '<1 km' : '~' + Math.round(hit.km) + ' km';
+  return hit.city.name + ', ' + countryName(hit.city.cc, lang) + ' (' + dist + ')';
+}
+
+async function loadCities() {
+  if (citiesTable) return citiesTable;
+  if (!citiesPromise) {
+    citiesPromise = fetch('vendor/geo/cities15000.tsv')
+      .then(r => { if (!r.ok) throw new Error('cities: HTTP ' + r.status); return r.text(); })
+      .then(text => (citiesTable = parseCitiesTsv(text)))
+      .catch(err => { citiesPromise = null; console.warn('City table not available:', err); return null; });
+  }
+  return citiesPromise;
+}
+
+// Adds a "GPSNearestCity" line next to GPSPosition in the metadata
+// findings. Silent when there is no position, the table cannot be read
+// (e.g. file:// — same limitation as the face detector), or no city is
+// close enough: the coordinates are still shown either way.
+async function addPlaceToFindings(findings, lang) {
+  for (const f of findings) {
+    const fields = f.fields;
+    if (!fields) continue;
+    const posField = fields.find(x => x.name === 'GPSPosition');
+    if (!posField || fields.some(x => x.name === 'GPSNearestCity')) continue;
+    const pos = parseGpsPosition(posField.value);
+    if (!pos) continue;
+    try {
+      const rows = await loadCities();
+      const hit = rows && nearestCity(rows, pos.lat, pos.lon);
+      if (hit) fields.push({ name: 'GPSNearestCity', value: formatPlace(hit, lang) });
+    } catch (err) { console.warn('Place lookup failed:', err); }
+  }
+}
+// GEO_END
+
 // META_UI_START
 const inputMetaReportEl = document.getElementById('inputMetaReport');
 const VERIFY_ELEMENT_IDS = ['imgVerify', 'pdfVerify', 'docxVerify', 'pptxVerify'];
@@ -2830,6 +2920,7 @@ async function showInputMetaReport(type, file) {
       const r = scanMetadata(await file.arrayBuffer());
       findings = r.findings;
       hasGps = r.hasGps;
+      if (hasGps) await addPlaceToFindings(findings, currentLang);
     } else if (type === 'pdf') {
       findings = await readPdfMetadataFindings(file);
     } else {

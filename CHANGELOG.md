@@ -8,6 +8,28 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [Unreleased]
+
+### Fixed
+
+- **"Clear all" now forgets the previous file completely.** The "Detected: ..."
+  line, the file picker's selection and the empty result panel are removed too.
+  The custom term list is kept.
+
+### Added
+
+- **Place name for GPS metadata.** When a file's metadata contains a GPS
+  position, the report also shows the nearest city, for example
+  "Köln, Germany (<1 km)". The lookup is fully offline: a table of about
+  23,000 cities (`vendor/geo/cities15000.tsv`) is read from the tool's own
+  folder, and no coordinates are sent anywhere. The result is the nearest
+  listed city, not an address.
+
+### Testing
+
+- Test suite grown from 212 to 218 tests: the city table, nearest-city lookup
+  (including "no city within 200 km"), strict GPS parsing, and the report line.
+
 ## [1.3.2] — 2026-10-28
 
 Presentation only: the program itself is unchanged.

@@ -121,3 +121,13 @@ SOFTWARE.
   regions cover the rest.
 - A test (`test/run-tests.mjs`) compares both files with the hashes above,
   so a changed or replaced file turns the suite red.
+
+## GeoNames city list
+
+- Project: https://www.geonames.org/
+- License: Creative Commons Attribution 4.0 (CC BY 4.0)
+- File: `geo/cities15000.tsv` — cities with 15,000+ inhabitants (name,
+  latitude, longitude, country code, population), city districts removed.
+  Obtained through the npm package `all-the-cities` (MIT) which packages
+  GeoNames data. Used only to turn a GPS position found in a file's metadata
+  into the nearest city name, entirely offline.

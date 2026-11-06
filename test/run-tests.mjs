@@ -1209,6 +1209,7 @@ check('scanMetadata: the scanner block uses no browser APIs (pure bytes in, plai
 const i18nMetaCode = extractBetween('// I18N_METADATA_START', '// I18N_METADATA_END', 'I18N_METADATA');
 const metaLogicCode = extractBetween('// META_LOGIC_START', '// META_LOGIC_END', 'META_LOGIC');
 const metaUiCode = extractBetween('// META_UI_START', '// META_UI_END', 'META_UI');
+const geoCode = extractBetween('// GEO_START', '// GEO_END', 'GEO');
 const { I18N_METADATA } = new Function(`${i18nMetaCode}\nreturn { I18N_METADATA };`)();
 const { officeMetadataFindings, pdfInfoMetadataFindings, summarizeExportScan, describeFinding, describeField, formatPdfDate } =
   new Function(`${scanMetadataCode}\n${metaLogicCode}\nreturn { officeMetadataFindings, pdfInfoMetadataFindings, summarizeExportScan, describeFinding, describeField, formatPdfDate };`)();
@@ -1361,8 +1362,9 @@ function makeUiHarness() {
     const I18N = I18N_METADATA;
     ${scanMetadataCode}
     ${metaLogicCode}
+    ${geoCode}
     ${metaUiCode}
-    return { deliverVerifiedFile, showInputMetaReport, readPdfMetadataFindings, clearVerify, resetInputMetaReport, rerenderMetadataUi, setLang: (l) => { currentLang = l; } };
+    return { setCitiesTable: (rows) => { citiesTable = rows; }, addPlaceToFindings, deliverVerifiedFile, showInputMetaReport, readPdfMetadataFindings, clearVerify, resetInputMetaReport, rerenderMetadataUi, setLang: (l) => { currentLang = l; } };
   `;
   const api = new Function('document', source)(doc);
   return { api, doc, clicks, byId, el: id => doc.getElementById(id) };
@@ -2718,6 +2720,59 @@ check('release: every guide covers all ten features and quotes the buttons of ea
     if ((text.match(/^## /gm) || []).length < 14) throw new Error(`docs/guide.${l}.md should have a section per feature`);
     if (!text.includes('images/demo.gif')) throw new Error(`docs/guide.${l}.md should show the demo GIF`);
   }
+});
+
+
+// ---- GPS position -> nearest city name (offline) ----
+const { parseCitiesTsv, parseGpsPosition, nearestCity, formatPlace } =
+  new Function(`${geoCode}\nreturn { parseCitiesTsv, parseGpsPosition, nearestCity, formatPlace };`)();
+const citiesRows = parseCitiesTsv(readFileSync(path.join(__dirname, '..', 'vendor', 'geo', 'cities15000.tsv'), 'utf8'));
+
+check('geo: the bundled city table loads (20,000+ cities, valid coordinates)', () => {
+  if (citiesRows.length < 20000) throw new Error('only ' + citiesRows.length + ' rows');
+  if (citiesRows.some(r => Math.abs(r.lat) > 90 || Math.abs(r.lon) > 180 || !/^[A-Z]{2}$/.test(r.cc))) throw new Error('bad row');
+});
+
+check('geo: Cologne and Hanoi coordinates resolve to the right city and country', () => {
+  const k = nearestCity(citiesRows, 50.9375, 6.9603);
+  if (!k || k.city.cc !== 'DE' || !/^(Köln|Cologne)$/.test(k.city.name) || k.km > 5) throw new Error(JSON.stringify(k));
+  const h = nearestCity(citiesRows, 21.0285, 105.8542);
+  if (!h || h.city.cc !== 'VN' || !/Hanoi|Hà Nội/.test(h.city.name)) throw new Error(JSON.stringify(h));
+  if (!/^(Köln|Cologne), Germany \((<1|~\d+) km\)$/.test(formatPlace(k, 'en'))) throw new Error(formatPlace(k, 'en'));
+});
+
+check('geo: a position in the middle of the ocean gets no (misleading) city', () => {
+  if (nearestCity(citiesRows, -45, -130) !== null) throw new Error('expected null');
+});
+
+check('geo: GPSPosition text is parsed strictly (negatives ok, junk and out-of-range rejected)', () => {
+  const ok = parseGpsPosition('-10.500000, -20.250000');
+  if (!ok || ok.lat !== -10.5 || ok.lon !== -20.25) throw new Error(JSON.stringify(ok));
+  for (const bad of ['', 'abc', '91, 0', '0, 181', '1,2,3', '10.5 N, 20 E']) if (parseGpsPosition(bad) !== null) throw new Error('accepted: ' + bad);
+});
+
+await checkAsync('geo UI: a GPSNearestCity line is added beside GPSPosition, and Hide values masks it', async () => {
+  const h = makeUiHarness();
+  h.api.setCitiesTable(citiesRows);
+  const findings = [{ code: 'exif', severity: 'sensitive', fields: [{ name: 'GPSPosition', value: '50.937500, 6.960300' }] }];
+  await h.api.addPlaceToFindings(findings, 'en');
+  const f = findings[0].fields.find(x => x.name === 'GPSNearestCity');
+  if (!f || !/Germany/.test(f.value)) throw new Error(JSON.stringify(findings));
+  if (h.api.describeField === undefined) { /* not exported by harness: masking is covered by describeField test */ }
+  const { describeField: df } = new Function(`${metaLogicCode}\nreturn { describeField };`)();
+  if (df(f, false) !== 'GPSNearestCity' || df(f, true) === 'GPSNearestCity') throw new Error('masking wrong');
+});
+
+await checkAsync('geo UI: no position, or an unreadable table, leaves the findings untouched', async () => {
+  const h = makeUiHarness();
+  h.api.setCitiesTable(citiesRows);
+  const noGps = [{ code: 'exif', severity: 'sensitive', fields: [{ name: 'Make', value: 'FakeCam' }] }];
+  await h.api.addPlaceToFindings(noGps, 'en');
+  if (noGps[0].fields.length !== 1) throw new Error('added a field without a position');
+  const h2 = makeUiHarness();   // fresh harness: table not loaded, fetch of a relative URL fails in Node
+  const withGps = [{ code: 'exif', severity: 'sensitive', fields: [{ name: 'GPSPosition', value: '50.9, 6.9' }] }];
+  await h2.api.addPlaceToFindings(withGps, 'en');
+  if (withGps[0].fields.length !== 1) throw new Error('should degrade silently');
 });
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
