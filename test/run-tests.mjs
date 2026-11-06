@@ -2775,6 +2775,55 @@ await checkAsync('geo UI: no position, or an unreadable table, leaves the findin
   if (withGps[0].fields.length !== 1) throw new Error('should degrade silently');
 });
 
+
+// ---- HEIC photos: metadata scan, decoder, and "new file replaces old" ----
+import { createRequire } from 'node:module';
+const heicGps = new Uint8Array(readFileSync(path.join(__dirname, 'fixtures', 'test-gps.heic')));
+const heicPlain = new Uint8Array(readFileSync(path.join(__dirname, 'fixtures', 'test-nogps.heic')));
+
+check('HEIC metadata: EXIF tags and the GPS position are read from a HEIC file', () => {
+  const r = scanMetadata(heicGps);
+  if (r.format !== 'heic' || !r.hasGps || !r.hasSensitive) throw new Error(JSON.stringify(r));
+  const f = Object.fromEntries(r.findings.flatMap(x => x.fields || []).map(x => [x.name, x.value]));
+  if (f.Make !== 'FakeCam' || f.Model !== 'Model-X') throw new Error(JSON.stringify(f));
+  const m = /^(\d+\.\d+), (\d+\.\d+)$/.exec(f.GPSPosition || '');
+  if (!m || Math.abs(m[1] - 50.9375) > 0.001 || Math.abs(m[2] - 6.9603) > 0.001) throw new Error('GPSPosition: ' + f.GPSPosition);
+});
+
+check('HEIC metadata: a HEIC file without EXIF is recognised and reports no GPS', () => {
+  const r = scanMetadata(heicPlain);
+  if (r.format !== 'heic' || r.hasGps || r.unscannable) throw new Error(JSON.stringify(r));
+});
+
+check('HEIC metadata: truncated or damaged HEIC files never crash the scanner', () => {
+  for (let len = 0; len < heicGps.length; len += 13) {
+    const r = scanMetadata(heicGps.subarray(0, len));
+    if (!r || !Array.isArray(r.findings)) throw new Error('no result at length ' + len);
+  }
+  const bad = Uint8Array.from(heicGps);
+  for (let i = 40; i < 400; i += 7) bad[i] ^= 0xFF;
+  scanMetadata(bad);
+});
+
+await checkAsync('HEIC decoder: the bundled libheif turns a HEIC file into pixels, fully offline', async () => {
+  const libheif = createRequire(import.meta.url)(path.join(__dirname, '..', 'vendor', 'heic', 'libheif-bundle.js'))();
+  const images = new libheif.HeifDecoder().decode(heicGps);
+  if (!images.length || images[0].get_width() !== 320 || images[0].get_height() !== 240) throw new Error('unexpected decode result');
+  for (const f of ['LICENSE-libheif.txt', 'LICENSE-libheif-js.txt']) readFileSync(path.join(__dirname, '..', 'vendor', 'heic', f));
+});
+
+check('wiring: a new file clears every previous result first, and HEIC is accepted by the router', () => {
+  const route = html.slice(html.indexOf('async function routeFile(file)'), html.indexOf("unifiedDropzone.addEventListener('click'"));
+  if (!route.includes('clearAllPanels()')) throw new Error('routeFile does not clear old results');
+  if (route.indexOf('clearAllPanels()') > route.indexOf('loadImageFile(file)')) throw new Error('old results must be cleared BEFORE the new file loads');
+  for (const fn of ['clearImagePanel', 'clearPdfPanel', 'clearDocxPanel', 'clearPptxPanel']) {
+    if (!html.includes('function ' + fn + '()')) throw new Error(fn + ' missing');
+    const body = html.slice(html.indexOf('function clearAllPanels()'), html.indexOf('let lastDetectedType'));
+    if (!body.includes(fn + '()')) throw new Error('clearAllPanels does not call ' + fn);
+  }
+  if (!/png\|jpe\?g\|webp\|heic\|heif/.test(html)) throw new Error('router does not recognise .heic/.heif');
+});
+
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
   const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);

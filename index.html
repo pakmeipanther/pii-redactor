@@ -1299,28 +1299,40 @@ const I18N_OCR = {
     imgPassProgress: (n, total, pct) => `Lượt ${n}/${total} — đang nhận diện chữ… ${pct}%`,
     imgLangMismatchHint: 'Từ khóa riêng của bạn có chữ có dấu nhưng ngôn ngữ OCR đang là English — hãy chọn đúng ngôn ngữ của ảnh để không bị sót.',
     imgOcrTextTitle: 'Chữ mà OCR đã đọc được (và lý do mỗi vùng bị đè đen)',
-    wasmUnavailable: 'OCR ảnh cần WebAssembly, nhưng trình duyệt này đang tắt nó (ví dụ Safari khi bật Lockdown Mode). Hãy dùng trình duyệt khác như Firefox hoặc Chrome, hoặc loại trừ trang này khỏi Lockdown Mode (trong Safari: Settings for this website). Văn bản, báo cáo metadata, Word và PowerPoint không cần WebAssembly nên vẫn dùng được. Bạn vẫn có thể tự vẽ vùng che bằng công cụ vẽ.'
+    wasmUnavailable: 'OCR ảnh cần WebAssembly, nhưng trình duyệt này đang tắt nó (ví dụ Safari khi bật Lockdown Mode). Hãy dùng trình duyệt khác như Firefox hoặc Chrome, hoặc loại trừ trang này khỏi Lockdown Mode (trong Safari: Settings for this website). Văn bản, báo cáo metadata, Word và PowerPoint không cần WebAssembly nên vẫn dùng được. Bạn vẫn có thể tự vẽ vùng che bằng công cụ vẽ.',
+    heicConverting: 'Đang chuyển ảnh HEIC sang PNG ngay trên máy bạn…',
+    heicFailed: 'Không đọc được ảnh HEIC này. File có thể bị hỏng hoặc dùng biến thể HEIC chưa được hỗ trợ. Thử xuất lại ảnh ở định dạng JPEG rồi thả vào.',
+    imageLoadError: 'Không mở được file ảnh này. Hãy thử file khác hoặc định dạng PNG/JPEG.'
   },
   en: {
     imgThoroughLabel: 'Thorough scan (slower) — reads the image a few more times with different colour handling, to catch text on coloured backgrounds, light-on-dark headings and stylised fonts',
     imgPassProgress: (n, total, pct) => `Pass ${n}/${total} — recognizing text… ${pct}%`,
     imgLangMismatchHint: 'Your custom terms contain accented letters but the OCR language is English — pick the language of the image so nothing is missed.',
     imgOcrTextTitle: 'What the OCR read (and why each region was blacked out)',
-    wasmUnavailable: 'Image OCR needs WebAssembly, which this browser has switched off (for example Safari in Lockdown Mode). Use another browser such as Firefox or Chrome, or exclude this site from Lockdown Mode (in Safari: Settings for this website). Text, the metadata report, Word and PowerPoint do not need WebAssembly and still work. You can still cover areas by hand with the drawing tool.'
+    wasmUnavailable: 'Image OCR needs WebAssembly, which this browser has switched off (for example Safari in Lockdown Mode). Use another browser such as Firefox or Chrome, or exclude this site from Lockdown Mode (in Safari: Settings for this website). Text, the metadata report, Word and PowerPoint do not need WebAssembly and still work. You can still cover areas by hand with the drawing tool.',
+    heicConverting: 'Converting the HEIC image to PNG on this computer…',
+    heicFailed: 'This HEIC image could not be read. The file may be damaged or use an unsupported HEIC variant. Try exporting the photo as JPEG and drop that instead.',
+    imageLoadError: 'This image file could not be opened. Try another file or a PNG/JPEG version.'
   },
   fr: {
     imgThoroughLabel: "Analyse approfondie (plus lente) — relit l'image plusieurs fois avec un traitement des couleurs différent, pour repérer le texte sur fond coloré, les titres clairs sur fond foncé et les polices stylisées",
     imgPassProgress: (n, total, pct) => `Passe ${n}/${total} — reconnaissance du texte… ${pct} %`,
     imgLangMismatchHint: "Vos termes personnalisés contiennent des lettres accentuées alors que la langue OCR est l'anglais — choisissez la langue de l'image pour ne rien manquer.",
     imgOcrTextTitle: "Ce que l'OCR a lu (et pourquoi chaque zone a été noircie)",
-    wasmUnavailable: "L'OCR des images nécessite WebAssembly, que ce navigateur a désactivé (par exemple Safari en mode Isolement / Lockdown Mode). Utilisez un autre navigateur comme Firefox ou Chrome, ou excluez ce site du mode Isolement (dans Safari : réglages du site web). Le texte, le rapport de métadonnées, Word et PowerPoint n'en ont pas besoin et restent utilisables. Vous pouvez toujours masquer des zones à la main avec l'outil de dessin."
+    wasmUnavailable: "L'OCR des images nécessite WebAssembly, que ce navigateur a désactivé (par exemple Safari en mode Isolement / Lockdown Mode). Utilisez un autre navigateur comme Firefox ou Chrome, ou excluez ce site du mode Isolement (dans Safari : réglages du site web). Le texte, le rapport de métadonnées, Word et PowerPoint n'en ont pas besoin et restent utilisables. Vous pouvez toujours masquer des zones à la main avec l'outil de dessin.",
+    heicConverting: 'Conversion de l\'image HEIC en PNG sur cet ordinateur…',
+    heicFailed: 'Cette image HEIC n\'a pas pu être lue. Le fichier est peut-être endommagé ou d\'une variante HEIC non prise en charge. Essayez d\'exporter la photo en JPEG et déposez-la à la place.',
+    imageLoadError: 'Ce fichier image n\'a pas pu être ouvert. Essayez un autre fichier ou une version PNG/JPEG.'
   },
   de: {
     imgThoroughLabel: 'Gründliche Analyse (langsamer) — liest das Bild mehrfach mit unterschiedlicher Farbverarbeitung, um Text auf farbigem Hintergrund, helle Überschriften auf dunklem Grund und Zierschriften zu erfassen',
     imgPassProgress: (n, total, pct) => `Durchgang ${n}/${total} — Text wird erkannt… ${pct} %`,
     imgLangMismatchHint: 'Deine eigenen Begriffe enthalten Buchstaben mit Akzenten, die OCR-Sprache ist aber Englisch — wähle die Sprache des Bildes, damit nichts übersehen wird.',
     imgOcrTextTitle: 'Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)',
-    wasmUnavailable: 'Die Bilderkennung (OCR) benötigt WebAssembly, das dieser Browser abgeschaltet hat (z. B. Safari im Blockierungsmodus / Lockdown Mode). Nutze einen anderen Browser wie Firefox oder Chrome oder nimm diese Website vom Blockierungsmodus aus (in Safari: Einstellungen für diese Website). Text, Metadaten-Bericht, Word und PowerPoint brauchen WebAssembly nicht und funktionieren weiterhin. Du kannst Bereiche weiterhin von Hand mit dem Zeichenwerkzeug abdecken.'
+    wasmUnavailable: 'Die Bilderkennung (OCR) benötigt WebAssembly, das dieser Browser abgeschaltet hat (z. B. Safari im Blockierungsmodus / Lockdown Mode). Nutze einen anderen Browser wie Firefox oder Chrome oder nimm diese Website vom Blockierungsmodus aus (in Safari: Einstellungen für diese Website). Text, Metadaten-Bericht, Word und PowerPoint brauchen WebAssembly nicht und funktionieren weiterhin. Du kannst Bereiche weiterhin von Hand mit dem Zeichenwerkzeug abdecken.',
+    heicConverting: 'HEIC-Bild wird auf diesem Computer in PNG umgewandelt …',
+    heicFailed: 'Dieses HEIC-Bild konnte nicht gelesen werden. Die Datei ist möglicherweise beschädigt oder eine nicht unterstützte HEIC-Variante. Exportiere das Foto als JPEG und ziehe stattdessen diese Datei hinein.',
+    imageLoadError: 'Diese Bilddatei konnte nicht geöffnet werden. Versuche eine andere Datei oder eine PNG/JPEG-Version.'
   }
 };
 // I18N_OCR_END
@@ -2523,6 +2535,97 @@ function scanMetadata(input) {
     }
   }
 
+  // HEIC/HEIF (iPhone photos): an ISO base-media file made of nested
+  // boxes. Metadata lives in "items" listed in meta/iinf (what each item
+  // is: Exif, XMP...) and located through meta/iloc (where its bytes are).
+  // Only the first extent of each item is read; every offset is bounds-checked.
+  function isoBoxes(start, end) {
+    const list = [];
+    let pos = start;
+    while (pos + 8 <= end && list.length < 4096) {
+      let size = be32(pos);
+      const type = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+      let head = 8;
+      if (size === 1) {
+        if (pos + 16 > end) break;
+        size = be32(pos + 8) * 4294967296 + be32(pos + 12);
+        head = 16;
+      } else if (size === 0) size = end - pos;
+      if (size < head || pos + size > end) break;
+      list.push({ type, start: pos + head, end: pos + size });
+      pos += size;
+    }
+    return list;
+  }
+
+  function scanHeic() {
+    const meta = isoBoxes(0, n).find(b => b.type === 'meta');
+    if (!meta) { add('unknown-format', 'unscannable'); return; }
+    const kids = isoBoxes(meta.start + 4, meta.end); // meta is a "full box": skip version + flags
+    const iinf = kids.find(b => b.type === 'iinf');
+    const iloc = kids.find(b => b.type === 'iloc');
+
+    const items = new Map(); // item id -> { type, mime }
+    if (iinf) {
+      const countBytes = bytes[iinf.start] === 0 ? 2 : 4;
+      for (const b of isoBoxes(iinf.start + 4 + countBytes, iinf.end)) {
+        if (b.type !== 'infe') continue;
+        const v = bytes[b.start];
+        if (v < 2) continue;
+        let q = b.start + 4;
+        const id = v === 2 ? be16(q) : be32(q);
+        q += (v === 2 ? 2 : 4) + 2; // item id, protection index
+        const type = String.fromCharCode(bytes[q], bytes[q + 1], bytes[q + 2], bytes[q + 3]);
+        q += 4;
+        let mime = '';
+        if (type === 'mime') {
+          while (q < b.end && bytes[q] !== 0) q++; // item name
+          q++;
+          let r = q;
+          while (r < b.end && bytes[r] !== 0) r++;
+          mime = decode('latin1', q, r);
+        }
+        items.set(id, { type, mime });
+      }
+    }
+
+    const where = new Map(); // item id -> { offset, length } (file offsets only)
+    if (iloc) {
+      const ver = bytes[iloc.start];
+      let q = iloc.start + 4;
+      const offSize = bytes[q] >> 4, lenSize = bytes[q] & 15; q++;
+      const baseSize = bytes[q] >> 4, idxSize = ver >= 1 ? bytes[q] & 15 : 0; q++;
+      const num = (size) => { let v = 0; for (let k = 0; k < size; k++) v = v * 256 + bytes[q + k]; q += size; return v; };
+      const count = ver < 2 ? num(2) : num(4);
+      for (let i = 0; i < count && i < 4096 && q < iloc.end; i++) {
+        const id = ver < 2 ? num(2) : num(4);
+        const method = ver >= 1 ? num(2) & 15 : 0;
+        num(2); // data reference index
+        const base = num(baseSize);
+        const extents = num(2);
+        let first = null;
+        for (let e = 0; e < extents && e < 64 && q < iloc.end; e++) {
+          if (idxSize) num(idxSize);
+          const off = num(offSize), len = num(lenSize);
+          if (!first) first = { offset: base + off, length: len };
+        }
+        if (method === 0 && first) where.set(id, first);
+      }
+    }
+
+    for (const [id, item] of items) {
+      const loc = where.get(id);
+      const usable = loc && loc.length >= 8 && loc.offset + loc.length <= n;
+      if (item.type === 'Exif') {
+        // Payload: 4-byte offset to the TIFF header, then the EXIF data.
+        if (usable) addExif(loc.offset + 4 + be32(loc.offset), loc.offset + loc.length);
+        else addExif(0, 0); // listed but unreadable: report it rather than pass it
+      } else if (item.type === 'mime' && /xmp|rdf\+xml/i.test(item.mime) && usable) {
+        add('xmp', 'sensitive', undefined, { fields: xmpFields(loc.offset, loc.offset + loc.length) });
+      }
+    }
+  }
+
   function scanPdf() {
     const text = new TextDecoder('latin1').decode(bytes);
     const re = /\/(Info|Producer|Creator|Author|Title|Subject|Keywords|CreationDate|ModDate|Metadata|ObjStm|Encrypt)(?![A-Za-z0-9])/g;
@@ -2547,6 +2650,9 @@ function scanMetadata(input) {
     } else if (startsWith(0, 'RIFF') && startsWith(8, 'WEBP')) {
       result.format = 'webp';
       scanWebp();
+    } else if (startsWith(4, 'ftyp') && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(decode('latin1', 8, 12))) {
+      result.format = 'heic';
+      scanHeic();
     } else {
       let pdfAt = -1;
       for (let k = 0, lim = Math.min(n - 5, 1024); k <= lim; k++) {
@@ -2993,15 +3099,84 @@ function updateImgDownloadBtnLabel() {
   imgDownloadBtn.textContent = t.imgDownloadBtn + ' (' + imgExtFromMime(originalImageMimeType) + ')';
 }
 
-function loadImageFile(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+// HEIC/HEIF (the iPhone's default photo format) is not readable by every
+// browser (Chrome and Firefox cannot show it), so it is converted to a PNG
+// picture first, on this computer, with the bundled libheif decoder
+// (vendor/heic, loaded only when a HEIC file is used). Everything after
+// that point treats it like any other image; the PNG built at export time
+// carries none of the HEIC file's metadata.
+function isHeicFile(file) {
+  return /^image\/hei[cf]/.test(file.type) || /\.(heic|heif)$/i.test(file.name || '');
+}
+
+let heicDecoderPromise = null;
+function loadHeicDecoder() {
+  if (!heicDecoderPromise) {
+    heicDecoderPromise = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'vendor/heic/libheif-bundle.js';
+      el.onload = () => {
+        // The bundle defines a global `libheif` factory; calling it gives the decoder module.
+        const lib = typeof window.libheif === 'function' ? window.libheif() : window.libheif;
+        if (lib && lib.HeifDecoder) resolve(lib); else reject(new Error('libheif not available'));
+      };
+      el.onerror = () => reject(new Error('libheif could not be loaded'));
+      document.head.appendChild(el);
+    });
+    heicDecoderPromise.catch(() => { heicDecoderPromise = null; }); // allow a retry after a failure
+  }
+  return heicDecoderPromise;
+}
+
+async function heicToPngBlob(file) {
+  const libheif = await loadHeicDecoder();
+  const images = new libheif.HeifDecoder().decode(new Uint8Array(await file.arrayBuffer()));
+  if (!images || !images.length) throw new Error('no image inside the HEIC file');
+  const image = images[0];
+  const width = image.get_width(), height = image.get_height();
+  if (!width || !height || width * height > 150e6) throw new Error('unsupported HEIC size ' + width + 'x' + height);
+  const pixels = await new Promise((resolve, reject) => {
+    image.display({ data: new Uint8ClampedArray(width * height * 4), width, height }, (out) => out ? resolve(out) : reject(new Error('HEIC decoding failed')));
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').putImageData(new ImageData(pixels.data, width, height), 0, 0);
+  return new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG conversion failed')), 'image/png'));
+}
+
+let imageLoadToken = 0; // a slow older load must not overwrite a newer image
+async function loadImageFile(file) {
+  if (!file) return;
+  const heic = isHeicFile(file);
+  if (!heic && !file.type.startsWith('image/')) return;
+  const token = ++imageLoadToken;
+  const t = I18N[currentLang];
+  let blob = file;
+  let mimeType = file.type;
+  if (heic) {
+    imgProgressEl.textContent = t.heicConverting;
+    try {
+      blob = await heicToPngBlob(file);
+      mimeType = 'image/png';
+    } catch (err) {
+      // The decoder needs WebAssembly (off in Safari's Lockdown Mode). Safari
+      // can show HEIC itself, so try the file as-is; if that fails too the
+      // image's onerror below shows the message.
+      console.warn('HEIC conversion failed, trying the browser itself:', err);
+      blob = file;
+      mimeType = 'image/png';
+    }
+    if (token !== imageLoadToken) return;
+  }
   const img = new Image();
   img.onload = () => {
+    if (token !== imageLoadToken) { URL.revokeObjectURL(img.src); return; }
     imgCanvas.width = img.naturalWidth;
     imgCanvas.height = img.naturalHeight;
     imgCtx.drawImage(img, 0, 0);
     originalImageBitmap = img;
-    originalImageMimeType = CANVAS_EXPORTABLE_MIME_TYPES.includes(file.type) ? file.type : 'image/png';
+    originalImageMimeType = CANVAS_EXPORTABLE_MIME_TYPES.includes(mimeType) ? mimeType : 'image/png';
     updateImgDownloadBtnLabel();
     imgCanvasWrap.style.display = 'block';
     imgScanBtn.disabled = false;
@@ -3017,7 +3192,11 @@ function loadImageFile(file) {
     renderImageRedactions();
     URL.revokeObjectURL(img.src);
   };
-  img.src = URL.createObjectURL(file);
+  img.onerror = () => {
+    URL.revokeObjectURL(img.src);
+    if (token === imageLoadToken) imgProgressEl.textContent = heic ? I18N[currentLang].heicFailed : I18N[currentLang].imageLoadError;
+  };
+  img.src = URL.createObjectURL(blob);
 }
 
 // ============================================================
@@ -3059,6 +3238,15 @@ function showResultPanel(type) {
 // badge, the file picker's remembered selection, and the (now empty)
 // result panel. The custom term list is NOT touched: it lives in its own
 // section and is kept on purpose.
+function clearAllPanels() {
+  clearImagePanel();
+  clearPdfPanel();
+  clearDocxPanel();
+  clearPptxPanel();
+  clearAllExportVerify();
+  resetInputMetaReport();
+}
+
 let lastDetectedType = null;
 function resetUnifiedInput() {
   lastDetectedType = null;
@@ -3094,7 +3282,7 @@ async function detectFileType(file) {
   if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return 'pptx';
   if (file.type === 'text/plain') return 'text';
 
-  if (/\.(png|jpe?g|webp)$/.test(name)) return 'image';
+  if (/\.(png|jpe?g|webp|heic|heif)$/.test(name)) return 'image';
   if (name.endsWith('.pdf')) return 'pdf';
   if (name.endsWith('.docx')) return 'docx';
   if (name.endsWith('.pptx')) return 'pptx';
@@ -3114,6 +3302,7 @@ async function detectFileType(file) {
   if (hex.startsWith('89504e47')) return 'image';  // PNG signature
   if (hex.startsWith('ffd8ff')) return 'image';    // JPEG signature
   if (hex.startsWith('52494646') && hex.slice(16, 24) === '57454250') return 'image'; // RIFF....WEBP
+  if (hex.slice(8, 16) === '66747970' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(new TextDecoder('latin1').decode(head.subarray(8, 12)))) return 'image'; // ....ftyp + HEIC brand
 
   if (hex.startsWith('504b0304')) {
     // A generic ZIP signature — .docx and .pptx both are ZIP archives,
@@ -3149,8 +3338,10 @@ async function routeFile(file) {
   if (!file) return;
   const t = I18N[currentLang];
   const type = await detectFileType(file);
-  clearAllExportVerify();
-  resetInputMetaReport();
+  // A new file replaces EVERYTHING from the previous one: its picture or
+  // pages, scan results, download buttons, metadata report and
+  // "verified" lines. Nothing of the old file may stay on screen.
+  clearAllPanels();
 
   if (type === 'unknown') {
     detectedTypeEl.textContent = t.unknownFileType;
@@ -4361,7 +4552,7 @@ imgDownloadPdfBtn.addEventListener('click', async () => {
   await deliverVerifiedFile(pdfBytes, 'application/pdf', 'redacted-image.pdf', 'imgVerify');
 });
 
-imgClearBtn.addEventListener('click', () => {
+function clearImagePanel() {
   clearVerify('imgVerify');
   resetInputMetaReport();
   lastImgOcrText = '';
@@ -4384,7 +4575,8 @@ imgClearBtn.addEventListener('click', () => {
   confirmedImgSuspects = new Set();
   imgSuspectListEl.innerHTML = '';
   imgSuspectListEl.style.display = 'none';
-});
+}
+imgClearBtn.addEventListener('click', clearImagePanel);
 
 // ============================================================
 // PDF REDACTION — "flatten to image" strategy.
@@ -4745,7 +4937,7 @@ pdfDownloadBtn.addEventListener('click', async () => {
   await deliverVerifiedFile(pdfOutputBytes, 'application/pdf', 'redacted-document.pdf', 'pdfVerify');
 });
 
-pdfClearBtn.addEventListener('click', () => {
+function clearPdfPanel() {
   clearVerify('pdfVerify');
   resetInputMetaReport();
   pdfOriginalBytes = null;
@@ -4758,7 +4950,8 @@ pdfClearBtn.addEventListener('click', () => {
   pdfProgressEl.textContent = '';
   pdfFileNameEl.textContent = '';
   resetUnifiedInput();
-});
+}
+pdfClearBtn.addEventListener('click', clearPdfPanel);
 
 // ============================================================
 // WORD (.docx) → simple redacted PDF.
@@ -5053,7 +5246,7 @@ docxDownloadBtn.addEventListener('click', async () => {
   await deliverVerifiedFile(docxOutputBytes, 'application/pdf', t.docxDownloadName || 'redacted-text.pdf', 'docxVerify');
 });
 
-docxClearBtn.addEventListener('click', () => {
+function clearDocxPanel() {
   clearVerify('docxVerify');
   resetInputMetaReport();
   docxOriginalBytes = null;
@@ -5063,7 +5256,8 @@ docxClearBtn.addEventListener('click', () => {
   docxProgressEl.textContent = '';
   docxFileNameEl.textContent = '';
   resetUnifiedInput();
-});
+}
+docxClearBtn.addEventListener('click', clearDocxPanel);
 
 // ============================================================
 // PowerPoint (.pptx) -> redacted PDF — same shape as the Word panel
@@ -5143,7 +5337,7 @@ pptxDownloadBtn.addEventListener('click', async () => {
   await deliverVerifiedFile(pptxOutputBytes, 'application/pdf', t.pptxDownloadName || 'redacted-slides.pdf', 'pptxVerify');
 });
 
-pptxClearBtn.addEventListener('click', () => {
+function clearPptxPanel() {
   clearVerify('pptxVerify');
   resetInputMetaReport();
   pptxOriginalBytes = null;
@@ -5153,7 +5347,8 @@ pptxClearBtn.addEventListener('click', () => {
   pptxProgressEl.textContent = '';
   pptxFileNameEl.textContent = '';
   resetUnifiedInput();
-});
+}
+pptxClearBtn.addEventListener('click', clearPptxPanel);
 
 // Initialization
 document.getElementById('langSelect').value = currentLang;

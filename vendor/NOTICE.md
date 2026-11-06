@@ -131,3 +131,15 @@ SOFTWARE.
   Obtained through the npm package `all-the-cities` (MIT) which packages
   GeoNames data. Used only to turn a GPS position found in a file's metadata
   into the nearest city name, entirely offline.
+
+## libheif-js (HEIC / HEIF decoder)
+
+- Project: https://github.com/catdad-experiments/libheif-js (WebAssembly build of
+  https://github.com/strukturag/libheif)
+- License: GNU Lesser General Public License v3.0 (LGPL-3.0); full texts in
+  `heic/LICENSE-libheif.txt` and `heic/LICENSE-libheif-js.txt`
+- File: `heic/libheif-bundle.js` (version 1.23.5, unmodified, from the npm
+  package `libheif-js`). It is kept as a separate file and loaded only when a
+  HEIC photo is used, so it can be replaced by another build of the same
+  library. Used to decode HEIC photos entirely on the user's computer.
+

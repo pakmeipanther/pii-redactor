@@ -12,12 +12,22 @@ one never removes an older one.
 
 ### Fixed
 
+- **A new file now replaces everything from the previous one.** Dropping,
+  choosing or pasting a file clears the earlier picture or pages, scan results,
+  download buttons, metadata report and "verified" lines first, so old and new
+  results can no longer be mixed up. A photo that cannot be opened now shows a
+  message instead of silently leaving the old picture on screen.
 - **"Clear all" now forgets the previous file completely.** The "Detected: ..."
   line, the file picker's selection and the empty result panel are removed too.
   The custom term list is kept.
 
 ### Added
 
+- **HEIC / HEIF photos (iPhone).** They are converted to PNG on the computer
+  with the bundled libheif decoder (`vendor/heic/`, loaded only when needed),
+  then redacted like any other image. The metadata report reads their EXIF
+  (including GPS) and XMP too. The exported PNG is rebuilt from pixels, so it
+  carries none of the HEIC file's metadata.
 - **Place name for GPS metadata.** When a file's metadata contains a GPS
   position, the report also shows the nearest city, for example
   "Köln, Germany (<1 km)". The lookup is fully offline: a table of about
@@ -27,8 +37,9 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 218 tests: the city table, nearest-city lookup
-  (including "no city within 200 km"), strict GPS parsing, and the report line.
+- Test suite grown from 212 to 223 tests: the city table, nearest-city lookup
+  (including "no city within 200 km"), strict GPS parsing, the report line,
+  HEIC metadata and decoding, and "a new file clears the old results".
 
 ## [1.3.2] — 2026-10-28
 
