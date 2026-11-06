@@ -23,6 +23,15 @@ one never removes an older one.
 
 ### Added
 
+- **Live preview for pasted text, and a "Copy masked text" button.** The text
+  is scanned automatically while it is typed or pasted (and again when a rule,
+  the custom term list or the case switch changes). The result shows two boxes:
+  the original with the covered parts highlighted, and the text after masking,
+  which can be copied to the clipboard in one click, no .txt file needed. The
+  ".txt" download stays. Suspected secrets that are not masked yet appear in
+  amber in the masked box too, with a warning, and can be clicked to mask them.
+  Copy and download first re-scan if anything changed since the last scan, so
+  an out-of-date preview is never copied.
 - **HEIC / HEIF photos (iPhone).** They are converted to PNG on the computer
   with the bundled libheif decoder (`vendor/heic/`, loaded only when needed),
   then redacted like any other image. The metadata report reads their EXIF
@@ -37,9 +46,10 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 223 tests: the city table, nearest-city lookup
+- Test suite grown from 212 to 225 tests: the city table, nearest-city lookup
   (including "no city within 200 km"), strict GPS parsing, the report line,
-  HEIC metadata and decoding, and "a new file clears the old results".
+  HEIC metadata and decoding, "a new file clears the old results", and the
+  live preview's stale-result guard.
 
 ## [1.3.2] — 2026-10-28
 

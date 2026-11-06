@@ -439,7 +439,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3.2 (unreleased): 223 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.3.2 (unreleased): 225 tests, all passing.
 
 ```sh
 node test/run-tests.mjs

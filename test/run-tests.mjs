@@ -2824,6 +2824,38 @@ check('wiring: a new file clears every previous result first, and HEIC is accept
   if (!/png\|jpe\?g\|webp\|heic\|heif/.test(html)) throw new Error('router does not recognise .heic/.heif');
 });
 
+
+// ---- Live preview + "Copy masked text" (text panel) ----
+const liveScanCode = extractBetween('// LIVE_SCAN_START', '// LIVE_SCAN_END', 'LIVE_SCAN');
+const { scanKeyOf } = new Function(`${liveScanCode}\nreturn { scanKeyOf };`)();
+
+check('live preview: the scan key changes whenever anything a result depends on changes (so stale results are caught)', () => {
+  const base = scanKeyOf('mail a@b.example', ['email', 'ipv4'], ['AcmeCorp'], false, true);
+  const variants = {
+    text: scanKeyOf('mail a@b.example!', ['email', 'ipv4'], ['AcmeCorp'], false, true),
+    rules: scanKeyOf('mail a@b.example', ['email'], ['AcmeCorp'], false, true),
+    terms: scanKeyOf('mail a@b.example', ['email', 'ipv4'], ['AcmeCorp', 'srv-db-01'], false, true),
+    case: scanKeyOf('mail a@b.example', ['email', 'ipv4'], ['AcmeCorp'], true, true),
+    entropy: scanKeyOf('mail a@b.example', ['email', 'ipv4'], ['AcmeCorp'], false, false),
+  };
+  for (const [what, key] of Object.entries(variants)) if (key === base) throw new Error(`changing ${what} did not change the key`);
+  if (scanKeyOf('x', ['a'], ['b'], false, true) !== scanKeyOf('x', ['a'], ['b'], false, true)) throw new Error('key is not stable');
+});
+
+check('live preview: wiring — auto-scan on input, copy and download re-scan when stale, preview shows the exact copied text', () => {
+  for (const needle of [
+    "getElementById('input').addEventListener('input'",
+    "ruleListEl.addEventListener('change'",
+    'id="cleanedPreview"', 'id="copyCleanedBtn"',
+    "getElementById('cleanedPreview').innerHTML = previewOut",
+    'navigator.clipboard.writeText(lastCleanedText)'
+  ]) if (!html.includes(needle)) throw new Error('missing: ' + needle);
+  const copyBody = html.slice(html.indexOf("getElementById('copyCleanedBtn').addEventListener('click'"), html.indexOf('navigator.clipboard.writeText(lastCleanedText)'));
+  if (!copyBody.includes('ensureFreshScan()')) throw new Error('copy does not re-scan a stale preview first');
+  const dl = html.slice(html.indexOf("getElementById('downloadBtn').addEventListener('click'"), html.indexOf("new Blob([lastCleanedText]"));
+  if (!dl.includes('ensureFreshScan()')) throw new Error('download does not re-scan a stale preview first');
+});
+
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
   const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);

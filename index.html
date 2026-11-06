@@ -351,7 +351,7 @@
     padding: 4px 0;
   }
   .suspect-item input[type="checkbox"] { accent-color: #facf6f; }
-  #highlighted {
+  #highlighted, #cleanedPreview {
     white-space: pre-wrap;
     word-break: break-word;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -363,6 +363,13 @@
     padding: 12px;
     min-height: 60px;
   }
+  .result-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 14px 0 6px; }
+  .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+  .result-head .result-label { margin: 8px 0 6px; }
+  .result-note { font-size: 12px; color: #facf6f; margin-top: 8px; line-height: 1.5; min-height: 1em; }
+  /* A masked value in the cleaned preview: what a reader of the copied text will see. */
+  .masked { background: rgba(124, 140, 255, 0.18); color: #aab4ff; border-radius: 3px; padding: 0 2px; font-weight: 600; }
+  .masked[data-suspect-idx] { cursor: pointer; }
   footer {
     color: var(--muted);
     font-size: 12px;
@@ -610,7 +617,14 @@
 <div class="panel" style="margin-top:16px;">
   <h2 data-i18n="section3">4. Kết quả</h2>
   <div class="result-stats" id="stats" data-i18n="statsEmpty">Chưa quét.</div>
+  <div class="result-label" data-i18n="highlightedTitle">Văn bản gốc — phần bị che được tô sáng</div>
   <div id="highlighted">—</div>
+  <div class="result-head">
+    <div class="result-label" data-i18n="cleanedTitle">Văn bản sau khi che</div>
+    <button id="copyCleanedBtn" class="secondary" disabled data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+  </div>
+  <div id="cleanedPreview">—</div>
+  <div class="result-note" id="cleanedNote" role="status"></div>
 </div>
 
 <footer>
@@ -731,6 +745,12 @@ const I18N = {
     downloadBtn: 'Tải văn bản đã làm sạch (.txt)',
     clearBtn: 'Xóa tất cả',
     statsEmpty: 'Chưa quét.',
+    highlightedTitle: 'Văn bản gốc — phần bị che được tô sáng',
+    cleanedTitle: 'Văn bản sau khi che (đây là bản sẽ được sao chép)',
+    copyCleanedBtn: 'Sao chép văn bản đã che',
+    copiedCleanedBtn: 'Đã sao chép ✓',
+    copyFailed: 'Không sao chép tự động được — hãy bôi đen văn bản ở khung trên rồi nhấn Cmd/Ctrl+C.',
+    cleanedSuspectNote: n => `⚠ Còn ${n} chuỗi nghi ngờ (màu vàng) CHƯA bị che. Bấm vào chuỗi đó để che trước khi sao chép.`,
     statsNoText: 'Chưa có văn bản để quét.',
     statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
     statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
@@ -848,6 +868,12 @@ const I18N = {
     downloadBtn: 'Download cleaned text (.txt)',
     clearBtn: 'Clear all',
     statsEmpty: 'Not scanned yet.',
+    highlightedTitle: 'Original text — parts that will be covered are highlighted',
+    cleanedTitle: 'Text after masking (this is the version that gets copied)',
+    copyCleanedBtn: 'Copy masked text',
+    copiedCleanedBtn: 'Copied ✓',
+    copyFailed: 'Automatic copy did not work — select the text in the box above and press Cmd/Ctrl+C.',
+    cleanedSuspectNote: n => `⚠ ${n} suspected string(s) (amber) are NOT masked yet. Click one to mask it before copying.`,
     statsNoText: 'No text to scan yet.',
     statsNoMatch: 'No matches found for the selected types.',
     statsFound: n => `Found ${n} sensitive region(s) —`,
@@ -965,6 +991,12 @@ const I18N = {
     downloadBtn: 'Télécharger le texte nettoyé (.txt)',
     clearBtn: 'Tout effacer',
     statsEmpty: 'Pas encore analysé.',
+    highlightedTitle: 'Texte d\'origine — les parties masquées sont surlignées',
+    cleanedTitle: 'Texte après masquage (c\'est cette version qui est copiée)',
+    copyCleanedBtn: 'Copier le texte masqué',
+    copiedCleanedBtn: 'Copié ✓',
+    copyFailed: 'La copie automatique a échoué — sélectionnez le texte du cadre ci-dessus puis appuyez sur Cmd/Ctrl+C.',
+    cleanedSuspectNote: n => `⚠ ${n} chaîne(s) suspecte(s) (ambre) ne sont PAS encore masquées. Cliquez sur l'une d'elles pour la masquer avant de copier.`,
     statsNoText: 'Aucun texte à analyser.',
     statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
     statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
@@ -1082,6 +1114,12 @@ const I18N = {
     downloadBtn: 'Bereinigten Text herunterladen (.txt)',
     clearBtn: 'Alles löschen',
     statsEmpty: 'Noch nicht gescannt.',
+    highlightedTitle: 'Originaltext — abgedeckte Teile sind markiert',
+    cleanedTitle: 'Text nach dem Abdecken (diese Version wird kopiert)',
+    copyCleanedBtn: 'Abgedeckten Text kopieren',
+    copiedCleanedBtn: 'Kopiert ✓',
+    copyFailed: 'Automatisches Kopieren hat nicht geklappt — markiere den Text im Feld oben und drücke Cmd/Strg+C.',
+    cleanedSuspectNote: n => `⚠ ${n} verdächtige Zeichenkette(n) (gelb) sind noch NICHT abgedeckt. Klicke darauf, um sie vor dem Kopieren abzudecken.`,
     statsNoText: 'Noch kein Text zum Scannen.',
     statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
     statsFound: n => `${n} sensible Bereich(e) gefunden —`,
@@ -1674,6 +1712,7 @@ function forgetAllCustomTerms() {
   customTerms = [];
   try { localStorage.removeItem(CUSTOM_TERMS_KEY); } catch (e) { /* localStorage unavailable */ }
   renderCustomChips();
+  if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
 }
 
 function renderClearTermsUi() {
@@ -1750,6 +1789,7 @@ function addCustomTerm() {
     customTerms.push(val);
     saveCustomTerms(customTerms);
     renderCustomChips();
+    if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
   }
   customInputEl.value = '';
   customInputEl.focus();
@@ -1760,6 +1800,7 @@ function removeCustomTerm(term) {
   customTerms = customTerms.filter(x => x !== term);
   saveCustomTerms(customTerms);
   renderCustomChips();
+  if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
 }
 
 document.getElementById('customAddBtn').addEventListener('click', addCustomTerm);
@@ -1768,6 +1809,7 @@ customInputEl.addEventListener('keydown', (e) => {
 });
 customCaseSensitiveEl.addEventListener('change', () => {
   saveCustomCaseSensitive(customCaseSensitiveEl.checked);
+  if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
 });
 
 document.getElementById('customExportBtn').addEventListener('click', exportCustomTerms);
@@ -1797,6 +1839,7 @@ document.getElementById('customImportFile').addEventListener('change', (e) => {
         saveCustomCaseSensitive(data.caseSensitive);
       }
       renderCustomChips();
+      if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
     } catch (err) {
       // Invalid file — ignore it, leave the existing list untouched.
     }
@@ -2015,11 +2058,44 @@ let lastCertainMatches = [];     // custom + regex — always redacted
 let lastSuspectMatches = [];     // entropy hits — redacted only once confirmed
 let confirmedSuspects = new Set(); // indexes into lastSuspectMatches the user has clicked to confirm
 let lastCleanedText = '';
+let lastScanKey = '';            // what the last scan was based on — see scanKeyOf()
+
+// LIVE_SCAN_START
+// Everything a scan result depends on, as one string. If this differs
+// from the key of the last scan, what is on screen is STALE (the text,
+// a rule checkbox, the custom term list, case-sensitivity or the entropy
+// switch changed since) and must be re-scanned before anything is copied
+// or downloaded — otherwise a person could copy a "cleaned" text that
+// does not match the current settings.
+function scanKeyOf(text, ruleIds, terms, caseSensitive, entropyOn) {
+  return [text, ruleIds.join(','), terms.join('\u0001'), caseSensitive ? 1 : 0, entropyOn ? 1 : 0].join('\u0000');
+}
+// LIVE_SCAN_END
+
+function currentScanKey() {
+  return scanKeyOf(document.getElementById('input').value, getActiveRules().map(r => r.id), customTerms, customCaseSensitiveEl.checked, isEntropyEnabled());
+}
+function ensureFreshScan() {
+  if (currentScanKey() !== lastScanKey) runScan();
+}
+
+// Live preview: the scan runs by itself while text is typed or pasted,
+// and again when a setting that affects it changes. The Scan button stays.
+let liveScanTimer = null;
+function liveScan() {
+  if (!document.getElementById('input').value && !lastScanText) return;
+  if (currentScanKey() !== lastScanKey) runScan(); else renderScanResult();
+}
+function scheduleLiveScan(delay = 250) {
+  clearTimeout(liveScanTimer);
+  liveScanTimer = setTimeout(liveScan, delay);
+}
 
 function runScan() {
   const text = document.getElementById('input').value;
   const activeRules = getActiveRules();
   lastScanText = text;
+  lastScanKey = currentScanKey();
   lastCertainMatches = findMatches(text, activeRules, customTerms, customCaseSensitiveEl.checked);
   lastSuspectMatches = isEntropyEnabled() ? findEntropyMatches(text, lastCertainMatches) : [];
   confirmedSuspects = new Set();
@@ -2043,15 +2119,18 @@ function renderScanResult() {
 
   let htmlOut = '';
   let cleanOut = '';
+  let previewOut = '';   // the same masked text, as HTML for the "after masking" box
   let cursor = 0;
   const counts = {};
   let suspectCount = 0;
 
   timeline.forEach(m => {
     htmlOut += escapeHtml(text.slice(cursor, m.start));
+    previewOut += escapeHtml(text.slice(cursor, m.start));
     const raw = text.slice(m.start, m.end);
     if (m.kind === 'certain') {
       htmlOut += `<mark title="${labelFor(m.ruleId)}">${escapeHtml(raw)}</mark>`;
+      previewOut += `<span class="masked" title="${labelFor(m.ruleId)}">${escapeHtml(t.masks[m.ruleId])}</span>`;
       cleanOut += t.masks[m.ruleId];
       counts[m.ruleId] = (counts[m.ruleId] || 0) + 1;
     } else if (m.kind === 'confirmed') {
@@ -2059,6 +2138,7 @@ function renderScanResult() {
       // match, but stays clickable (data-suspect-idx) so a mis-click
       // can be undone before downloading.
       htmlOut += `<mark class="confirmed" data-suspect-idx="${m.suspectIdx}" title="${t.entropyConfirmedTitle}">${escapeHtml(raw)}</mark>`;
+      previewOut += `<span class="masked" data-suspect-idx="${m.suspectIdx}" title="${t.entropyConfirmedTitle}">${escapeHtml(t.masks.entropy)}</span>`;
       cleanOut += t.masks.entropy;
       counts.entropy = (counts.entropy || 0) + 1;
     } else {
@@ -2066,16 +2146,22 @@ function renderScanResult() {
       // characters still pass straight through to cleanOut. This is
       // the actual "no auto-redact" behavior — not just a visual cue.
       htmlOut += `<mark class="suspect" data-suspect-idx="${m.suspectIdx}" title="${t.entropySuspectTitle}">${escapeHtml(raw)}</mark>`;
+      previewOut += `<mark class="suspect" data-suspect-idx="${m.suspectIdx}" title="${t.entropySuspectTitle}">${escapeHtml(raw)}</mark>`;
       cleanOut += raw;
       suspectCount++;
     }
     cursor = m.end;
   });
   htmlOut += escapeHtml(text.slice(cursor));
+  previewOut += escapeHtml(text.slice(cursor));
   cleanOut += text.slice(cursor);
 
   lastCleanedText = cleanOut;
-  document.getElementById('highlighted').innerHTML = htmlOut || '<span style="color:var(--muted)">—</span>';
+  const dash = '<span style="color:var(--muted)">—</span>';
+  document.getElementById('highlighted').innerHTML = htmlOut || dash;
+  document.getElementById('cleanedPreview').innerHTML = previewOut || dash;
+  document.getElementById('copyCleanedBtn').disabled = !cleanOut;
+  document.getElementById('cleanedNote').textContent = suspectCount > 0 ? t.cleanedSuspectNote(suspectCount) : '';
 
   const statsEl = document.getElementById('stats');
   const maskedTotal = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -2091,12 +2177,48 @@ function renderScanResult() {
 
 // Clicking a suspect (or an already-confirmed suspect) toggles it and
 // re-renders — the only way an entropy hit ever becomes redacted.
-document.getElementById('highlighted').addEventListener('click', (e) => {
-  const mark = e.target.closest('mark[data-suspect-idx]');
+function toggleSuspectFromClick(e) {
+  const mark = e.target.closest('[data-suspect-idx]');
   if (!mark) return;
   const idx = Number(mark.dataset.suspectIdx);
   if (confirmedSuspects.has(idx)) confirmedSuspects.delete(idx); else confirmedSuspects.add(idx);
   renderScanResult();
+}
+document.getElementById('highlighted').addEventListener('click', toggleSuspectFromClick);
+document.getElementById('cleanedPreview').addEventListener('click', toggleSuspectFromClick);
+
+// Live preview triggers (see scheduleLiveScan)
+document.getElementById('input').addEventListener('input', () => scheduleLiveScan());
+ruleListEl.addEventListener('change', () => scheduleLiveScan(0));
+
+// Copy the masked text straight to the clipboard — no .txt file needed.
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+  document.body.removeChild(ta);
+  return ok;
+}
+let copyFeedbackTimer = null;
+document.getElementById('copyCleanedBtn').addEventListener('click', async () => {
+  clearTimeout(liveScanTimer);
+  ensureFreshScan();               // never copy a preview that is out of date
+  const btn = document.getElementById('copyCleanedBtn');
+  const t = I18N[currentLang];
+  let ok = false;
+  try { await navigator.clipboard.writeText(lastCleanedText); ok = true; } catch (err) { ok = legacyCopy(lastCleanedText); }
+  clearTimeout(copyFeedbackTimer);
+  if (ok) {
+    btn.textContent = t.copiedCleanedBtn;
+    copyFeedbackTimer = setTimeout(() => { btn.textContent = I18N[currentLang].copyCleanedBtn; }, 1800);
+  } else {
+    document.getElementById('cleanedNote').textContent = t.copyFailed;
+  }
 });
 
 document.getElementById('scanBtn').addEventListener('click', runScan);
@@ -2110,12 +2232,17 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   lastSuspectMatches = [];
   confirmedSuspects = new Set();
   lastCleanedText = '';
+  lastScanKey = '';
+  document.getElementById('cleanedPreview').innerHTML = '—';
+  document.getElementById('cleanedNote').textContent = '';
+  document.getElementById('copyCleanedBtn').disabled = true;
   // A text file that was dropped in also left a "Detected: ..." badge.
   if (lastDetectedType === 'text') resetUnifiedInput();
 });
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
-  if (!lastCleanedText) runScan();
+  clearTimeout(liveScanTimer);
+  ensureFreshScan();
   const blob = new Blob([lastCleanedText], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
