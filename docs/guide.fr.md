@@ -10,7 +10,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 
 > **Le plus important :** ce logiciel n'établit aucune connexion Internet et n'envoie aucune donnée nulle part — tout le traitement se fait directement sur votre ordinateur. Vous pouvez complètement désactiver le Wi-Fi en l'utilisant, il continuera de fonctionner normalement — c'est aussi un moyen de le vérifier par vous-même.
 
-![Démo (mode clair) : choix du thème, aperçu en direct et copie du texte masqué, termes personnalisés, une photo HEIC avec la ville du GPS, OCR, une zone dessinée à la main, et un PDF qui remplace le fichier précédent](images/demo.gif)
+![Démo (mode clair) : choix du thème, aperçu en direct et copie du texte masqué, termes personnalisés et une expression régulière, une photo HEIC avec la ville du GPS, OCR, une zone dessinée à la main, et un PDF qui remplace le fichier précédent](images/demo.gif)
 
 *(Tout ce qui apparaît dans cet enregistrement est inventé.)*
 
@@ -26,7 +26,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 - afficher et supprimer les **métadonnées** cachées de chaque fichier, puis revérifier chaque résultat avant de vous laisser le télécharger.
 - **nouveau en v1.4 :** choisissez l'apparence **Clair, Sombre ou Système** avec le sélecteur "Thème" de la barre du haut ;
 - **nouveau en v1.4 :** pendant que vous tapez ou collez du texte, un **aperçu en direct** montre ce qui est masqué, et un clic sur "Copier le texte masqué" copie le résultat ;
-- **nouveau en v1.4 :** chaque résultat d'image, PDF, Word et PowerPoint a une **zone de texte masqué modifiable** (avec un bouton "Restaurer") et son propre bouton "Copier le texte masqué" ;
+- **nouveau en v1.4 :** chaque résultat d'image, PDF, Word et PowerPoint a une **zone de texte masqué modifiable** (avec un bouton "Rétablir le texte masqué") et son propre bouton "Copier le texte masqué" ;
 - **nouveau en v1.4 :** ouvrez des **photos HEIC d'iPhone** ; le rapport de métadonnées affiche la **ville la plus proche** d'une position GPS (recherche entièrement hors ligne).
 - **nouveau en v1.4 :** décrivez vos propres **motifs** (expressions régulières), par exemple pour des numéros d'employé.
 
@@ -59,6 +59,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 
 1. Ouvrez le dossier décompressé à l'étape 1 et double-cliquez sur le fichier nommé index.html. Il s'ouvre dans votre navigateur.
 1. En haut à droite, choisissez votre langue (English, Français, Deutsch ou Tiếng Việt).
+1. À côté du sélecteur de langue, le sélecteur "Thème" permet de choisir "Système" (suit votre ordinateur), "Clair" ou "Sombre". Votre choix est mémorisé dans ce navigateur uniquement.
 1. La ligne verte sous le titre indique qu'aucune connexion réseau n'est établie. C'est une promesse que vous pouvez vérifier vous-même (voir « Bonnes habitudes » à la fin).
 
 La page se lit de haut en bas :
@@ -181,6 +182,8 @@ La lecture du texte dans les images, la détection des visages et le traitement 
 
 > **Regardez toujours les parties surlignées avant de télécharger.** Un outil automatique est une aide, jamais une garantie.
 
+**Aperçu en direct et copie en un clic.** Pendant que vous tapez ou collez, le logiciel analyse tout seul après une courte pause. Sous le texte surligné, la zone "Texte après masquage (c'est cette version qui est copiée)" montre la version propre, et le bouton "Copier le texte masqué" la copie (il affiche ensuite "Copié ✓"). Le bouton "Télécharger le texte nettoyé (.txt)" reste disponible si vous préférez un fichier. Si une chaîne ambre (suspecte) n'est pas encore masquée, une note vous rappelle de cliquer dessus avant de copier.
+
 ## Fonction 2 — Votre propre liste de termes internes
 
 Le logiciel ne peut pas deviner que « srv-db-prod-02 » ou le nom de votre entreprise est secret. Dites-le une fois, et il sera toujours masqué — dans le texte, dans les images, dans les PDF, Word et PowerPoint — sans qu'on vous le redemande.
@@ -225,6 +228,8 @@ Certains secrets n'ont pas de forme reconnaissable : un mot de passe qui a l'air
 **C'est une vraie suppression.** L'image finale est reconstruite à partir de votre original intact : les pixels sensibles sont écrasés par du noir, et non cachés sous une couche transparente, donc personne ne peut retirer le noir pour voir ce qu'il y avait dessous.
 
 **Si le logiciel a manqué quelque chose**, ouvrez « Ce que l'OCR a lu (et pourquoi chaque zone a été noircie) » sous l'image. Vous y voyez le texte lu par le logiciel et la raison de chaque rectangle noir. Si le mot attendu n'y figure pas, le logiciel ne l'a pas lu — choisissez la bonne langue, gardez « Analyse approfondie » active, ou couvrez l'endroit à la main.
+
+**Photos d'iPhone (HEIC).** Vous pouvez déposer directement une photo HEIC ou HEIF d'un iPhone ; elle s'ouvre sur votre ordinateur comme toute autre image. Nécessite le serveur local de l'Étape 3. **Texte de l'image.** Sous l'image, la zone "Texte masqué — prêt à copier" contient le texte lu dans l'image, avec les parties couvertes remplacées. Vous pouvez le modifier ; "Copier le texte masqué" le copie et "Rétablir le texte masqué" ramène la version automatique. Si vos propres modifications contiennent encore quelque chose de sensible, un avertissement apparaît à la copie. Ce texte vient de l'OCR et peut contenir des erreurs : relisez-le avant de l'utiliser.
 
 ## Fonction 5 — La liste des zones masquées
 
@@ -271,12 +276,16 @@ Fonctionnement : chaque page est **redessinée sous forme d'image**, les parties
 
 La détection des visages et les zones dessinées à la main n'existent que dans le panneau Image. Si un PDF contient une photo avec des visages, enregistrez cette page comme image et traitez-la dans le panneau Image.
 
+La même zone "Texte masqué — prêt à copier" apparaît sous le résultat du PDF, avec "Copier le texte masqué" et "Rétablir le texte masqué". Une page scannée sans couche de texte ne donne du texte que si vous activez l'OCR.
+
 ## Fonction 9 — Fichiers Word et PowerPoint
 
 1. Déposez le fichier .docx ou .pptx. Le panneau « Fichier Word (.docx) » ou « Fichier PowerPoint (.pptx) » s'ouvre.
 1. Cliquez sur « Convertir et caviarder → PDF », puis sur « Télécharger le PDF traité » (le fichier s'appelle texte-caviarde.pdf ou diapositives-caviardees.pdf).
 
 Ce que vous obtenez est volontairement un **PDF en texte brut**, jamais une copie de votre fichier d'origine, car un fichier Word ou PowerPoint peut cacher beaucoup de choses (commentaires, anciennes versions, notes, objets incorporés). La mise en page, les tableaux, les images, les graphiques et les animations ne sont donc **pas** conservés. Les commentaires et le texte supprimé sous suivi des modifications ne sont pas inclus, et les notes du présentateur d'un fichier PowerPoint non plus — seulement le texte visible sur les pages ou les diapositives. Si vous avez besoin de la mise en page, enregistrez d'abord le fichier en PDF vous-même et déposez ce PDF (Fonction 8).
+
+Sous le résultat, la zone "Texte masqué — prêt à copier" montre le texte placé dans le nouveau PDF, avec "Copier le texte masqué" et "Rétablir le texte masqué", pour coller directement le texte propre dans un outil d'IA.
 
 ## Fonction 10 — La vérification des métadonnées
 
@@ -287,6 +296,8 @@ Les « métadonnées » sont des informations cachées à l'intérieur d'un fich
 - **Avant chaque téléchargement, l'outil revérifie le résultat.** Si tout est propre, vous voyez une ligne verte : « Vérifié : le fichier … exporté ne contient aucune métadonnée identifiante. » S'il reste quelque chose — ou si l'outil n'est pas sûr —, le téléchargement est **bloqué** et une ligne rouge explique pourquoi. Rien n'est alors téléchargé.
 - Le profil colorimétrique (ICC) d'une photo peut apparaître en gris : c'est une information technique qui ne vous identifie pas et qui ne bloque rien.
 - La vérification ne peut pas regarder à l'intérieur de l'image elle-même ; elle ne peut donc pas détecter des choses comme les filigranes invisibles.
+
+**Ville la plus proche.** Quand une photo contient une position GPS, le rapport ajoute une ligne "GPSNearestCity", par exemple "Köln, Germany (<1 km)". Elle est cherchée dans une table intégrée au logiciel : la position n'est donc envoyée nulle part. C'est la ville listée la plus proche, pas une adresse, et rien ne s'affiche si aucune ville n'est à moins de 200 km.
 
 ## Quand quelque chose ne fonctionne pas
 

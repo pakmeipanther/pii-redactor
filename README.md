@@ -26,7 +26,8 @@ a helper, not a legal guarantee of anonymisation or compliance — see
 > working, with a synthetic-data test suite and a demo GIF above.
 > Since v1.2.1 it reports the file's metadata and re-scans every export
 > before download. Since v1.3.0 images get one editable list of regions
-> (OCR hits, faces, hand-drawn areas). **New in v1.4.0:** a live preview
+> (OCR hits, faces, hand-drawn areas). **New in v1.4.0:** your own regular
+> expressions in the custom list (safety-tested in a background worker); a live preview
 > and a one-click "Copy masked text" box for pasted text; an editable,
 > copyable masked-text box for image, PDF, Word and PowerPoint results;
 > iPhone HEIC/HEIF photos; the nearest city (offline) for GPS metadata;
@@ -44,7 +45,7 @@ a helper, not a legal guarantee of anonymisation or compliance — see
 > layout), save your Word/PowerPoint file as a PDF yourself first,
 > then drop that PDF in.
 
-![Demo (light mode): choosing the theme, pasting text with a live masked preview and one-click copy, adding custom terms, dropping an iPhone HEIC photo with GPS metadata shown as a city name, OCR blacking out sensitive text, hand-drawing an extra covered area over a face, copying the masked text, and dropping a PDF that replaces everything from the previous file](docs/images/demo.gif)
+![Demo (light mode): choosing the theme, pasting text with a live masked preview and one-click copy, adding custom terms and a regular expression (a risky one is refused after 3 seconds), dropping an iPhone HEIC photo with GPS metadata shown as a city name, OCR blacking out sensitive text, hand-drawing an extra covered area over a face, copying the masked text, and dropping a PDF that replaces everything from the previous file](docs/images/demo.gif)
 
 *(All data shown is synthetic/fake, invented for this recording —
 never a real person, company, or secret.)*
@@ -84,6 +85,9 @@ PII Redactor additionally redacts:
 - **PDFs** — each page is rendered to canvas, matched regions' actual
   pixels are overwritten, and the file is reassembled from scratch with
   `pdf-lib` — so there's no hidden text layer left to recover.
+- **iPhone photos (HEIC/HEIF)** — decoded in the browser with a vendored
+  decoder, then handled like any other image (including the metadata report,
+  where a GPS position is shown with its nearest city, looked up offline).
 - **Word documents (.docx)** — the visible text is extracted, redacted,
   and rendered into a brand-new, simple PDF — built from scratch, never
   by editing the original file, so none of its hidden XML, styles, or
@@ -127,7 +131,11 @@ trust levels:**
 
 1. **User-defined list** (highest priority, applied without
    re-confirmation) — company names, internal server names, project
-   codenames that no model could ever guess on its own. The list can be exported and imported as .json and emptied with one button; that button first warns that the list will be removed from the browser's local storage and offers an export, and deletes only after an explicit choice.
+   codenames that no model could ever guess on its own. Since v1.4.0 an
+   entry can also be a **regular expression** you write yourself (stored
+   with a `regex:` prefix, e.g. `EMP-\d{5}` for employee numbers); it is
+   validated and run once in a time-limited Web Worker before it is
+   accepted (see [Known limitations](#known-limitations)). The list can be exported and imported as .json and emptied with one button; that button first warns that the list will be removed from the browser's local storage and offers an export, and deletes only after an explicit choice.
 2. **Regex** — structured patterns: emails, IPs, phone numbers, API
    keys/tokens, card numbers, and database connection strings (both URI
    form like `postgres://user:pass@host:port/dbname` and key-value form
@@ -368,6 +376,10 @@ a glance.
   23,000 cities in `/vendor/geo/cities15000.tsv`, used to name the city nearest
   to a GPS position found in metadata. Read from the tool's own folder; no
   coordinates are ever sent anywhere.
+- `vendor/regex-worker.js` (this project's own code, 17 lines) — runs in a
+  throw-away Web Worker to test a user-defined regular expression against
+  nasty sample strings; the page destroys it after 3 seconds. It has no
+  network or DOM access and never sees any document content.
 - [transformers.js](https://huggingface.co/docs/transformers.js) — would
   run a local NER model fully offline; evaluated but not integrated yet,
   see [Known limitations](#known-limitations)
@@ -403,7 +415,8 @@ a glance.
    second box holds the masked text with a "Copy masked text" button. For
    image, PDF, Word and PowerPoint results, an editable "Masked text — ready
    to copy" box (with Restore and a warning if you copy something that still
-   looks sensitive) sits under the result. Choose Light, Dark or System with the
+   looks sensitive) sits under the result. The custom list accepts plain
+   words and, with the "Regular expression" tick box, your own patterns. Choose Light, Dark or System with the
    Theme selector in the top bar.
 6. Download the cleaned file — images offer their original format
    (PNG/JPEG/WEBP) by default, with an optional "download as PDF"
@@ -756,6 +769,14 @@ underneath you, even as `main` keeps moving forward.
   uploaded anywhere. Local NER, if added later, would run fully
   in-browser too — see [Known limitations](#known-limitations) for why
   it isn't included yet.
+- User-defined regular expressions are untrusted input. They are checked
+  statically (length, empty match, nested repeats, back-references), then
+  run in a disposable Web Worker with a 3-second deadline; the worker only
+  receives the pattern and fixed sample strings, never your documents. A
+  pattern in an imported list goes through the same checks.
+- The HEIC decoder and the city table are read from the tool's own folder
+  and only when needed; HEIC decoding and the nearest-city lookup make no
+  network request.
 - The custom keyword list is stored only in `localStorage` on the user's
   own machine.
 - The OCR engine and language data, and the pdf.js/pdf-lib PDF

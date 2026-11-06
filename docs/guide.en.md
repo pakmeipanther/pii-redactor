@@ -10,7 +10,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 
 > **The most important part:** this software makes no internet connection and sends no data anywhere — everything runs right on your own computer. You can turn off your Wi-Fi entirely while using it and it will still work normally — that's also how you can verify this for yourself.
 
-![Demo (light mode): theme choice, live preview and copy of masked text, custom terms, a HEIC photo with GPS city, OCR, a hand-drawn area, and a PDF that replaces the previous file](images/demo.gif)
+![Demo (light mode): theme choice, live preview and copy of masked text, custom terms and a regular expression, a HEIC photo with GPS city, OCR, a hand-drawn area, and a PDF that replaces the previous file](images/demo.gif)
 
 *(Everything in this recording is made-up sample data.)*
 
@@ -26,7 +26,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 - show and remove the hidden **metadata** of every file, and double-check each result before you can download it.
 - **new in v1.4:** choose a **Light, Dark or System** look with the "Theme" selector in the top bar;
 - **new in v1.4:** while you type or paste text, see a **live preview** of what is covered, and copy the result with one click on "Copy masked text";
-- **new in v1.4:** every image, PDF, Word and PowerPoint result has an **editable masked-text box** (with a "Restore" button) and its own "Copy masked text" button;
+- **new in v1.4:** every image, PDF, Word and PowerPoint result has an **editable masked-text box** (with a "Restore masked text" button) and its own "Copy masked text" button;
 - **new in v1.4:** open **iPhone HEIC photos**; the metadata report shows the **nearest city** of a GPS position (looked up offline).
 - **new in v1.4:** describe your own **patterns** (regular expressions) for things like employee numbers.
 
@@ -59,6 +59,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 
 1. Open the folder you unzipped in Step 1 and double-click the file named index.html. It opens in your browser.
 1. In the top-right corner, pick your language (English, Français, Deutsch or Tiếng Việt).
+1. Next to the language selector, the "Theme" selector lets you choose "System" (follows your computer), "Light" or "Dark". Your choice is remembered in this browser only.
 1. The green line under the title says that no network connection is made. That is a promise you can check yourself (see "Good habits" at the end).
 
 The page is read from top to bottom:
@@ -181,6 +182,8 @@ Reading text inside images, finding faces and handling PDF files need one extra 
 
 > **Always look at the highlighted parts before you download.** An automatic tool is a helper, never a guarantee.
 
+**Live preview and one-click copy.** As you type or paste, the software scans by itself after a short pause. Below the highlighted text, the box "Text after masking (this is the version that gets copied)" shows the clean version, and the button "Copy masked text" copies it (it then shows "Copied ✓"). You can still use "Download cleaned text (.txt)" if you prefer a file. If an amber (suspected) string is not masked yet, a note reminds you to click it before copying.
+
 ## Feature 2 — Your own list of internal terms
 
 The software cannot know that "srv-db-prod-02" or your company's name is secret. Tell it once, and it will always be hidden — in text, in images, in PDF, Word and PowerPoint files — with no questions asked.
@@ -225,6 +228,8 @@ Some secrets have no recognisable shape: a random-looking password, a token. The
 **It is a real deletion.** The finished picture is rebuilt from your untouched original: the sensitive pixels are overwritten with black, not hidden under a see-through layer, so nobody can remove the black to see what was below.
 
 **If the software missed something**, open "What the OCR read (and why each region was blacked out)" under the picture. It shows the text the software read and the reason for every black box. If the word you expected is not there, the software did not read it — choose the right language, keep "Thorough scan" on, or cover the spot by hand.
+
+**iPhone photos (HEIC).** You can drop a HEIC or HEIF photo straight from an iPhone; it is opened on your computer like any other picture. Needs the local server of Step 3. **Text of the image.** Under the picture, the box "Masked text — ready to copy" holds the text read from the image with the covered parts replaced. You can edit it; the button "Copy masked text" copies it, and "Restore masked text" brings back the automatic version. If your own edits still contain something that looks sensitive, a warning appears when you copy. This text comes from OCR and can contain mistakes: read it before you use it.
 
 ## Feature 5 — The list of covered areas
 
@@ -271,12 +276,16 @@ How it works: every page is **drawn again as a picture**, the sensitive parts ar
 
 Face detection and hand-drawn areas are for the Image panel only. If a PDF contains a photo with faces, save that page as a picture and process it in the Image panel.
 
+The same box "Masked text — ready to copy" appears under the PDF result, with "Copy masked text" and "Restore masked text". A scanned page without a text layer only gives text if you turn on OCR.
+
 ## Feature 9 — Word and PowerPoint files
 
 1. Drop the .docx or .pptx file. The "Word file (.docx)" or "PowerPoint file (.pptx)" panel opens.
 1. Click "Convert & redact → PDF", then "Download processed PDF" (the file is named redacted-text.pdf or redacted-slides.pdf).
 
 What you get is deliberately a **plain-text PDF**, never a copy of your original file, because a Word or PowerPoint file can hide a lot (comments, old versions, notes, embedded objects). So the layout, tables, pictures, charts and animations are **not** carried over. Comments and text deleted under Track Changes are not included, and speaker notes of a PowerPoint file are not included either — only the text visible on the pages or slides. If you need the layout, save the file as a PDF yourself first and drop that PDF (Feature 8).
+
+Under the result, the box "Masked text — ready to copy" shows the text that went into the new PDF, with "Copy masked text" and "Restore masked text", so you can paste the clean text directly into an AI tool.
 
 ## Feature 10 — The metadata check
 
@@ -287,6 +296,8 @@ What you get is deliberately a **plain-text PDF**, never a copy of your original
 - **Before every download, the tool checks the result again.** If everything is clean you'll see a green line: "Verified: the exported file contains no identifying metadata." If anything is left — or the tool can't be sure — the download is **blocked** and a red line explains why. Nothing is downloaded in that case.
 - A photo's colour profile (ICC) may be listed in grey: it is technical information that doesn't identify you, and it doesn't block anything.
 - The check can't look inside the picture itself, so it can't detect things like invisible watermarks.
+
+**Nearest city.** When a photo carries a GPS position, the report adds a line "GPSNearestCity", for example "Köln, Germany (<1 km)". It is looked up in a table inside the software, so the position is never sent anywhere. It is the nearest listed city, not an address, and nothing is shown if no city is within 200 km.
 
 ## When something does not work
 

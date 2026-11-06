@@ -10,7 +10,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 > **Das Wichtigste:** Diese Software stellt keine Internetverbindung her und sendet keinerlei Daten irgendwohin — die gesamte Verarbeitung erfolgt direkt auf Ihrem Computer. Sie können das WLAN beim Benutzen komplett ausschalten, und es funktioniert weiterhin normal — so können Sie dies auch selbst überprüfen.
 
-![Demo (heller Modus): Darstellung wählen, Live-Vorschau und Kopieren des abgedeckten Textes, eigene Begriffe, ein HEIC-Foto mit GPS-Stadt, OCR, ein von Hand gezeichneter Bereich und eine PDF, die die vorherige Datei ersetzt](images/demo.gif)
+![Demo (heller Modus): Darstellung wählen, Live-Vorschau und Kopieren des abgedeckten Textes, eigene Begriffe und ein regulärer Ausdruck, ein HEIC-Foto mit GPS-Stadt, OCR, ein von Hand gezeichneter Bereich und eine PDF, die die vorherige Datei ersetzt](images/demo.gif)
 
 *(Alles in dieser Aufnahme sind erfundene Beispieldaten.)*
 
@@ -26,7 +26,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 - die versteckten **Metadaten** jeder Datei anzeigen und entfernen und jedes Ergebnis vor dem Download noch einmal prüfen.
 - **neu in v1.4:** wählen Sie mit der Auswahl "Darstellung" in der oberen Leiste **Hell, Dunkel oder System**;
 - **neu in v1.4:** beim Tippen oder Einfügen von Text sehen Sie eine **Live-Vorschau** der abgedeckten Stellen und kopieren das Ergebnis mit einem Klick auf "Abgedeckten Text kopieren";
-- **neu in v1.4:** jedes Ergebnis für Bild, PDF, Word und PowerPoint hat ein **bearbeitbares Feld mit dem abgedeckten Text** (mit Schaltfläche "Wiederherstellen") und eine eigene Schaltfläche "Abgedeckten Text kopieren";
+- **neu in v1.4:** jedes Ergebnis für Bild, PDF, Word und PowerPoint hat ein **bearbeitbares Feld mit dem abgedeckten Text** (mit Schaltfläche "Abgedeckten Text wiederherstellen") und eine eigene Schaltfläche "Abgedeckten Text kopieren";
 - **neu in v1.4:** **iPhone-HEIC-Fotos** lassen sich öffnen; der Metadatenbericht zeigt die **nächstgelegene Stadt** einer GPS-Position (offline nachgeschlagen).
 - **neu in v1.4:** eigene **Muster** (reguläre Ausdrücke) beschreiben, etwa für Mitarbeiternummern.
 
@@ -59,6 +59,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 1. Öffnen Sie den in Schritt 1 entpackten Ordner und doppelklicken Sie auf die Datei index.html. Sie öffnet sich in Ihrem Browser.
 1. Wählen Sie oben rechts Ihre Sprache (English, Français, Deutsch oder Tiếng Việt).
+1. Neben der Sprachauswahl können Sie unter "Darstellung" zwischen "System" (folgt Ihrem Computer), "Hell" und "Dunkel" wählen. Ihre Wahl wird nur in diesem Browser gespeichert.
 1. Die grüne Zeile unter dem Titel sagt, dass keine Netzwerkverbindung hergestellt wird. Das ist ein Versprechen, das Sie selbst überprüfen können (siehe „Gute Gewohnheiten“ am Ende).
 
 Die Seite liest sich von oben nach unten:
@@ -181,6 +182,8 @@ Das Lesen von Text in Bildern, die Gesichtserkennung und die Verarbeitung von PD
 
 > **Sehen Sie sich die markierten Stellen immer an, bevor Sie herunterladen.** Ein automatisches Werkzeug ist ein Helfer, nie eine Garantie.
 
+**Live-Vorschau und Kopieren mit einem Klick.** Beim Tippen oder Einfügen prüft die Software nach einer kurzen Pause von selbst. Unter dem markierten Text zeigt das Feld "Text nach dem Abdecken (diese Version wird kopiert)" die saubere Fassung, und die Schaltfläche "Abgedeckten Text kopieren" kopiert sie (danach steht dort "Kopiert ✓"). Wer lieber eine Datei möchte, nutzt weiter "Bereinigten Text herunterladen (.txt)". Ist eine bernsteinfarbene (verdächtige) Zeichenfolge noch nicht abgedeckt, erinnert ein Hinweis daran, sie vor dem Kopieren anzuklicken.
+
 ## Funktion 2 — Ihre eigene Liste interner Begriffe
 
 Die Software kann nicht wissen, dass „srv-db-prod-02“ oder der Name Ihrer Firma geheim ist. Sagen Sie es ihr einmal, und es wird immer verborgen — in Text, in Bildern, in PDF-, Word- und PowerPoint-Dateien — ohne Rückfrage.
@@ -225,6 +228,8 @@ Manche Geheimnisse haben keine erkennbare Form: ein zufällig aussehendes Passwo
 **Das ist echtes Löschen.** Das fertige Bild wird aus Ihrem unveränderten Original neu aufgebaut: Die sensiblen Pixel werden mit Schwarz überschrieben, nicht unter einer durchsichtigen Schicht versteckt — niemand kann das Schwarz entfernen, um zu sehen, was darunter war.
 
 **Wenn die Software etwas übersehen hat**, öffnen Sie unter dem Bild „Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)“. Dort steht der Text, den die Software gelesen hat, und der Grund für jedes schwarze Rechteck. Steht das erwartete Wort dort nicht, hat die Software es nicht gelesen — wählen Sie die richtige Sprache, lassen Sie „Gründliche Analyse“ an oder decken Sie die Stelle von Hand ab.
+
+**iPhone-Fotos (HEIC).** Sie können ein HEIC- oder HEIF-Foto direkt vom iPhone ablegen; es wird auf Ihrem Computer wie jedes andere Bild geöffnet. Benötigt den lokalen Server aus Schritt 3. **Text des Bildes.** Unter dem Bild enthält das Feld "Abgedeckter Text — zum Kopieren" den aus dem Bild gelesenen Text, bei dem die abgedeckten Stellen ersetzt sind. Sie können ihn bearbeiten; "Abgedeckten Text kopieren" kopiert ihn, und "Abgedeckten Text wiederherstellen" bringt die automatische Fassung zurück. Enthalten Ihre eigenen Änderungen noch etwas Sensibles, erscheint beim Kopieren eine Warnung. Dieser Text stammt aus der OCR und kann Fehler enthalten: Lesen Sie ihn vor der Verwendung durch.
 
 ## Funktion 5 — Die Liste der abgedeckten Bereiche
 
@@ -271,12 +276,16 @@ So funktioniert es: Jede Seite wird **als Bild neu gezeichnet**, die sensiblen S
 
 Gesichtserkennung und von Hand gezeichnete Bereiche gibt es nur im Bildfeld. Enthält ein PDF ein Foto mit Gesichtern, speichern Sie diese Seite als Bild und bearbeiten Sie sie im Bildfeld.
 
+Dasselbe Feld "Abgedeckter Text — zum Kopieren" erscheint unter dem PDF-Ergebnis, mit "Abgedeckten Text kopieren" und "Abgedeckten Text wiederherstellen". Eine gescannte Seite ohne Textebene liefert nur Text, wenn Sie die OCR einschalten.
+
 ## Funktion 9 — Word- und PowerPoint-Dateien
 
 1. Legen Sie die .docx- oder .pptx-Datei ab. Das Feld „Word-Datei (.docx)“ oder „PowerPoint-Datei (.pptx)“ öffnet sich.
 1. Klicken Sie auf „Umwandeln & schwärzen → PDF“ und dann auf „Bearbeitetes PDF herunterladen“ (die Datei heißt geschwaerzter-text.pdf oder geschwaerzte-folien.pdf).
 
 Was Sie erhalten, ist absichtlich ein **reines Text-PDF**, nie eine Kopie Ihrer Originaldatei, denn eine Word- oder PowerPoint-Datei kann viel verstecken (Kommentare, alte Versionen, Notizen, eingebettete Objekte). Layout, Tabellen, Bilder, Diagramme und Animationen werden daher **nicht** übernommen. Kommentare und unter „Änderungen nachverfolgen“ gelöschter Text sind nicht enthalten, und die Sprechernotizen einer PowerPoint-Datei ebenfalls nicht — nur der auf den Seiten oder Folien sichtbare Text. Brauchen Sie das Layout, speichern Sie die Datei zuerst selbst als PDF und legen Sie dieses PDF ab (Funktion 8).
+
+Unter dem Ergebnis zeigt das Feld "Abgedeckter Text — zum Kopieren" den Text, der in die neue PDF eingeflossen ist, mit "Abgedeckten Text kopieren" und "Abgedeckten Text wiederherstellen", damit Sie den sauberen Text direkt in ein KI-Werkzeug einfügen können.
 
 ## Funktion 10 — Die Metadaten-Prüfung
 
@@ -287,6 +296,8 @@ Was Sie erhalten, ist absichtlich ein **reines Text-PDF**, nie eine Kopie Ihrer 
 - **Vor jedem Download prüft das Tool das Ergebnis noch einmal.** Ist alles sauber, sehen Sie eine grüne Zeile: „Verifiziert: Die exportierte …-Datei enthält keine identifizierenden Metadaten.“ Bleibt etwas übrig — oder kann das Tool nicht sicher sein —, wird der Download **blockiert**, und eine rote Zeile erklärt warum. Dann wird nichts heruntergeladen.
 - Das Farbprofil (ICC) eines Fotos kann grau aufgelistet sein: Es ist eine technische Angabe, die Sie nicht identifiziert und nichts blockiert.
 - Die Prüfung kann nicht in das Bild selbst hineinsehen, deshalb erkennt sie Dinge wie unsichtbare Wasserzeichen nicht.
+
+**Nächstgelegene Stadt.** Enthält ein Foto eine GPS-Position, fügt der Bericht eine Zeile "GPSNearestCity" hinzu, zum Beispiel "Köln, Germany (<1 km)". Sie wird in einer Tabelle innerhalb der Software nachgeschlagen, die Position wird also nirgendwohin gesendet. Es ist die nächstgelegene gelistete Stadt, keine Adresse, und es erscheint nichts, wenn im Umkreis von 200 km keine Stadt liegt.
 
 ## Wenn etwas nicht funktioniert
 

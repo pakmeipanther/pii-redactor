@@ -10,7 +10,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 
 > **Điều quan trọng nhất:** phần mềm này không kết nối Internet, không gửi bất kỳ dữ liệu nào đi đâu cả — mọi việc xử lý diễn ra ngay trên máy tính của bạn. Có thể tắt hẳn wifi khi dùng, nó vẫn chạy bình thường — đó cũng là cách để tự kiểm chứng điều này.
 
-![Demo (chế độ sáng): chọn giao diện, xem trước trực tiếp và sao chép văn bản đã che, từ khóa riêng, ảnh HEIC với thành phố từ GPS, OCR, vùng vẽ tay, và PDF thay thế tệp trước](images/demo.gif)
+![Demo (chế độ sáng): chọn giao diện, xem trước trực tiếp và sao chép văn bản đã che, từ khóa riêng và một mẫu regex, ảnh HEIC với thành phố từ GPS, OCR, vùng vẽ tay, và PDF thay thế tệp trước](images/demo.gif)
 
 *(Mọi dữ liệu trong đoạn ghi hình này đều là dữ liệu mẫu bịa ra.)*
 
@@ -26,7 +26,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 - hiện và xóa **metadata** ẩn của mọi file, rồi kiểm tra lại từng kết quả trước khi cho bạn tải về.
 - **mới ở v1.4:** chọn giao diện **Sáng, Tối hoặc Theo hệ thống** bằng ô chọn "Giao diện" ở thanh trên cùng;
 - **mới ở v1.4:** khi gõ hoặc dán văn bản, bạn thấy ngay **bản xem trước trực tiếp** phần được che, và sao chép kết quả chỉ với một lần bấm "Sao chép văn bản đã che";
-- **mới ở v1.4:** kết quả của ảnh, PDF, Word và PowerPoint đều có **ô văn bản đã che có thể sửa** (kèm nút "Khôi phục") và nút "Sao chép văn bản đã che" riêng;
+- **mới ở v1.4:** kết quả của ảnh, PDF, Word và PowerPoint đều có **ô văn bản đã che có thể sửa** (kèm nút "Khôi phục bản đã che") và nút "Sao chép văn bản đã che" riêng;
 - **mới ở v1.4:** mở được **ảnh HEIC của iPhone**; báo cáo metadata hiển thị **thành phố gần nhất** với vị trí GPS (tra cứu hoàn toàn ngoại tuyến).
 - **mới ở v1.4:** tự mô tả **mẫu** (biểu thức chính quy) cho những thứ như mã nhân viên.
 
@@ -59,6 +59,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 
 1. Mở thư mục bạn đã giải nén ở Bước 1, rồi bấm đúp vào file có tên index.html. File sẽ mở trong trình duyệt.
 1. Ở góc trên bên phải, chọn ngôn ngữ của bạn (English, Français, Deutsch hoặc Tiếng Việt).
+1. Cạnh ô chọn ngôn ngữ, ô chọn "Giao diện" cho bạn chọn "Theo hệ thống" (theo máy tính của bạn), "Sáng" hoặc "Tối". Lựa chọn chỉ được nhớ trong trình duyệt này.
 1. Dòng màu xanh dưới tiêu đề cho biết phần mềm không tạo kết nối mạng nào. Đó là lời hứa bạn có thể tự kiểm chứng (xem mục "Thói quen tốt" ở cuối).
 
 Trang được đọc từ trên xuống dưới:
@@ -181,6 +182,8 @@ Việc đọc chữ trong ảnh, tìm khuôn mặt và xử lý file PDF cần t
 
 > **Luôn xem lại các phần được tô sáng trước khi tải về.** Công cụ tự động chỉ là người giúp việc, không phải lời bảo đảm.
 
+**Xem trước trực tiếp và sao chép một lần bấm.** Khi bạn gõ hoặc dán, phần mềm tự quét sau một khoảng dừng ngắn. Dưới phần văn bản được tô sáng, ô "Văn bản sau khi che (đây là bản sẽ được sao chép)" hiện bản đã làm sạch, và nút "Sao chép văn bản đã che" sao chép nó (nút đổi thành "Đã sao chép ✓"). Nếu bạn thích file, vẫn có nút "Tải văn bản đã làm sạch (.txt)". Nếu còn một chuỗi màu hổ phách (nghi ngờ) chưa được che, một dòng nhắc bạn bấm vào nó trước khi sao chép.
+
 ## Tính năng 2 — Danh sách từ khóa nội bộ của riêng bạn
 
 Phần mềm không thể tự biết "srv-db-prod-02" hay tên công ty của bạn là bí mật. Hãy khai báo một lần, và chúng sẽ luôn bị ẩn — trong văn bản, trong ảnh, trong file PDF, Word và PowerPoint — mà không hỏi lại.
@@ -225,6 +228,8 @@ Có những bí mật không có hình dạng dễ nhận ra: một mật khẩu
 **Đây là xóa thật.** Ảnh hoàn chỉnh được dựng lại từ ảnh gốc còn nguyên: các pixel nhạy cảm bị ghi đè bằng màu đen, chứ không phải nằm dưới một lớp trong suốt, nên không ai gỡ lớp đen ra để xem phía dưới được.
 
 **Nếu phần mềm bỏ sót thứ gì**, hãy mở "Chữ mà OCR đã đọc được (và lý do mỗi vùng bị đè đen)" dưới ảnh. Ở đó có chữ phần mềm đã đọc và lý do của từng ô đen. Nếu từ bạn mong đợi không có ở đó, nghĩa là phần mềm không đọc được nó — hãy chọn đúng ngôn ngữ, giữ "Quét kỹ", hoặc che chỗ đó bằng tay.
+
+**Ảnh iPhone (HEIC).** Bạn có thể thả thẳng ảnh HEIC hoặc HEIF từ iPhone; ảnh được mở ngay trên máy tính như mọi ảnh khác. Cần máy chủ cục bộ ở Bước 3. **Chữ trong ảnh.** Dưới bức ảnh, ô "Văn bản đã che — để sao chép" chứa chữ đọc được từ ảnh, với phần bị che đã được thay thế. Bạn có thể sửa nó; nút "Sao chép văn bản đã che" sao chép, còn "Khôi phục bản đã che" đưa bản tự động trở lại. Nếu phần bạn tự sửa vẫn chứa thứ trông nhạy cảm, một cảnh báo hiện ra khi bạn sao chép. Chữ này do OCR đọc nên có thể sai: hãy đọc lại trước khi dùng.
 
 ## Tính năng 5 — Danh sách các vùng sẽ bị che
 
@@ -271,12 +276,16 @@ Cách hoạt động: mỗi trang được **vẽ lại thành một bức ảnh
 
 Nhận diện khuôn mặt và vẽ tay chỉ có ở bảng Ảnh. Nếu một PDF chứa ảnh có khuôn mặt, hãy lưu trang đó thành ảnh và xử lý trong bảng Ảnh.
 
+Ô "Văn bản đã che — để sao chép" cũng xuất hiện dưới kết quả PDF, cùng nút "Sao chép văn bản đã che" và "Khôi phục bản đã che". Trang quét không có lớp chữ chỉ cho ra chữ khi bạn bật OCR.
+
 ## Tính năng 9 — File Word và PowerPoint
 
 1. Thả file .docx hoặc .pptx vào. Bảng "File Word (.docx)" hoặc "File PowerPoint (.pptx)" mở ra.
 1. Bấm "Chuyển & che thông tin nhạy cảm → PDF", rồi "Tải PDF đã xử lý" (file có tên van-ban-da-che-thong-tin.pdf hoặc slide-da-che-thong-tin.pdf).
 
 Thứ bạn nhận được cố ý là một **PDF chỉ có chữ thuần**, không bao giờ là bản sao của file gốc, vì file Word hay PowerPoint có thể giấu rất nhiều thứ (bình luận, phiên bản cũ, ghi chú, đối tượng nhúng). Do đó bố cục, bảng, hình ảnh, biểu đồ và hiệu ứng chuyển động **không** được mang theo. Bình luận và chữ đã xóa trong Track Changes không được đưa vào, ghi chú của người thuyết trình trong file PowerPoint cũng không — chỉ có chữ đang nhìn thấy trên các trang hoặc slide. Nếu cần giữ bố cục, hãy tự lưu file thành PDF trước rồi thả PDF đó vào (Tính năng 8).
+
+Dưới kết quả, ô "Văn bản đã che — để sao chép" hiện phần chữ đã đưa vào PDF mới, cùng nút "Sao chép văn bản đã che" và "Khôi phục bản đã che", để bạn dán thẳng bản sạch vào công cụ AI.
 
 ## Tính năng 10 — Kiểm tra metadata
 
@@ -287,6 +296,8 @@ Thứ bạn nhận được cố ý là một **PDF chỉ có chữ thuần**, k
 - **Trước mỗi lần tải về, công cụ kiểm tra lại kết quả.** Nếu mọi thứ sạch, bạn thấy một dòng xanh: "Đã xác minh: file … xuất ra không còn metadata nhận dạng." Nếu còn sót gì — hoặc công cụ không chắc chắn — việc tải về bị **chặn** và một dòng đỏ giải thích lý do. Khi đó không có gì được tải xuống.
 - Hồ sơ màu của ảnh (ICC) có thể được liệt kê bằng chữ xám: đó là thông tin kỹ thuật không nhận dạng bạn, và nó không chặn gì cả.
 - Việc kiểm tra không nhìn được vào bên trong bức ảnh, nên không phát hiện được những thứ như hình mờ vô hình.
+
+**Thành phố gần nhất.** Khi ảnh có vị trí GPS, báo cáo thêm một dòng "GPSNearestCity", ví dụ "Köln, Germany (<1 km)". Dòng này được tra trong một bảng nằm sẵn trong phần mềm, nên vị trí không bao giờ bị gửi đi đâu. Đó là thành phố gần nhất trong bảng, không phải địa chỉ, và sẽ không hiện gì nếu không có thành phố nào trong vòng 200 km.
 
 ## Khi có gì đó không chạy
 

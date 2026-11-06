@@ -68,7 +68,7 @@ one never removes an older one.
 
 ### Documentation
 
-- Demo GIF re-recorded in light mode, showing the new features.
+- Demo GIF re-recorded in light mode, showing the new features including a user-defined regular expression and the refusal of a risky one.
 - README and the four user guides (EN, VI, DE, FR) describe the themes, the
   live preview and copy boxes, HEIC photos, the GPS city name and the
   "new file replaces old results" behaviour.
