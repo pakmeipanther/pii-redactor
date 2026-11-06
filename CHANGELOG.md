@@ -8,7 +8,7 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
-## [Unreleased]
+## [1.4.0] — 2026-11-06
 
 ### Fixed
 
@@ -64,6 +64,13 @@ one never removes an older one.
   23,000 cities (`vendor/geo/cities15000.tsv`) is read from the tool's own
   folder, and no coordinates are sent anywhere. The result is the nearest
   listed city, not an address.
+
+### Documentation
+
+- Demo GIF re-recorded in light mode, showing the new features.
+- README and the four user guides (EN, VI, DE, FR) describe the themes, the
+  live preview and copy boxes, HEIC photos, the GPS city name and the
+  "new file replaces old results" behaviour.
 
 ### Testing
 
@@ -380,6 +387,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.4.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.4.0
 [1.3.2]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2
 [1.3.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1
 [1.3.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.0

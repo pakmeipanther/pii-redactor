@@ -10,7 +10,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 
 > **Le plus important :** ce logiciel n'établit aucune connexion Internet et n'envoie aucune donnée nulle part — tout le traitement se fait directement sur votre ordinateur. Vous pouvez complètement désactiver le Wi-Fi en l'utilisant, il continuera de fonctionner normalement — c'est aussi un moyen de le vérifier par vous-même.
 
-![Démo de PII Redactor : une fausse fiche de personnel est analysée, le texte est noirci, le visage est masqué par une mosaïque et une zone supplémentaire est dessinée à la main](images/demo.gif)
+![Démo (mode clair) : choix du thème, aperçu en direct et copie du texte masqué, termes personnalisés, une photo HEIC avec la ville du GPS, OCR, une zone dessinée à la main, et un PDF qui remplace le fichier précédent](images/demo.gif)
 
 *(Tout ce qui apparaît dans cet enregistrement est inventé.)*
 
@@ -24,6 +24,10 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 - repérer et masquer les **visages** dans les images ;
 - nettoyer les fichiers **PDF**, et transformer les fichiers **Word** et **PowerPoint** en PDF caviardé ;
 - afficher et supprimer les **métadonnées** cachées de chaque fichier, puis revérifier chaque résultat avant de vous laisser le télécharger.
+- **nouveau en v1.4 :** choisissez l'apparence **Clair, Sombre ou Système** avec le sélecteur "Thème" de la barre du haut ;
+- **nouveau en v1.4 :** pendant que vous tapez ou collez du texte, un **aperçu en direct** montre ce qui est masqué, et un clic sur "Copier le texte masqué" copie le résultat ;
+- **nouveau en v1.4 :** chaque résultat d'image, PDF, Word et PowerPoint a une **zone de texte masqué modifiable** (avec un bouton "Restaurer") et son propre bouton "Copier le texte masqué" ;
+- **nouveau en v1.4 :** ouvrez des **photos HEIC d'iPhone** ; le rapport de métadonnées affiche la **ville la plus proche** d'une position GPS (recherche entièrement hors ligne).
 
 ## Étape 1 — Téléchargez le logiciel
 
@@ -301,3 +305,6 @@ Toujours bloqué ? Faites une capture d'écran (sans contenu sensible) et demand
 - Tout ce que vous chargez reste sur votre ordinateur. Seuls vos termes personnalisés sont mémorisés, dans votre propre navigateur.
 - Utilisez de fausses données pour essayer le logiciel.
 - Pour toute personne dont l'identité doit rester secrète : utilisez « Noir uni » pour les visages, vérifiez les bords de l'image, l'arrière-plan et les reflets à la recherche d'autres indices, et gardez l'original loin des outils d'IA.
+- Un nouveau fichier remplace tout ce qui venait du précédent, donc anciens et nouveaux résultats ne se mélangent jamais. "Tout effacer" oublie complètement le fichier (vos termes personnalisés sont conservés).
+- Le texte d'une image est lu par OCR et peut contenir des erreurs : relisez la zone de texte masqué avant de copier. Le texte que vous y modifiez n'est pas re-analysé, sauf l'avertissement affiché à la copie.
+- Les photos HEIC demandent WebAssembly dans le navigateur ; si l'une ne s'ouvre pas, convertissez-la d'abord en JPEG. La ville la plus proche n'est qu'une indication approximative, pas une adresse.

@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/images/logo.svg" alt="PII Redactor logo: a shield around a document with one line blacked out" width="120"></p>
 
-# PII Redactor <sup>v1.3.2</sup>
+# PII Redactor <sup>v1.4.0</sup>
 
 **Share documents. Not identities.**
 
@@ -18,22 +18,22 @@ removes what it finds and you confirm every result before download. It is
 a helper, not a legal guarantee of anonymisation or compliance — see
 [Known limitations](#known-limitations).
 
-> Status (v1.3.2): one unified input (paste text, or drop/pick an
-> image, PDF, Word, or PowerPoint file — the type is auto-detected,
-> no need to pick the right box yourself), text redaction (regex +
-> custom term list + entropy-based secret detection), image/screenshot
-> OCR redaction, PDF redaction, Word (.docx) → redacted-PDF
-> conversion, and PowerPoint (.pptx) → redacted-PDF conversion are all
+> Status (v1.4.0): one unified input (paste text, or drop/pick an
+> image, HEIC photo, PDF, Word, or PowerPoint file — the type is
+> auto-detected), text redaction (regex + custom term list +
+> entropy-based secret detection), image/screenshot OCR redaction, PDF
+> redaction, and Word/PowerPoint → redacted-PDF conversion are all
 > working, with a synthetic-data test suite and a demo GIF above.
-> Since v1.2.1 it also reports the metadata a loaded file carries and
-> re-scans every export before download (see
-> [Architecture](#architecture)). Since v1.3.0 images get one editable
-> list of regions (OCR hits, detected faces and hand-drawn areas), face
-> detection with honest cover styles, and a "Delete all terms" button.
-> Local NER was investigated and deferred for now — see
-> [Known limitations](#known-limitations) for why. Looking for an
-> earlier release instead? See [Versioning](#versioning) below.
-> See [Roadmap](#roadmap) below.
+> Since v1.2.1 it reports the file's metadata and re-scans every export
+> before download. Since v1.3.0 images get one editable list of regions
+> (OCR hits, faces, hand-drawn areas). **New in v1.4.0:** a live preview
+> and a one-click "Copy masked text" box for pasted text; an editable,
+> copyable masked-text box for image, PDF, Word and PowerPoint results;
+> iPhone HEIC/HEIF photos; the nearest city (offline) for GPS metadata;
+> a new file always replaces the previous results; and a Light / Dark /
+> System theme selector. Local NER was investigated and deferred — see
+> [Known limitations](#known-limitations). Earlier releases:
+> [Versioning](#versioning). Plans: [Roadmap](#roadmap).
 
 > **Note on Word/PowerPoint:** this tool deliberately converts .docx
 > and .pptx input into a **plain-text-only PDF** — never a redacted
@@ -44,7 +44,7 @@ a helper, not a legal guarantee of anonymisation or compliance — see
 > layout), save your Word/PowerPoint file as a PDF yourself first,
 > then drop that PDF in.
 
-![Demo: dropping a fake staff badge into the image panel, OCR blacking out the email, phone and IP, detecting the face and covering it with a mosaic, confirming suspected secrets, drawing an extra area by hand, and reviewing the single list of regions](docs/images/demo.gif)
+![Demo (light mode): choosing the theme, pasting text with a live masked preview and one-click copy, adding custom terms, dropping an iPhone HEIC photo with GPS metadata shown as a city name, OCR blacking out sensitive text, hand-drawing an extra covered area over a face, copying the masked text, and dropping a PDF that replaces everything from the previous file](docs/images/demo.gif)
 
 *(All data shown is synthetic/fake, invented for this recording —
 never a real person, company, or secret.)*
@@ -360,6 +360,14 @@ a glance.
   under `/vendor/tesseract` and `/vendor/tessdata` (English, Vietnamese,
   French, German trained data) so OCR never makes a network request.
   See [NOTICE.md](vendor/NOTICE.md) for license details.
+- [libheif-js](https://github.com/catdad-experiments/libheif-js) (LGPL-3.0) —
+  decodes iPhone HEIC/HEIF photos in the browser. **Vendored locally** under
+  `/vendor/heic`; loaded only when a HEIC file is dropped. See
+  [NOTICE.md](vendor/NOTICE.md).
+- [GeoNames](https://www.geonames.org/) cities (CC BY 4.0) — a table of about
+  23,000 cities in `/vendor/geo/cities15000.tsv`, used to name the city nearest
+  to a GPS position found in metadata. Read from the tool's own folder; no
+  coordinates are ever sent anywhere.
 - [transformers.js](https://huggingface.co/docs/transformers.js) — would
   run a local NER model fully offline; evaluated but not integrated yet,
   see [Known limitations](#known-limitations)
@@ -391,7 +399,13 @@ a glance.
    output is a new PDF built from the redacted text (see
    [Known limitations](#known-limitations)) rather than a previewable
    page.
-5. Download the cleaned file — images offer their original format
+5. For pasted text, a live preview shows the covered parts as you type, and a
+   second box holds the masked text with a "Copy masked text" button. For
+   image, PDF, Word and PowerPoint results, an editable "Masked text — ready
+   to copy" box (with Restore and a warning if you copy something that still
+   looks sensitive) sits under the result. Choose Light, Dark or System with the
+   Theme selector in the top bar.
+6. Download the cleaned file — images offer their original format
    (PNG/JPEG/WEBP) by default, with an optional "download as PDF"
    button alongside it.
 
@@ -439,7 +453,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.3.2 (unreleased): 233 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.4.0: 233 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -530,10 +544,15 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   identities." and a new description line in all four languages. Tag:
   [`v1.3.1`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1).
 
-- **v1.3.2** (current) — presentation only, the program itself is unchanged:
+- **v1.3.2** — presentation only, the program itself is unchanged:
   a social preview image (`docs/images/social-preview.png`, 1280×640, with an
   editable SVG source) and a demo GIF re-recorded with the new header and logo.
   Tag: [`v1.3.2`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2).
+
+- **v1.4.0** (current) — live preview and copy box for text, editable masked-text
+  boxes for files, HEIC photos, nearest city for GPS metadata, new file replaces
+  old results, Light/Dark/System themes, light-mode demo GIF, updated guides.
+  Tag: [`v1.4.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.4.0).
 
 To use a specific version instead of the latest `main`, download the
 `index.html` (plus the matching `vendor/` folder) from that tag's
@@ -541,7 +560,21 @@ To use a specific version instead of the latest `main`, download the
 or `git checkout v1.0.0` locally — a tagged version never changes
 underneath you, even as `main` keeps moving forward.
 
+- [x] **v1.4.0** Live preview + "Copy masked text" for pasted text; editable,
+      copyable masked-text boxes for image/PDF/Word/PowerPoint
+- [x] **v1.4.0** HEIC/HEIF photo support (offline decoder)
+- [x] **v1.4.0** Nearest city for GPS metadata (offline GeoNames table)
+- [x] **v1.4.0** A new file clears all results of the previous one
+- [x] **v1.4.0** Light / Dark / System theme selector
+- [x] **v1.4.0** Demo GIF in light mode; guides updated in four languages
+
 ## Known limitations
+
+- **HEIC needs WebAssembly.** Browsers without it cannot decode HEIC; convert
+  the photo to JPEG first. The nearest-city lookup is approximate (nearest
+  listed city, nothing beyond 200 km). Text read by OCR can contain mistakes —
+  proofread it. Text you edit in a masked-text box is not re-scanned, apart from
+  the warning shown when you copy it.
 
 - Regex-based detection can both miss things (false negatives) and
   over-match (false positives) — always review highlighted matches before

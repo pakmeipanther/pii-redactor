@@ -10,7 +10,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 
 > **The most important part:** this software makes no internet connection and sends no data anywhere — everything runs right on your own computer. You can turn off your Wi-Fi entirely while using it and it will still work normally — that's also how you can verify this for yourself.
 
-![PII Redactor demo: a fake staff badge is scanned, the text is blacked out, the face is covered with a mosaic, and one extra area is drawn by hand](images/demo.gif)
+![Demo (light mode): theme choice, live preview and copy of masked text, custom terms, a HEIC photo with GPS city, OCR, a hand-drawn area, and a PDF that replaces the previous file](images/demo.gif)
 
 *(Everything in this recording is made-up sample data.)*
 
@@ -24,6 +24,10 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 - find and cover **faces** in images;
 - clean **PDF** files, and turn **Word** and **PowerPoint** files into a redacted PDF;
 - show and remove the hidden **metadata** of every file, and double-check each result before you can download it.
+- **new in v1.4:** choose a **Light, Dark or System** look with the "Theme" selector in the top bar;
+- **new in v1.4:** while you type or paste text, see a **live preview** of what is covered, and copy the result with one click on "Copy masked text";
+- **new in v1.4:** every image, PDF, Word and PowerPoint result has an **editable masked-text box** (with a "Restore" button) and its own "Copy masked text" button;
+- **new in v1.4:** open **iPhone HEIC photos**; the metadata report shows the **nearest city** of a GPS position (looked up offline).
 
 ## Step 1 — Download the software
 
@@ -301,3 +305,6 @@ Still stuck? Take a screenshot (without sensitive content) and ask someone tech-
 - Everything you load stays on your computer. Only your custom terms are remembered, in your own browser.
 - Use fake data when you want to try the software out.
 - For anyone whose identity must stay secret: use "Solid black" for faces, check the picture's edges, backgrounds and reflections for other clues, and keep the original away from AI tools.
+- A new file replaces everything from the previous one, so old and new results never mix. "Clear all" forgets the file completely (your custom terms stay).
+- Text from a picture is read by OCR and can contain mistakes: proofread the masked-text box before you copy it. Text you edit there is not scanned again, except for the warning shown when you copy.
+- HEIC photos need WebAssembly in your browser; if one does not open, convert it to JPEG first. The nearest city is only a rough hint, never an address.

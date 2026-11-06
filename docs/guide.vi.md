@@ -10,7 +10,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 
 > **Điều quan trọng nhất:** phần mềm này không kết nối Internet, không gửi bất kỳ dữ liệu nào đi đâu cả — mọi việc xử lý diễn ra ngay trên máy tính của bạn. Có thể tắt hẳn wifi khi dùng, nó vẫn chạy bình thường — đó cũng là cách để tự kiểm chứng điều này.
 
-![Demo PII Redactor: quét một thẻ nhân viên giả, chữ nhạy cảm bị làm đen, khuôn mặt được che bằng mosaic và một vùng được vẽ tay thêm](images/demo.gif)
+![Demo (chế độ sáng): chọn giao diện, xem trước trực tiếp và sao chép văn bản đã che, từ khóa riêng, ảnh HEIC với thành phố từ GPS, OCR, vùng vẽ tay, và PDF thay thế tệp trước](images/demo.gif)
 
 *(Mọi dữ liệu trong đoạn ghi hình này đều là dữ liệu mẫu bịa ra.)*
 
@@ -24,6 +24,10 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 - tìm và che **khuôn mặt** trong ảnh;
 - làm sạch file **PDF**, và đổi file **Word**, **PowerPoint** thành PDF đã che thông tin;
 - hiện và xóa **metadata** ẩn của mọi file, rồi kiểm tra lại từng kết quả trước khi cho bạn tải về.
+- **mới ở v1.4:** chọn giao diện **Sáng, Tối hoặc Theo hệ thống** bằng ô chọn "Giao diện" ở thanh trên cùng;
+- **mới ở v1.4:** khi gõ hoặc dán văn bản, bạn thấy ngay **bản xem trước trực tiếp** phần được che, và sao chép kết quả chỉ với một lần bấm "Sao chép văn bản đã che";
+- **mới ở v1.4:** kết quả của ảnh, PDF, Word và PowerPoint đều có **ô văn bản đã che có thể sửa** (kèm nút "Khôi phục") và nút "Sao chép văn bản đã che" riêng;
+- **mới ở v1.4:** mở được **ảnh HEIC của iPhone**; báo cáo metadata hiển thị **thành phố gần nhất** với vị trí GPS (tra cứu hoàn toàn ngoại tuyến).
 
 ## Bước 1 — Tải phần mềm về máy
 
@@ -301,3 +305,6 @@ Vẫn bí? Hãy chụp màn hình (không chứa nội dung nhạy cảm) rồi 
 - Mọi thứ bạn nạp vào đều ở lại trên máy của bạn. Chỉ các từ khóa tùy chỉnh được ghi nhớ, trong chính trình duyệt của bạn.
 - Hãy dùng dữ liệu giả khi muốn thử phần mềm.
 - Với bất kỳ ai cần giữ kín danh tính: dùng "Tô đen đặc" cho khuôn mặt, kiểm tra cả rìa ảnh, hậu cảnh và hình phản chiếu xem có manh mối nào khác không, và đừng đưa bản gốc cho các công cụ AI.
+- Mở một tệp mới sẽ thay thế toàn bộ kết quả của tệp trước, nên kết quả cũ và mới không bao giờ lẫn vào nhau. "Xóa tất cả" quên hẳn tệp (danh sách từ khóa riêng vẫn được giữ).
+- Chữ lấy từ ảnh do OCR đọc nên có thể sai: hãy đọc soát ô văn bản đã che trước khi sao chép. Chữ bạn tự sửa ở đó không được quét lại, ngoài cảnh báo hiện khi bạn sao chép.
+- Ảnh HEIC cần WebAssembly trong trình duyệt; nếu không mở được, hãy đổi sang JPEG trước. Thành phố gần nhất chỉ là gợi ý sơ lược, không phải địa chỉ.

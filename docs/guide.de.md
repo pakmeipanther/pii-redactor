@@ -10,7 +10,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 > **Das Wichtigste:** Diese Software stellt keine Internetverbindung her und sendet keinerlei Daten irgendwohin — die gesamte Verarbeitung erfolgt direkt auf Ihrem Computer. Sie können das WLAN beim Benutzen komplett ausschalten, und es funktioniert weiterhin normal — so können Sie dies auch selbst überprüfen.
 
-![PII Redactor Demo: Ein erfundener Mitarbeiterausweis wird gescannt, der Text geschwärzt, das Gesicht mit einem Mosaik abgedeckt und ein zusätzlicher Bereich von Hand gezeichnet](images/demo.gif)
+![Demo (heller Modus): Darstellung wählen, Live-Vorschau und Kopieren des abgedeckten Textes, eigene Begriffe, ein HEIC-Foto mit GPS-Stadt, OCR, ein von Hand gezeichneter Bereich und eine PDF, die die vorherige Datei ersetzt](images/demo.gif)
 
 *(Alles in dieser Aufnahme sind erfundene Beispieldaten.)*
 
@@ -24,6 +24,10 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 - **Gesichter** in Bildern finden und abdecken;
 - **PDF**-Dateien bereinigen und **Word**- und **PowerPoint**-Dateien in ein geschwärztes PDF umwandeln;
 - die versteckten **Metadaten** jeder Datei anzeigen und entfernen und jedes Ergebnis vor dem Download noch einmal prüfen.
+- **neu in v1.4:** wählen Sie mit der Auswahl "Darstellung" in der oberen Leiste **Hell, Dunkel oder System**;
+- **neu in v1.4:** beim Tippen oder Einfügen von Text sehen Sie eine **Live-Vorschau** der abgedeckten Stellen und kopieren das Ergebnis mit einem Klick auf "Abgedeckten Text kopieren";
+- **neu in v1.4:** jedes Ergebnis für Bild, PDF, Word und PowerPoint hat ein **bearbeitbares Feld mit dem abgedeckten Text** (mit Schaltfläche "Wiederherstellen") und eine eigene Schaltfläche "Abgedeckten Text kopieren";
+- **neu in v1.4:** **iPhone-HEIC-Fotos** lassen sich öffnen; der Metadatenbericht zeigt die **nächstgelegene Stadt** einer GPS-Position (offline nachgeschlagen).
 
 ## Schritt 1 — Software herunterladen
 
@@ -301,3 +305,6 @@ Kommen Sie nicht weiter? Machen Sie einen Screenshot (ohne sensible Inhalte) und
 - Alles, was Sie laden, bleibt auf Ihrem Computer. Nur Ihre eigenen Begriffe werden gemerkt, in Ihrem eigenen Browser.
 - Nutzen Sie erfundene Daten, wenn Sie die Software ausprobieren.
 - Für alle, deren Identität geheim bleiben muss: „Vollständig schwarz“ für Gesichter verwenden, Bildränder, Hintergründe und Spiegelungen auf andere Hinweise prüfen und das Original von KI-Tools fernhalten.
+- Eine neue Datei ersetzt alles von der vorherigen, sodass alte und neue Ergebnisse sich nie vermischen. "Alles löschen" vergisst die Datei vollständig (Ihre eigenen Begriffe bleiben erhalten).
+- Text aus einem Bild wird per OCR gelesen und kann Fehler enthalten: Prüfen Sie das Feld mit dem abgedeckten Text, bevor Sie kopieren. Text, den Sie dort ändern, wird nicht erneut geprüft, außer durch die Warnung beim Kopieren.
+- HEIC-Fotos brauchen WebAssembly im Browser; lässt sich eines nicht öffnen, wandeln Sie es zuerst in JPEG um. Die nächste Stadt ist nur ein grober Hinweis, keine Adresse.
