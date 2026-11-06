@@ -99,8 +99,8 @@ const redactWordsOnCanvasCode = extractBetween(
   'redactWordsOnCanvas'
 );
 
-const combined = `${rulesCode}\n${userRegexCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, REGEX_TERM_PREFIX, checkUserRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
-const { RULES, REGEX_TERM_PREFIX, checkUserRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
+const combined = `${rulesCode}\n${userRegexCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
+const { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -3002,6 +3002,43 @@ check('regex terms: all four languages define the same new interface texts', () 
   if (blocks.length !== 4) throw new Error('regexLabel in ' + blocks.length + ' languages');
   for (const k of need) if ((html.match(new RegExp(k + ':', 'g')) || []).length !== 4) throw new Error(k + ' is not in all four languages');
   if ((html.match(/regexErrors: \{ empty:/g) || []).length !== 4) throw new Error('regexErrors missing');
+});
+
+await checkAsync('regex stress test: a worker that never answers is destroyed after the deadline and the pattern is refused', async () => {
+  let terminated = 0;
+  const hung = { postMessage() {}, terminate() { terminated++; } };
+  const r = await stressTestRegex('x', false, { timeoutMs: 40, createWorker: () => hung });
+  if (r.ok || r.reason !== 'timeout' || terminated !== 1) throw new Error(JSON.stringify(r) + ' terminated=' + terminated);
+});
+
+await checkAsync('regex stress test: a fast answer is accepted, a missing worker falls back to the heuristic, and the worker is always cleaned up', async () => {
+  let terminated = 0;
+  const fast = { terminate() { terminated++; }, postMessage() { setTimeout(() => this.onmessage({ data: { ok: true } }), 0); } };
+  const a = await stressTestRegex('x', false, { timeoutMs: 1000, createWorker: () => fast });
+  const b = await stressTestRegex('x', false, { timeoutMs: 1000, createWorker: () => { throw new Error('no worker'); } });
+  const bad = { terminate() { terminated++; }, postMessage() { setTimeout(() => this.onmessage({ data: { ok: false, reason: 'invalid' } }), 0); } };
+  const c = await stressTestRegex('x', false, { timeoutMs: 1000, createWorker: () => bad });
+  if (!a.ok || !b.ok || !b.skipped || c.ok || c.reason !== 'invalid' || terminated !== 2) throw new Error(JSON.stringify([a, b, c, terminated]));
+});
+
+await checkAsync('regex stress test: the real worker file stops a catastrophic pattern the heuristic misses, and passes an ordinary one', async () => {
+  const { Worker } = await import('node:worker_threads');
+  const code = readFileSync(path.join(__dirname, '..', 'vendor', 'regex-worker.js'), 'utf8');
+  const make = () => {
+    const w = new Worker(`const { parentPort } = require('worker_threads'); globalThis.self = { postMessage: m => parentPort.postMessage(m) }; ${code}\nparentPort.on('message', d => self.onmessage({ data: d }));`, { eval: true });
+    return { postMessage: m => w.postMessage(m), terminate: () => w.terminate(), set onmessage(f) { w.on('message', m => f({ data: m })); }, set onerror(f) { w.on('error', f); } };
+  };
+  if (!checkUserRegex('(a|aa)+$').ok) throw new Error('premise: the heuristic is expected to miss this pattern');
+  const t0 = Date.now();
+  const slow = await stressTestRegex('(a|aa)+$', false, { timeoutMs: 800, createWorker: make });
+  if (slow.ok || slow.reason !== 'timeout') throw new Error('catastrophic pattern not stopped: ' + JSON.stringify(slow));
+  if (Date.now() - t0 > 3000) throw new Error('took too long to give up');
+  const fine = await stressTestRegex('EMP-\\d{5}', false, { timeoutMs: 2000, createWorker: make });
+  if (!fine.ok) throw new Error('ordinary pattern refused: ' + JSON.stringify(fine));
+});
+
+check('regex stress test: the new texts exist in all four languages', () => {
+  for (const k of ['regexTesting', 'timeout: \'']) if ((html.match(new RegExp(k, 'g')) || []).length < 4) throw new Error(k + ' missing');
 });
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {

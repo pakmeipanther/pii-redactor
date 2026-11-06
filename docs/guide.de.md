@@ -200,7 +200,7 @@ Bei einer langen Liste ist das Entfernen einzelner Begriffe mühsam. „Alle Beg
 1. Oder wählen Sie „Ohne Export löschen“, wenn Sie wirklich keine Sicherung brauchen.
 1. Nur „Jetzt löschen“ löscht. „Abbrechen“ (oder die Esc-Taste) schließt die Warnung und lässt alles unverändert.
 
-**Reguläre Ausdrücke (fortgeschritten).** Statt eines festen Wortes können Sie ein *Muster* beschreiben. Setzen Sie das Häkchen bei "Regulärer Ausdruck (Regex, fortgeschritten)", tippen Sie das Muster ein und drücken Sie "Hinzufügen". Zum Beispiel deckt `MA-\d{5}` MA-12345 und jede andere Mitarbeiternummer dieser Form ab. Das Muster erscheint zwischen Schrägstrichen mit gestricheltem Rand. Ist es leer, ungültig, passt auf die leere Zeichenkette oder könnte die Seite einfrieren, lehnt die Software es ab und nennt den Grund.
+**Reguläre Ausdrücke (fortgeschritten).** Statt eines festen Wortes können Sie ein *Muster* beschreiben. Setzen Sie das Häkchen bei "Regulärer Ausdruck (Regex, fortgeschritten)", tippen Sie das Muster ein und drücken Sie "Hinzufügen". Zum Beispiel deckt `MA-\d{5}` MA-12345 und jede andere Mitarbeiternummer dieser Form ab. Das Muster erscheint zwischen Schrägstrichen mit gestricheltem Rand. Ist es leer, ungültig, passt auf die leere Zeichenkette oder könnte die Seite einfrieren, lehnt die Software es ab und nennt den Grund. Ein neues Muster wird außerdem einmal in einem sicheren Testbereich höchstens 3 Sekunden lang ausgeführt; dauert es länger, lehnt die Software es ab.
 
 ## Funktion 3 — Vermutete Passwörter und Geheimnisse
 

@@ -200,7 +200,7 @@ Quand la liste est longue, retirer les termes un par un est pénible. « Supprim
 1. Ou choisissez « Supprimer sans exporter » si vous n'avez vraiment pas besoin de sauvegarde.
 1. Seul « Supprimer maintenant » supprime. « Annuler » (ou la touche Échap) ferme l'avertissement et garde tout.
 
-**Expressions régulières (avancé).** Au lieu d'un mot fixe, vous pouvez décrire un *motif*. Cochez "Expression régulière (regex, avancé)", saisissez le motif puis appuyez sur "Ajouter". Par exemple `EMP-\d{5}` masque EMP-12345 et tout autre numéro d'employé de cette forme. Le motif s'affiche entre barres obliques, avec une bordure en pointillés. S'il est vide, invalide, correspond à la chaîne vide ou pourrait figer la page, le logiciel le refuse et explique pourquoi.
+**Expressions régulières (avancé).** Au lieu d'un mot fixe, vous pouvez décrire un *motif*. Cochez "Expression régulière (regex, avancé)", saisissez le motif puis appuyez sur "Ajouter". Par exemple `EMP-\d{5}` masque EMP-12345 et tout autre numéro d'employé de cette forme. Le motif s'affiche entre barres obliques, avec une bordure en pointillés. S'il est vide, invalide, correspond à la chaîne vide ou pourrait figer la page, le logiciel le refuse et explique pourquoi. Un nouveau motif est aussi exécuté une fois dans une zone de test sûre pendant 3 secondes au plus ; s'il est plus long, le logiciel le refuse.
 
 ## Fonction 3 — Mots de passe et secrets suspects
 

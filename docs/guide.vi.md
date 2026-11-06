@@ -200,7 +200,7 @@ Khi danh sách dài, xóa từng từ rất mất công. "Xóa tất cả từ k
 1. Hoặc chọn "Vẫn xóa, không xuất" nếu bạn thật sự không cần bản sao lưu.
 1. Chỉ "Xóa ngay" mới xóa. "Hủy" (hoặc phím Esc) đóng cảnh báo và giữ nguyên mọi thứ.
 
-**Biểu thức chính quy (nâng cao).** Thay vì một từ cố định, bạn có thể mô tả một *mẫu*. Đánh dấu "Biểu thức chính quy (regex, nâng cao)", gõ mẫu rồi bấm "Thêm". Ví dụ `NV-\d{5}` che NV-12345 và mọi mã nhân viên cùng dạng. Mẫu hiện giữa hai dấu gạch chéo, viền nét đứt. Nếu mẫu trống, sai cú pháp, khớp cả chuỗi rỗng hoặc có thể làm treo trang, phần mềm sẽ từ chối và nói rõ lý do.
+**Biểu thức chính quy (nâng cao).** Thay vì một từ cố định, bạn có thể mô tả một *mẫu*. Đánh dấu "Biểu thức chính quy (regex, nâng cao)", gõ mẫu rồi bấm "Thêm". Ví dụ `NV-\d{5}` che NV-12345 và mọi mã nhân viên cùng dạng. Mẫu hiện giữa hai dấu gạch chéo, viền nét đứt. Nếu mẫu trống, sai cú pháp, khớp cả chuỗi rỗng hoặc có thể làm treo trang, phần mềm sẽ từ chối và nói rõ lý do. Mẫu mới còn được chạy thử một lần trong một vùng thử an toàn tối đa 3 giây; nếu lâu hơn, phần mềm sẽ từ chối.
 
 ## Tính năng 3 — Các chuỗi nghi là mật khẩu hoặc bí mật
 

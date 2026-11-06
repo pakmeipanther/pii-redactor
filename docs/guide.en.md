@@ -200,7 +200,7 @@ When the list is long, removing terms one by one is tedious. "Delete all terms" 
 1. Or choose "Delete without exporting" if you really don't need a backup.
 1. Only "Delete now" deletes. "Cancel" (or the Esc key) closes the warning and keeps everything.
 
-**Regular expressions (advanced).** Instead of a fixed word you can describe a *pattern*. Tick "Regular expression (regex, advanced)", then type the pattern and press "Add". For example `EMP-\d{5}` covers EMP-12345 and every other employee number of that shape. The chip is shown between slashes with a dashed border. If the pattern is empty, invalid, matches the empty string or could freeze the page, the software refuses it and tells you why.
+**Regular expressions (advanced).** Instead of a fixed word you can describe a *pattern*. Tick "Regular expression (regex, advanced)", then type the pattern and press "Add". For example `EMP-\d{5}` covers EMP-12345 and every other employee number of that shape. The chip is shown between slashes with a dashed border. If the pattern is empty, invalid, matches the empty string or could freeze the page, the software refuses it and tells you why. A new pattern is also run once in a safe test area for up to 3 seconds; if it takes longer, the software refuses it.
 
 ## Feature 3 — Suspected passwords and secrets
 

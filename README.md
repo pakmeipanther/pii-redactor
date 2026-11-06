@@ -453,7 +453,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.4.0: 241 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.4.0: 245 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -571,7 +571,7 @@ underneath you, even as `main` keeps moving forward.
 
 ## Known limitations
 
-- **Regular expressions are checked, not proven safe.** A pattern is refused if it is empty, too long (200 characters), invalid, matches the empty string, or contains a nested repeated group or back-reference. This heuristic catches the classic "catastrophic backtracking" shapes but cannot prove every pattern safe. Patterns run on one line of text at a time for images, so they cannot span a line break there.
+- **Regular expressions are checked, not proven safe.** A pattern is refused if it is empty, too long (200 characters), invalid, matches the empty string, or contains a nested repeated group or back-reference. It is then run once in a throw-away Web Worker (`vendor/regex-worker.js`) against nasty sample strings with a 3-second deadline; if it does not finish, the worker is destroyed and the pattern is refused (this also checks patterns in an imported list). This catches the classic "catastrophic backtracking" shapes, but the test only knows its own sample strings: a pattern that is slow only on one particular document can still slow down a scan. If the page is opened as a plain file, where no worker can start, only the first checks apply. Patterns run on one line of text at a time for images, so they cannot span a line break there.
 - **HEIC needs WebAssembly.** Browsers without it cannot decode HEIC; convert
   the photo to JPEG first. The nearest-city lookup is approximate (nearest
   listed city, nothing beyond 200 km). Text read by OCR can contain mistakes —

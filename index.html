@@ -806,7 +806,8 @@ const I18N = {
     regexLabel: 'Biểu thức chính quy (regex, nâng cao)',
     regexHint: 'Mẫu regex, ví dụ: NV-\\d{5} sẽ che NV-12345. Không dùng được các mẫu rỗng hoặc dễ làm treo trang.',
     regexChipTitle: 'Mẫu regex',
-    regexErrors: { empty: 'Mẫu trống.', tooLong: 'Mẫu quá dài (tối đa 200 ký tự).', invalid: 'Mẫu regex không hợp lệ.', matchesEmpty: 'Mẫu này khớp cả chuỗi rỗng nên sẽ che khắp nơi; hãy viết cụ thể hơn.', risky: 'Mẫu có nhóm lặp lồng nhau hoặc tham chiếu ngược, dễ làm treo trang; hãy đơn giản hóa.' },
+    regexErrors: { empty: 'Mẫu trống.', tooLong: 'Mẫu quá dài (tối đa 200 ký tự).', invalid: 'Mẫu regex không hợp lệ.', matchesEmpty: 'Mẫu này khớp cả chuỗi rỗng nên sẽ che khắp nơi; hãy viết cụ thể hơn.', timeout: 'Mẫu chạy quá 3 giây khi thử nên bị từ chối vì có thể làm treo trang; hãy đơn giản hóa.', risky: 'Mẫu có nhóm lặp lồng nhau hoặc tham chiếu ngược, dễ làm treo trang; hãy đơn giản hóa.' },
+    regexTesting: 'Đang kiểm tra mẫu...',
     regexSkipped: 'Đã bỏ qua {n} mẫu regex không an toàn khi nhập.',
     customEmpty: 'Chưa có từ khóa nào.',
     exportBtn: 'Xuất danh sách (.json)',
@@ -945,7 +946,8 @@ const I18N = {
     regexLabel: 'Regular expression (regex, advanced)',
     regexHint: 'A regex pattern, for example: EMP-\\d{5} covers EMP-12345. Empty patterns and patterns that could freeze the page are refused.',
     regexChipTitle: 'Regex pattern',
-    regexErrors: { empty: 'The pattern is empty.', tooLong: 'The pattern is too long (200 characters at most).', invalid: 'This is not a valid regular expression.', matchesEmpty: 'This pattern matches the empty string, so it would cover everything; make it more specific.', risky: 'This pattern has a nested repeated group or a back-reference, which can freeze the page; please simplify it.' },
+    regexErrors: { empty: 'The pattern is empty.', tooLong: 'The pattern is too long (200 characters at most).', invalid: 'This is not a valid regular expression.', matchesEmpty: 'This pattern matches the empty string, so it would cover everything; make it more specific.', timeout: 'This pattern took more than 3 seconds in a test run, so it was refused because it could freeze the page; please simplify it.', risky: 'This pattern has a nested repeated group or a back-reference, which can freeze the page; please simplify it.' },
+    regexTesting: 'Testing the pattern...',
     regexSkipped: 'Skipped {n} unsafe regex pattern(s) while importing.',
     customEmpty: 'No custom terms yet.',
     exportBtn: 'Export list (.json)',
@@ -1084,7 +1086,8 @@ const I18N = {
     regexLabel: 'Expression régulière (regex, avancé)',
     regexHint: 'Un motif regex, par exemple : EMP-\\d{5} masque EMP-12345. Les motifs vides ou qui pourraient figer la page sont refusés.',
     regexChipTitle: 'Motif regex',
-    regexErrors: { empty: 'Le motif est vide.', tooLong: 'Le motif est trop long (200 caractères au maximum).', invalid: 'Ce n\'est pas une expression régulière valide.', matchesEmpty: 'Ce motif correspond à la chaîne vide et masquerait tout ; rendez-le plus précis.', risky: 'Ce motif contient un groupe répété imbriqué ou une référence arrière, ce qui peut figer la page ; simplifiez-le.' },
+    regexErrors: { empty: 'Le motif est vide.', tooLong: 'Le motif est trop long (200 caractères au maximum).', invalid: 'Ce n\'est pas une expression régulière valide.', matchesEmpty: 'Ce motif correspond à la chaîne vide et masquerait tout ; rendez-le plus précis.', timeout: 'Ce motif a pris plus de 3 secondes lors du test ; il est refusé car il pourrait figer la page. Simplifiez-le.', risky: 'Ce motif contient un groupe répété imbriqué ou une référence arrière, ce qui peut figer la page ; simplifiez-le.' },
+    regexTesting: 'Test du motif...',
     regexSkipped: '{n} motif(s) regex dangereux ignoré(s) à l\'import.',
     customEmpty: 'Aucun terme personnalisé pour le moment.',
     exportBtn: 'Exporter la liste (.json)',
@@ -1223,7 +1226,8 @@ const I18N = {
     regexLabel: 'Regulärer Ausdruck (Regex, fortgeschritten)',
     regexHint: 'Ein Regex-Muster, zum Beispiel: EMP-\\d{5} deckt EMP-12345 ab. Leere Muster und Muster, die die Seite einfrieren könnten, werden abgelehnt.',
     regexChipTitle: 'Regex-Muster',
-    regexErrors: { empty: 'Das Muster ist leer.', tooLong: 'Das Muster ist zu lang (höchstens 200 Zeichen).', invalid: 'Das ist kein gültiger regulärer Ausdruck.', matchesEmpty: 'Dieses Muster passt auf die leere Zeichenkette und würde alles abdecken; machen Sie es genauer.', risky: 'Dieses Muster enthält eine verschachtelte wiederholte Gruppe oder einen Rückverweis, was die Seite einfrieren kann; bitte vereinfachen.' },
+    regexErrors: { empty: 'Das Muster ist leer.', tooLong: 'Das Muster ist zu lang (höchstens 200 Zeichen).', invalid: 'Das ist kein gültiger regulärer Ausdruck.', matchesEmpty: 'Dieses Muster passt auf die leere Zeichenkette und würde alles abdecken; machen Sie es genauer.', timeout: 'Dieses Muster brauchte im Test mehr als 3 Sekunden und wurde abgelehnt, weil es die Seite einfrieren könnte; bitte vereinfachen.', risky: 'Dieses Muster enthält eine verschachtelte wiederholte Gruppe oder einen Rückverweis, was die Seite einfrieren kann; bitte vereinfachen.' },
+    regexTesting: 'Muster wird geprüft...',
     regexSkipped: '{n} unsichere Regex-Muster beim Import übersprungen.',
     customEmpty: 'Noch keine benutzerdefinierten Begriffe.',
     exportBtn: 'Liste exportieren (.json)',
@@ -1835,6 +1839,7 @@ const customCaseSensitiveEl = document.getElementById('customCaseSensitive');
 const customIsRegexEl = document.getElementById('customIsRegex');
 const customRegexHintEl = document.getElementById('customRegexHint');
 const customRegexMsgEl = document.getElementById('customRegexMsg');
+const customAddBtnEl = document.getElementById('customAddBtn');
 customCaseSensitiveEl.checked = loadCustomCaseSensitive();
 
 // CLEAR_TERMS_FLOW_START
@@ -1972,7 +1977,7 @@ function renderCustomChips() {
   renderClearTermsUi();
 }
 
-function addCustomTerm() {
+async function addCustomTerm() {
   let val = customInputEl.value.trim();
   if (!val) return;
   customRegexMsgEl.textContent = '';
@@ -1983,6 +1988,16 @@ function addCustomTerm() {
       customInputEl.focus();
       return; // keep what the person typed so they can fix it
     }
+    customRegexMsgEl.textContent = I18N[currentLang].regexTesting;
+    customAddBtnEl.disabled = true;
+    const stress = await stressTestRegex(val, customCaseSensitiveEl.checked);
+    customAddBtnEl.disabled = false;
+    if (!stress.ok) {
+      customRegexMsgEl.textContent = I18N[currentLang].regexErrors[stress.reason] || I18N[currentLang].regexErrors.invalid;
+      customInputEl.focus();
+      return;
+    }
+    customRegexMsgEl.textContent = '';
     val = REGEX_TERM_PREFIX + val;
   }
   if (!customTerms.includes(val)) {
@@ -2027,12 +2042,22 @@ document.getElementById('customImportFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       const incoming = Array.isArray(data) ? data : (Array.isArray(data.terms) ? data.terms : []);
-      const clean = incoming.filter(t => typeof t === 'string' && t.trim() && (!isRegexTerm(t) || checkUserRegex(regexTermSource(t)).ok));
-      const skipped = incoming.filter(t => typeof t === 'string' && isRegexTerm(t) && !checkUserRegex(regexTermSource(t)).ok).length;
+      const clean = [];
+      let skipped = 0;
+      for (const t of incoming) {
+        if (typeof t !== 'string' || !t.trim()) continue;
+        if (isRegexTerm(t)) {
+          const src = regexTermSource(t);
+          const quick = checkUserRegex(src);
+          const stress = quick.ok ? await stressTestRegex(src, !!(data && data.caseSensitive)) : quick;
+          if (!stress.ok) { skipped++; continue; }
+        }
+        clean.push(t);
+      }
       customRegexMsgEl.textContent = skipped ? I18N[currentLang].regexSkipped.replace('{n}', skipped) : '';
       // Merge with the existing list and de-duplicate, instead of
       // overwriting — avoids data loss if the user imports the
@@ -2161,6 +2186,39 @@ function compileUserRegex(src, caseSensitive) {
     userRegexCache.set(key, re);
   }
   return userRegexCache.get(key);
+}
+// Second line of defence: the pattern is run in a throw-away Web Worker
+// (vendor/regex-worker.js) against nasty sample strings, with a deadline.
+// If it does not answer in time the worker is destroyed and the pattern is
+// refused, so a catastrophic pattern never runs on the page itself. This
+// catches shapes the heuristic misses (for example (a|aa)+$), but it only
+// knows the samples below, not the person's real documents.
+const REGEX_STRESS_TIMEOUT_MS = 3000;
+const REGEX_STRESS_SAMPLES = [
+  'a'.repeat(64) + '!', ' '.repeat(64) + '!', '0'.repeat(64) + 'x', 'ab'.repeat(32) + '!',
+  'a.'.repeat(32) + '!', 'x'.repeat(64) + '@', ('foo bar ').repeat(10) + '#'
+];
+function stressTestRegex(src, caseSensitive, opts) {
+  const o = opts || {};
+  const timeoutMs = o.timeoutMs || REGEX_STRESS_TIMEOUT_MS;
+  const make = o.createWorker || (() => new Worker('vendor/regex-worker.js'));
+  return new Promise(resolve => {
+    let worker = null, done = false, timer = null;
+    const finish = result => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { if (worker) worker.terminate(); } catch (e) { /* already gone */ }
+      resolve(result);
+    };
+    try { worker = make(); } catch (e) { finish({ ok: true, skipped: true }); return; }
+    timer = setTimeout(() => finish({ ok: false, reason: 'timeout' }), timeoutMs);
+    worker.onmessage = ev => finish(ev.data && ev.data.ok ? { ok: true } : { ok: false, reason: (ev.data && ev.data.reason) || 'invalid' });
+    // No worker available (for example the page was opened as a file): the
+    // heuristic check above still applies, so do not block the person.
+    worker.onerror = () => finish({ ok: true, skipped: true });
+    worker.postMessage({ src, flags: caseSensitive ? 'g' : 'gi', samples: REGEX_STRESS_SAMPLES });
+  });
 }
 // USER_REGEX_END
 
