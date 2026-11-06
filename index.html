@@ -2098,6 +2098,8 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   lastSuspectMatches = [];
   confirmedSuspects = new Set();
   lastCleanedText = '';
+  // A text file that was dropped in also left a "Detected: ..." badge.
+  if (lastDetectedType === 'text') resetUnifiedInput();
 });
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
@@ -2961,6 +2963,21 @@ function showResultPanel(type) {
   });
 }
 
+// "Clear all" in any file panel ends here: forget everything about the
+// previous file that is shown in the shared area — the "Detected: ..."
+// badge, the file picker's remembered selection, and the (now empty)
+// result panel. The custom term list is NOT touched: it lives in its own
+// section and is kept on purpose.
+let lastDetectedType = null;
+function resetUnifiedInput() {
+  lastDetectedType = null;
+  unifiedFileInput.value = '';
+  detectedTypeEl.textContent = '';
+  detectedTypeEl.classList.remove('unknown');
+  detectedTypeEl.style.display = 'none';
+  Object.values(resultPanels).forEach(el => el.style.display = 'none');
+}
+
 // Works out what kind of file was just dropped/picked, in three
 // passes of decreasing trust:
 //
@@ -3052,6 +3069,7 @@ async function routeFile(file) {
     return;
   }
 
+  lastDetectedType = type;
   detectedTypeEl.textContent = t.detectedTypePrefix + ' ' + t[TYPE_LABEL_KEY[type]] + ' (' + file.name + ')';
   detectedTypeEl.classList.remove('unknown');
   detectedTypeEl.style.display = 'block';
@@ -4270,7 +4288,7 @@ imgClearBtn.addEventListener('click', () => {
   imgDownloadPdfBtn.disabled = true;
   updateImgDownloadBtnLabel();
   imgProgressEl.textContent = '';
-  unifiedFileInput.value = '';
+  resetUnifiedInput();
   lastImgLines = [];
   confirmedImgSuspects = new Set();
   imgSuspectListEl.innerHTML = '';
@@ -4648,7 +4666,7 @@ pdfClearBtn.addEventListener('click', () => {
   pdfDownloadBtn.disabled = true;
   pdfProgressEl.textContent = '';
   pdfFileNameEl.textContent = '';
-  unifiedFileInput.value = '';
+  resetUnifiedInput();
 });
 
 // ============================================================
@@ -4953,7 +4971,7 @@ docxClearBtn.addEventListener('click', () => {
   docxDownloadBtn.disabled = true;
   docxProgressEl.textContent = '';
   docxFileNameEl.textContent = '';
-  unifiedFileInput.value = '';
+  resetUnifiedInput();
 });
 
 // ============================================================
@@ -5043,7 +5061,7 @@ pptxClearBtn.addEventListener('click', () => {
   pptxDownloadBtn.disabled = true;
   pptxProgressEl.textContent = '';
   pptxFileNameEl.textContent = '';
-  unifiedFileInput.value = '';
+  resetUnifiedInput();
 });
 
 // Initialization
