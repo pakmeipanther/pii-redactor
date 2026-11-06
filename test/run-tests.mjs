@@ -2856,6 +2856,40 @@ check('live preview: wiring — auto-scan on input, copy and download re-scan wh
   if (!dl.includes('ensureFreshScan()')) throw new Error('download does not re-scan a stale preview first');
 });
 
+
+// ---- Masked text box for image / PDF / Word / PowerPoint ----
+const textExportCode = extractBetween('// TEXT_EXPORT_START', '// TEXT_EXPORT_END', 'TEXT_EXPORT');
+const ocrSupportForText = extractBetween('// OCR_SUPPORT_START', '// OCR_SUPPORT_END', 'OCR_SUPPORT');
+const { maskedLinesText } = new Function(`${ocrSupportForText}\n${textExportCode}\nreturn { maskedLinesText };`)();
+const TW = (text, x0, x1, y0 = 0, y1 = 10) => ({ text, bbox: { x0, y0, x1, y1 } });
+
+check('masked text: covered words become one mask, others stay, thorough-pass duplicates are skipped', () => {
+  const line1 = [TW('Mail', 0, 30), TW('john', 40, 70), TW('@acme.example', 70, 140), TW('now', 150, 180)];
+  const line2 = [TW('Server', 0, 50), TW('srv-01', 60, 100)];
+  const dup = [TW('Mail', 0, 30), TW('john', 40, 70)]; dup.extraPass = true;
+  const out = maskedLinesText([line1, line2, dup], [{ x0: 38, y0: -2, x1: 142, y1: 12 }, { x0: 58, y0: -2, x1: 102, y1: 12 }], '[X]');
+  if (out !== 'Mail [X] now\nServer [X]') throw new Error(JSON.stringify(out));
+});
+
+check('masked text: a word only touched at its edge stays; one more than half covered is masked; no boxes = unchanged text', () => {
+  const line = [TW('abcd', 0, 100)];
+  if (maskedLinesText([line], [{ x0: 90, y0: 0, x1: 120, y1: 10 }], '[X]') !== 'abcd') throw new Error('edge touch should not mask');
+  if (maskedLinesText([line], [{ x0: 40, y0: 0, x1: 120, y1: 10 }], '[X]') !== '[X]') throw new Error('60% covered should mask');
+  if (maskedLinesText([[TW('a', 0, 5), TW('b', 6, 10)]], [], '[X]') !== 'a b') throw new Error('no boxes');
+});
+
+check('wiring: every file panel has a copyable masked-text box, filled by its scan and emptied by Clear all and by a new scan', () => {
+  for (const pre of ['img', 'pdf', 'docx', 'pptx']) {
+    for (const id of [pre + 'TextOut', pre + 'TextBox', pre + 'CopyBtn', pre + 'TextNote']) if (!html.includes(`id="${id}"`)) throw new Error('missing element ' + id);
+    if (!html.includes(`showTextOut('${pre}'`)) throw new Error(pre + ' never fills its text box');
+    const clearFn = { img: 'clearImagePanel', pdf: 'clearPdfPanel', docx: 'clearDocxPanel', pptx: 'clearPptxPanel' }[pre];
+    const body = html.slice(html.indexOf('function ' + clearFn + '()'), html.indexOf('function ' + clearFn + '()') + 400);
+    if (!body.includes(`hideTextOut('${pre}')`)) throw new Error(clearFn + ' does not empty the text box');
+    if (html.split(`hideTextOut('${pre}')`).length < 3) throw new Error(pre + ': a new scan does not empty the old text first');
+  }
+  if (!html.includes('maskedLinesText(lastImgLines, boxesToPaint(lastImgEffective)')) throw new Error('image text must follow the effective (edited) regions');
+});
+
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
   const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);

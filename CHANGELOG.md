@@ -23,6 +23,15 @@ one never removes an older one.
 
 ### Added
 
+- **Copyable masked text for images, PDF, Word and PowerPoint.** After a scan,
+  each file panel also shows the result as plain text with a "Copy masked text"
+  button, next to the download buttons, so the file download is optional.
+  Word and PowerPoint show the text that goes into the PDF. A PDF shows the
+  text of each page (its text layer, or what OCR read when the page has none and
+  OCR is on). An image shows the OCR text with every covered word replaced by a
+  mask, following the regions as edited (areas drawn by hand and regions
+  switched off included). The box is emptied by "Clear all", by a new scan and
+  by a new file.
 - **Live preview for pasted text, and a "Copy masked text" button.** The text
   is scanned automatically while it is typed or pasted (and again when a rule,
   the custom term list or the case switch changes). The result shows two boxes:
@@ -46,10 +55,10 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 225 tests: the city table, nearest-city lookup
+- Test suite grown from 212 to 228 tests: the city table, nearest-city lookup
   (including "no city within 200 km"), strict GPS parsing, the report line,
-  HEIC metadata and decoding, "a new file clears the old results", and the
-  live preview's stale-result guard.
+  HEIC metadata and decoding, "a new file clears the old results", the
+  live preview's stale-result guard, and the masked-text boxes.
 
 ## [1.3.2] — 2026-10-28
 

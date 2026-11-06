@@ -368,6 +368,12 @@
   .result-head .result-label { margin: 8px 0 6px; }
   .result-note { font-size: 12px; color: #facf6f; margin-top: 8px; line-height: 1.5; min-height: 1em; }
   /* A masked value in the cleaned preview: what a reader of the copied text will see. */
+  .text-out { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
+  .text-out-box {
+    width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+    background: #0d0f13; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  }
   .masked { background: rgba(124, 140, 255, 0.18); color: #aab4ff; border-radius: 3px; padding: 0 2px; font-weight: 600; }
   .masked[data-suspect-idx] { cursor: pointer; }
   footer {
@@ -519,6 +525,14 @@
     <pre id="imgOcrText"></pre>
   </details>
   <div id="imgSuspectList" class="suspect-list" style="display:none;"></div>
+  <div class="text-out" id="imgTextOut" style="display:none;">
+    <div class="result-head">
+      <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
+      <button id="imgCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+    </div>
+    <textarea id="imgTextBox" class="text-out-box" readonly></textarea>
+    <div class="result-note" id="imgTextNote" role="status"></div>
+  </div>
 </div>
 
 <div class="panel" id="pdfPanel" style="display:none;">
@@ -544,6 +558,14 @@
   <div class="subtitle" data-i18n="ocrLangAccuracyHint" style="font-size:12px;margin-top:4px;">Chọn đúng ngôn ngữ của ảnh — chọn sai sẽ làm giảm độ chính xác nhận diện chữ, dễ bỏ sót thông tin nhạy cảm.</div>
   <div class="img-progress" id="pdfProgress"></div>
   <div class="export-verify" id="pdfVerify" style="display:none;" role="status"></div>
+  <div class="text-out" id="pdfTextOut" style="display:none;">
+    <div class="result-head">
+      <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
+      <button id="pdfCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+    </div>
+    <textarea id="pdfTextBox" class="text-out-box" readonly></textarea>
+    <div class="result-note" id="pdfTextNote" role="status"></div>
+  </div>
   <div id="pdfPagesWrap" class="pdf-pages" style="display:none;"></div>
 </div>
 
@@ -558,6 +580,14 @@
   </div>
   <div class="img-progress" id="docxProgress"></div>
   <div class="export-verify" id="docxVerify" style="display:none;" role="status"></div>
+  <div class="text-out" id="docxTextOut" style="display:none;">
+    <div class="result-head">
+      <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
+      <button id="docxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+    </div>
+    <textarea id="docxTextBox" class="text-out-box" readonly></textarea>
+    <div class="result-note" id="docxTextNote" role="status"></div>
+  </div>
 </div>
 
 <div class="panel" id="pptxPanel" style="display:none;">
@@ -571,6 +601,14 @@
   </div>
   <div class="img-progress" id="pptxProgress"></div>
   <div class="export-verify" id="pptxVerify" style="display:none;" role="status"></div>
+  <div class="text-out" id="pptxTextOut" style="display:none;">
+    <div class="result-head">
+      <div class="result-label" data-i18n="extractedTitle">Văn bản đã che — để sao chép</div>
+      <button id="pptxCopyBtn" class="secondary" data-i18n="copyCleanedBtn">Sao chép văn bản đã che</button>
+    </div>
+    <textarea id="pptxTextBox" class="text-out-box" readonly></textarea>
+    <div class="result-note" id="pptxTextNote" role="status"></div>
+  </div>
 </div>
 
 <div class="panel">
@@ -751,6 +789,10 @@ const I18N = {
     copiedCleanedBtn: 'Đã sao chép ✓',
     copyFailed: 'Không sao chép tự động được — hãy bôi đen văn bản ở khung trên rồi nhấn Cmd/Ctrl+C.',
     cleanedSuspectNote: n => `⚠ Còn ${n} chuỗi nghi ngờ (màu vàng) CHƯA bị che. Bấm vào chuỗi đó để che trước khi sao chép.`,
+    extractedTitle: 'Văn bản đã che — để sao chép',
+    maskRegion: '[ĐÃ ẨN]',
+    ocrTextCaution: 'Văn bản này do OCR đọc từ ảnh nên có thể sai chữ — hãy đọc lại trước khi dùng. Vùng bạn tự vẽ cũng được che nếu nằm trên chữ.',
+    noTextLayerHint: n => `${n} trang không có lớp chữ (PDF dạng scan). Bật OCR rồi quét lại để lấy văn bản.`,
     statsNoText: 'Chưa có văn bản để quét.',
     statsNoMatch: 'Không tìm thấy mẫu nào khớp với các loại đang chọn.',
     statsFound: n => `Đã tìm thấy ${n} vùng nhạy cảm —`,
@@ -874,6 +916,10 @@ const I18N = {
     copiedCleanedBtn: 'Copied ✓',
     copyFailed: 'Automatic copy did not work — select the text in the box above and press Cmd/Ctrl+C.',
     cleanedSuspectNote: n => `⚠ ${n} suspected string(s) (amber) are NOT masked yet. Click one to mask it before copying.`,
+    extractedTitle: 'Masked text — ready to copy',
+    maskRegion: '[REDACTED]',
+    ocrTextCaution: 'This text was read from the picture by OCR, so some words may be wrong — proofread it before use. Areas you drew by hand are masked too when they cover text.',
+    noTextLayerHint: n => `${n} page(s) have no text layer (scanned PDF). Turn on OCR and scan again to get their text.`,
     statsNoText: 'No text to scan yet.',
     statsNoMatch: 'No matches found for the selected types.',
     statsFound: n => `Found ${n} sensitive region(s) —`,
@@ -997,6 +1043,10 @@ const I18N = {
     copiedCleanedBtn: 'Copié ✓',
     copyFailed: 'La copie automatique a échoué — sélectionnez le texte du cadre ci-dessus puis appuyez sur Cmd/Ctrl+C.',
     cleanedSuspectNote: n => `⚠ ${n} chaîne(s) suspecte(s) (ambre) ne sont PAS encore masquées. Cliquez sur l'une d'elles pour la masquer avant de copier.`,
+    extractedTitle: 'Texte masqué — prêt à copier',
+    maskRegion: '[MASQUÉ]',
+    ocrTextCaution: 'Ce texte a été lu sur l\'image par OCR : certains mots peuvent être faux — relisez-le avant de l\'utiliser. Les zones dessinées à la main sont aussi masquées lorsqu\'elles couvrent du texte.',
+    noTextLayerHint: n => `${n} page(s) sans couche de texte (PDF numérisé). Activez l'OCR et relancez l'analyse pour obtenir leur texte.`,
     statsNoText: 'Aucun texte à analyser.',
     statsNoMatch: 'Aucune correspondance trouvée pour les types sélectionnés.',
     statsFound: n => `${n} zone(s) sensible(s) trouvée(s) —`,
@@ -1120,6 +1170,10 @@ const I18N = {
     copiedCleanedBtn: 'Kopiert ✓',
     copyFailed: 'Automatisches Kopieren hat nicht geklappt — markiere den Text im Feld oben und drücke Cmd/Strg+C.',
     cleanedSuspectNote: n => `⚠ ${n} verdächtige Zeichenkette(n) (gelb) sind noch NICHT abgedeckt. Klicke darauf, um sie vor dem Kopieren abzudecken.`,
+    extractedTitle: 'Abgedeckter Text — zum Kopieren',
+    maskRegion: '[ABGEDECKT]',
+    ocrTextCaution: 'Dieser Text wurde per OCR aus dem Bild gelesen, einzelne Wörter können falsch sein — bitte vor der Verwendung prüfen. Von Hand gezeichnete Bereiche werden ebenfalls abgedeckt, wenn sie Text überdecken.',
+    noTextLayerHint: n => `${n} Seite(n) ohne Textebene (gescanntes PDF). OCR einschalten und erneut scannen, um den Text zu erhalten.`,
     statsNoText: 'Noch kein Text zum Scannen.',
     statsNoMatch: 'Keine Treffer für die ausgewählten Typen gefunden.',
     statsFound: n => `${n} sensible Bereich(e) gefunden —`,
@@ -2219,6 +2273,39 @@ document.getElementById('copyCleanedBtn').addEventListener('click', async () => 
   } else {
     document.getElementById('cleanedNote').textContent = t.copyFailed;
   }
+});
+
+// ---- Masked text box for the file panels (image, PDF, Word, PowerPoint) ----
+// Next to the download buttons: the same result as plain, copyable text.
+const TEXT_OUT_PANELS = ['img', 'pdf', 'docx', 'pptx'];
+function showTextOut(prefix, text, note) {
+  document.getElementById(prefix + 'TextOut').style.display = 'block';
+  const box = document.getElementById(prefix + 'TextBox');
+  if (box.value !== text) box.value = text;   // keep a selection when nothing changed
+  document.getElementById(prefix + 'TextNote').textContent = note || '';
+  document.getElementById(prefix + 'CopyBtn').disabled = !text;
+}
+function hideTextOut(prefix) {
+  document.getElementById(prefix + 'TextOut').style.display = 'none';
+  document.getElementById(prefix + 'TextBox').value = '';
+  document.getElementById(prefix + 'TextNote').textContent = '';
+}
+TEXT_OUT_PANELS.forEach(prefix => {
+  const btn = document.getElementById(prefix + 'CopyBtn');
+  let timer = null;
+  btn.addEventListener('click', async () => {
+    const text = document.getElementById(prefix + 'TextBox').value;
+    const t = I18N[currentLang];
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (err) { ok = legacyCopy(text); }
+    clearTimeout(timer);
+    if (ok) {
+      btn.textContent = t.copiedCleanedBtn;
+      timer = setTimeout(() => { btn.textContent = I18N[currentLang].copyCleanedBtn; }, 1800);
+    } else {
+      document.getElementById(prefix + 'TextNote').textContent = t.copyFailed;
+    }
+  });
 });
 
 document.getElementById('scanBtn').addEventListener('click', runScan);
@@ -3723,6 +3810,33 @@ function formatRegions(regions) {
 }
 // OCR_SUPPORT_END
 
+// TEXT_EXPORT_START
+// The text of an OCR'd picture or page with the covered words replaced.
+// `lines` are the OCR lines (arrays of words with a bbox), `boxes` the
+// areas that are blacked out (automatic AND hand-drawn, minus those the
+// person switched off), so the copyable text always says the same as the
+// picture. A word counts as covered when more than half of it lies under
+// a box; neighbouring covered words become ONE mask. Lines that come from
+// the extra "thorough" passes are skipped: they re-read the same text.
+function maskedLinesText(lines, boxes, mask) {
+  return lines.filter(words => !words.extraPass).map(words => {
+    const out = [];
+    let inMask = false;
+    for (const w of words) {
+      const covered = boxes.some(b => boxOverlapFraction(w.bbox, b) > 0.5);
+      if (covered) {
+        if (!inMask) out.push(mask);
+        inMask = true;
+      } else {
+        out.push(w.text);
+        inMask = false;
+      }
+    }
+    return out.join(' ');
+  }).join('\n');
+}
+// TEXT_EXPORT_END
+
 // ============================================================
 // REGION MODEL (v1.3)
 // Every area of an image that will be covered is a "region": a box in
@@ -4481,6 +4595,7 @@ function renderImageRedactions() {
   paintSuspectOutlines(imgCtx, found.suspects);
   lastImgRegionsText = formatRegions(found.regions);
   renderImgOcrText();
+  renderImageTextOut(found.suspects.length - confirmedImgSuspects.size);
   renderImgSuspectChecklist(found.suspects);
   renderRegionList();
   drawOverlay();
@@ -4503,6 +4618,16 @@ function renderImageRedactions() {
   imgUndoBtn.disabled = toolbar.undoDisabled;
   imgRedoBtn.disabled = toolbar.redoDisabled;
   imgClearManualBtn.disabled = toolbar.clearDisabled;
+}
+
+// The picture's text with the covered words masked, for copy/paste.
+function renderImageTextOut(unconfirmed) {
+  if (!imgScanned) { hideTextOut('img'); return; }
+  const t = I18N[currentLang];
+  const text = maskedLinesText(lastImgLines, boxesToPaint(lastImgEffective), t.maskRegion);
+  const notes = [t.ocrTextCaution];
+  if (unconfirmed > 0) notes.push(t.statsSuspects(unconfirmed));
+  showTextOut('img', text, notes.join(' '));
 }
 
 // Builds the checklist of entropy suspects below the canvas. Ticking a
@@ -4585,6 +4710,7 @@ imgScanBtn.addEventListener('click', async () => {
   imgDownloadPdfBtn.disabled = true;
   imgProgressEl.textContent = t.imgProgressLoading;
   confirmedImgSuspects = new Set();
+  hideTextOut('img');
 
   // Redraw the clean original before each scan, so re-scanning after
   // changing language/rules never stacks redactions on redactions.
@@ -4680,6 +4806,7 @@ imgDownloadPdfBtn.addEventListener('click', async () => {
 });
 
 function clearImagePanel() {
+  hideTextOut('img');
   clearVerify('imgVerify');
   resetInputMetaReport();
   lastImgOcrText = '';
@@ -4957,6 +5084,7 @@ pdfScanBtn.addEventListener('click', async () => {
   pdfPageCanvases = [];
   pdfPagesWrap.innerHTML = '';
   pdfOutputBytes = null;
+  hideTextOut('pdf');
   pdfProgressEl.textContent = t.pdfProgressLoadingLib;
 
   try {
@@ -4995,6 +5123,8 @@ pdfScanBtn.addEventListener('click', async () => {
     const entropyEnabled = isEntropyEnabled();
     let totalRedacted = 0;
     let totalSuspects = 0;
+    const pageTexts = [];     // masked text of each page, for the copy box
+    let pagesWithoutText = 0;
     for (let i = 1; i <= numPages; i++) {
       pdfProgressEl.textContent = t.pdfProgressParsingPage(i, numPages);
       const { canvas, ctx, redactedCount, suspectCount } = await renderAndRedactPdfPage(
@@ -5002,6 +5132,15 @@ pdfScanBtn.addEventListener('click', async () => {
       );
       totalRedacted += redactedCount;
       totalSuspects += suspectCount;
+
+      // Text for the copy box: the page's own text layer when it has one,
+      // run through the same detection as Word/PowerPoint text.
+      let pageText = '';
+      try {
+        const tc = await (await pdfDoc.getPage(i)).getTextContent();
+        pageText = tc.items.map(it => ('str' in it) ? it.str + (it.hasEOL ? '\n' : '') : '').join('').trim();
+      } catch (textErr) { console.warn('Could not read the text layer of page ' + i, textErr); }
+      let pageMasked = pageText ? redactParagraphs([pageText], activeRules, customTerms, caseSensitive, t.masks, entropyEnabled).text : '';
 
       if (ocrWorker) {
         pdfProgressEl.textContent = t.pdfProgressOcrPage(i, numPages);
@@ -5011,11 +5150,15 @@ pdfScanBtn.addEventListener('click', async () => {
         // reasoning as above) — pass confirmedIds=undefined so
         // redactWordsOnCanvas defaults it to an empty set and every
         // suspect stays an outline-only yellow box, never a black fill
-        const { redactedCount: ocrRedacted, suspects: ocrSuspects } =
+        const { redactedCount: ocrRedacted, suspects: ocrSuspects, regions: ocrRegions } =
           redactWordsOnCanvas(ctx, lines, activeRules, customTerms, caseSensitive, entropyEnabled);
         totalRedacted += ocrRedacted;
         totalSuspects += ocrSuspects.length;
+        // A page without a text layer (a scan): its text is what OCR read.
+        if (!pageMasked) pageMasked = maskedLinesText(lines, ocrRegions.map(r => r.box), t.maskRegion);
       }
+      if (!pageMasked) pagesWithoutText++;
+      pageTexts.push(pageMasked);
 
       pdfPageCanvases.push(canvas);
       const pageItem = document.createElement('div');
@@ -5050,6 +5193,7 @@ pdfScanBtn.addEventListener('click', async () => {
     pdfProgressEl.textContent = progressMsg;
     pdfDownloadBtn.disabled = false;
     pdfPagesWrap.style.display = 'block';
+    showTextOut('pdf', pageTexts.filter(Boolean).join('\n\n'), pagesWithoutText > 0 ? t.noTextLayerHint(pagesWithoutText) : '');
   } catch (err) {
     console.error('PDF processing failed:', err);
     const detail = (err && (err.message || err.toString())) || 'unknown error';
@@ -5065,6 +5209,7 @@ pdfDownloadBtn.addEventListener('click', async () => {
 });
 
 function clearPdfPanel() {
+  hideTextOut('pdf');
   clearVerify('pdfVerify');
   resetInputMetaReport();
   pdfOriginalBytes = null;
@@ -5333,6 +5478,7 @@ docxScanBtn.addEventListener('click', async () => {
   docxScanBtn.disabled = true;
   docxDownloadBtn.disabled = true;
   docxOutputBytes = null;
+  hideTextOut('docx');
   docxProgressEl.textContent = t.docxProgressLoadingLib;
 
   try {
@@ -5349,6 +5495,7 @@ docxScanBtn.addEventListener('click', async () => {
     const caseSensitive = customCaseSensitiveEl.checked;
     const entropyEnabled = isEntropyEnabled();
     const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
+    showTextOut('docx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '');
 
     docxProgressEl.textContent = t.docxProgressBuildingPdf;
     const fontBytes = await loadDocxFontBytes();
@@ -5374,6 +5521,7 @@ docxDownloadBtn.addEventListener('click', async () => {
 });
 
 function clearDocxPanel() {
+  hideTextOut('docx');
   clearVerify('docxVerify');
   resetInputMetaReport();
   docxOriginalBytes = null;
@@ -5425,6 +5573,7 @@ pptxScanBtn.addEventListener('click', async () => {
   pptxScanBtn.disabled = true;
   pptxDownloadBtn.disabled = true;
   pptxOutputBytes = null;
+  hideTextOut('pptx');
   pptxProgressEl.textContent = t.pptxProgressLoadingLib;
 
   try {
@@ -5440,6 +5589,7 @@ pptxScanBtn.addEventListener('click', async () => {
     const caseSensitive = customCaseSensitiveEl.checked;
     const entropyEnabled = isEntropyEnabled();
     const { text, redactedCount, suspectCount } = redactParagraphs(paragraphs, activeRules, customTerms, caseSensitive, t.masks, entropyEnabled);
+    showTextOut('pptx', text, suspectCount > 0 ? t.officeEntropyHint(suspectCount) : '');
 
     pptxProgressEl.textContent = t.pptxProgressBuildingPdf;
     const fontBytes = await loadDocxFontBytes(); // same embedded DejaVu Sans font, no need for a second copy
@@ -5465,6 +5615,7 @@ pptxDownloadBtn.addEventListener('click', async () => {
 });
 
 function clearPptxPanel() {
+  hideTextOut('pptx');
   clearVerify('pptxVerify');
   resetInputMetaReport();
   pptxOriginalBytes = null;
