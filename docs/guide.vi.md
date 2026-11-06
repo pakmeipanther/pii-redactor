@@ -28,6 +28,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 - **mới ở v1.4:** khi gõ hoặc dán văn bản, bạn thấy ngay **bản xem trước trực tiếp** phần được che, và sao chép kết quả chỉ với một lần bấm "Sao chép văn bản đã che";
 - **mới ở v1.4:** kết quả của ảnh, PDF, Word và PowerPoint đều có **ô văn bản đã che có thể sửa** (kèm nút "Khôi phục") và nút "Sao chép văn bản đã che" riêng;
 - **mới ở v1.4:** mở được **ảnh HEIC của iPhone**; báo cáo metadata hiển thị **thành phố gần nhất** với vị trí GPS (tra cứu hoàn toàn ngoại tuyến).
+- **mới ở v1.4:** tự mô tả **mẫu** (biểu thức chính quy) cho những thứ như mã nhân viên.
 
 ## Bước 1 — Tải phần mềm về máy
 
@@ -198,6 +199,8 @@ Khi danh sách dài, xóa từng từ rất mất công. "Xóa tất cả từ k
 1. Chọn "Xuất danh sách (.json) trước" để lưu bản sao lưu. Phần mềm sẽ hỏi lại ("Đã xuất bản sao lưu. Xóa tất cả … từ khóa ngay bây giờ?").
 1. Hoặc chọn "Vẫn xóa, không xuất" nếu bạn thật sự không cần bản sao lưu.
 1. Chỉ "Xóa ngay" mới xóa. "Hủy" (hoặc phím Esc) đóng cảnh báo và giữ nguyên mọi thứ.
+
+**Biểu thức chính quy (nâng cao).** Thay vì một từ cố định, bạn có thể mô tả một *mẫu*. Đánh dấu "Biểu thức chính quy (regex, nâng cao)", gõ mẫu rồi bấm "Thêm". Ví dụ `NV-\d{5}` che NV-12345 và mọi mã nhân viên cùng dạng. Mẫu hiện giữa hai dấu gạch chéo, viền nét đứt. Nếu mẫu trống, sai cú pháp, khớp cả chuỗi rỗng hoặc có thể làm treo trang, phần mềm sẽ từ chối và nói rõ lý do.
 
 ## Tính năng 3 — Các chuỗi nghi là mật khẩu hoặc bí mật
 

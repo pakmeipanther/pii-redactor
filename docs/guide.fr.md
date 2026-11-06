@@ -28,6 +28,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 - **nouveau en v1.4 :** pendant que vous tapez ou collez du texte, un **aperçu en direct** montre ce qui est masqué, et un clic sur "Copier le texte masqué" copie le résultat ;
 - **nouveau en v1.4 :** chaque résultat d'image, PDF, Word et PowerPoint a une **zone de texte masqué modifiable** (avec un bouton "Restaurer") et son propre bouton "Copier le texte masqué" ;
 - **nouveau en v1.4 :** ouvrez des **photos HEIC d'iPhone** ; le rapport de métadonnées affiche la **ville la plus proche** d'une position GPS (recherche entièrement hors ligne).
+- **nouveau en v1.4 :** décrivez vos propres **motifs** (expressions régulières), par exemple pour des numéros d'employé.
 
 ## Étape 1 — Téléchargez le logiciel
 
@@ -198,6 +199,8 @@ Quand la liste est longue, retirer les termes un par un est pénible. « Supprim
 1. Choisissez « Exporter d'abord la liste (.json) » pour enregistrer une sauvegarde. Le logiciel redemande ensuite confirmation (« Sauvegarde exportée. Supprimer maintenant … termes personnalisés ? »).
 1. Ou choisissez « Supprimer sans exporter » si vous n'avez vraiment pas besoin de sauvegarde.
 1. Seul « Supprimer maintenant » supprime. « Annuler » (ou la touche Échap) ferme l'avertissement et garde tout.
+
+**Expressions régulières (avancé).** Au lieu d'un mot fixe, vous pouvez décrire un *motif*. Cochez "Expression régulière (regex, avancé)", saisissez le motif puis appuyez sur "Ajouter". Par exemple `EMP-\d{5}` masque EMP-12345 et tout autre numéro d'employé de cette forme. Le motif s'affiche entre barres obliques, avec une bordure en pointillés. S'il est vide, invalide, correspond à la chaîne vide ou pourrait figer la page, le logiciel le refuse et explique pourquoi.
 
 ## Fonction 3 — Mots de passe et secrets suspects
 

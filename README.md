@@ -453,7 +453,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.4.0: 233 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.4.0: 241 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -549,7 +549,7 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   editable SVG source) and a demo GIF re-recorded with the new header and logo.
   Tag: [`v1.3.2`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2).
 
-- **v1.4.0** (current) — live preview and copy box for text, editable masked-text
+- **v1.4.0** (current) — your own regular expressions in the custom list, live preview and copy box for text, editable masked-text
   boxes for files, HEIC photos, nearest city for GPS metadata, new file replaces
   old results, Light/Dark/System themes, light-mode demo GIF, updated guides.
   Tag: [`v1.4.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.4.0).
@@ -566,10 +566,12 @@ underneath you, even as `main` keeps moving forward.
 - [x] **v1.4.0** Nearest city for GPS metadata (offline GeoNames table)
 - [x] **v1.4.0** A new file clears all results of the previous one
 - [x] **v1.4.0** Light / Dark / System theme selector
+- [x] **v1.4.0** User-defined regular expressions in the custom list (validated: no empty-matching or nested-quantifier patterns)
 - [x] **v1.4.0** Demo GIF in light mode; guides updated in four languages
 
 ## Known limitations
 
+- **Regular expressions are checked, not proven safe.** A pattern is refused if it is empty, too long (200 characters), invalid, matches the empty string, or contains a nested repeated group or back-reference. This heuristic catches the classic "catastrophic backtracking" shapes but cannot prove every pattern safe. Patterns run on one line of text at a time for images, so they cannot span a line break there.
 - **HEIC needs WebAssembly.** Browsers without it cannot decode HEIC; convert
   the photo to JPEG first. The nearest-city lookup is approximate (nearest
   listed city, nothing beyond 200 km). Text read by OCR can contain mistakes —

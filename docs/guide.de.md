@@ -28,6 +28,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 - **neu in v1.4:** beim Tippen oder Einfügen von Text sehen Sie eine **Live-Vorschau** der abgedeckten Stellen und kopieren das Ergebnis mit einem Klick auf "Abgedeckten Text kopieren";
 - **neu in v1.4:** jedes Ergebnis für Bild, PDF, Word und PowerPoint hat ein **bearbeitbares Feld mit dem abgedeckten Text** (mit Schaltfläche "Wiederherstellen") und eine eigene Schaltfläche "Abgedeckten Text kopieren";
 - **neu in v1.4:** **iPhone-HEIC-Fotos** lassen sich öffnen; der Metadatenbericht zeigt die **nächstgelegene Stadt** einer GPS-Position (offline nachgeschlagen).
+- **neu in v1.4:** eigene **Muster** (reguläre Ausdrücke) beschreiben, etwa für Mitarbeiternummern.
 
 ## Schritt 1 — Software herunterladen
 
@@ -198,6 +199,8 @@ Bei einer langen Liste ist das Entfernen einzelner Begriffe mühsam. „Alle Beg
 1. Wählen Sie „Liste (.json) zuerst exportieren“, um eine Sicherung zu speichern. Danach fragt die Software noch einmal nach („Sicherung exportiert. Jetzt alle eigenen Begriffe (…) löschen?“).
 1. Oder wählen Sie „Ohne Export löschen“, wenn Sie wirklich keine Sicherung brauchen.
 1. Nur „Jetzt löschen“ löscht. „Abbrechen“ (oder die Esc-Taste) schließt die Warnung und lässt alles unverändert.
+
+**Reguläre Ausdrücke (fortgeschritten).** Statt eines festen Wortes können Sie ein *Muster* beschreiben. Setzen Sie das Häkchen bei "Regulärer Ausdruck (Regex, fortgeschritten)", tippen Sie das Muster ein und drücken Sie "Hinzufügen". Zum Beispiel deckt `MA-\d{5}` MA-12345 und jede andere Mitarbeiternummer dieser Form ab. Das Muster erscheint zwischen Schrägstrichen mit gestricheltem Rand. Ist es leer, ungültig, passt auf die leere Zeichenkette oder könnte die Seite einfrieren, lehnt die Software es ab und nennt den Grund.
 
 ## Funktion 3 — Vermutete Passwörter und Geheimnisse
 

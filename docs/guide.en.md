@@ -28,6 +28,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 - **new in v1.4:** while you type or paste text, see a **live preview** of what is covered, and copy the result with one click on "Copy masked text";
 - **new in v1.4:** every image, PDF, Word and PowerPoint result has an **editable masked-text box** (with a "Restore" button) and its own "Copy masked text" button;
 - **new in v1.4:** open **iPhone HEIC photos**; the metadata report shows the **nearest city** of a GPS position (looked up offline).
+- **new in v1.4:** describe your own **patterns** (regular expressions) for things like employee numbers.
 
 ## Step 1 — Download the software
 
@@ -198,6 +199,8 @@ When the list is long, removing terms one by one is tedious. "Delete all terms" 
 1. Choose "Export list (.json) first" to save a backup. The software then asks again ("Backup exported. Delete all … custom terms now?").
 1. Or choose "Delete without exporting" if you really don't need a backup.
 1. Only "Delete now" deletes. "Cancel" (or the Esc key) closes the warning and keeps everything.
+
+**Regular expressions (advanced).** Instead of a fixed word you can describe a *pattern*. Tick "Regular expression (regex, advanced)", then type the pattern and press "Add". For example `EMP-\d{5}` covers EMP-12345 and every other employee number of that shape. The chip is shown between slashes with a dashed border. If the pattern is empty, invalid, matches the empty string or could freeze the page, the software refuses it and tells you why.
 
 ## Feature 3 — Suspected passwords and secrets
 

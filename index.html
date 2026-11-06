@@ -230,6 +230,7 @@
     font-size: 12px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
+  .chip-regex { border-style: dashed; }
   .chip button {
     all: unset;
     cursor: pointer;
@@ -695,6 +696,12 @@
     <input type="checkbox" id="customCaseSensitive">
     <span data-i18n="caseSensitiveLabel">Phân biệt chữ hoa/thường</span>
   </label>
+  <label class="custom-options">
+    <input type="checkbox" id="customIsRegex">
+    <span data-i18n="regexLabel">Biểu thức chính quy</span>
+  </label>
+  <div class="custom-empty" id="customRegexHint" data-i18n="regexHint" style="display:none;"></div>
+  <div class="custom-empty" id="customRegexMsg" role="status"></div>
   <div class="chip-list" id="customChipList"></div>
   <div class="custom-empty" id="customEmptyMsg" data-i18n="customEmpty">Chưa có từ khóa nào.</div>
   <div class="custom-io">
@@ -796,6 +803,11 @@ const I18N = {
     customPlaceholder: 'Ví dụ: ten-cong-ty-noi-bo, srv-db-prod-02...',
     addBtn: 'Thêm',
     caseSensitiveLabel: 'Phân biệt chữ hoa/thường',
+    regexLabel: 'Biểu thức chính quy (regex, nâng cao)',
+    regexHint: 'Mẫu regex, ví dụ: NV-\\d{5} sẽ che NV-12345. Không dùng được các mẫu rỗng hoặc dễ làm treo trang.',
+    regexChipTitle: 'Mẫu regex',
+    regexErrors: { empty: 'Mẫu trống.', tooLong: 'Mẫu quá dài (tối đa 200 ký tự).', invalid: 'Mẫu regex không hợp lệ.', matchesEmpty: 'Mẫu này khớp cả chuỗi rỗng nên sẽ che khắp nơi; hãy viết cụ thể hơn.', risky: 'Mẫu có nhóm lặp lồng nhau hoặc tham chiếu ngược, dễ làm treo trang; hãy đơn giản hóa.' },
+    regexSkipped: 'Đã bỏ qua {n} mẫu regex không an toàn khi nhập.',
     customEmpty: 'Chưa có từ khóa nào.',
     exportBtn: 'Xuất danh sách (.json)',
     importBtn: 'Nhập danh sách (.json)',
@@ -930,6 +942,11 @@ const I18N = {
     customPlaceholder: 'e.g. internal-company-name, srv-db-prod-02...',
     addBtn: 'Add',
     caseSensitiveLabel: 'Case-sensitive',
+    regexLabel: 'Regular expression (regex, advanced)',
+    regexHint: 'A regex pattern, for example: EMP-\\d{5} covers EMP-12345. Empty patterns and patterns that could freeze the page are refused.',
+    regexChipTitle: 'Regex pattern',
+    regexErrors: { empty: 'The pattern is empty.', tooLong: 'The pattern is too long (200 characters at most).', invalid: 'This is not a valid regular expression.', matchesEmpty: 'This pattern matches the empty string, so it would cover everything; make it more specific.', risky: 'This pattern has a nested repeated group or a back-reference, which can freeze the page; please simplify it.' },
+    regexSkipped: 'Skipped {n} unsafe regex pattern(s) while importing.',
     customEmpty: 'No custom terms yet.',
     exportBtn: 'Export list (.json)',
     importBtn: 'Import list (.json)',
@@ -1064,6 +1081,11 @@ const I18N = {
     customPlaceholder: 'ex : nom-entreprise-interne, srv-db-prod-02...',
     addBtn: 'Ajouter',
     caseSensitiveLabel: 'Sensible à la casse',
+    regexLabel: 'Expression régulière (regex, avancé)',
+    regexHint: 'Un motif regex, par exemple : EMP-\\d{5} masque EMP-12345. Les motifs vides ou qui pourraient figer la page sont refusés.',
+    regexChipTitle: 'Motif regex',
+    regexErrors: { empty: 'Le motif est vide.', tooLong: 'Le motif est trop long (200 caractères au maximum).', invalid: 'Ce n\'est pas une expression régulière valide.', matchesEmpty: 'Ce motif correspond à la chaîne vide et masquerait tout ; rendez-le plus précis.', risky: 'Ce motif contient un groupe répété imbriqué ou une référence arrière, ce qui peut figer la page ; simplifiez-le.' },
+    regexSkipped: '{n} motif(s) regex dangereux ignoré(s) à l\'import.',
     customEmpty: 'Aucun terme personnalisé pour le moment.',
     exportBtn: 'Exporter la liste (.json)',
     importBtn: 'Importer une liste (.json)',
@@ -1198,6 +1220,11 @@ const I18N = {
     customPlaceholder: 'z. B. interner-firmenname, srv-db-prod-02...',
     addBtn: 'Hinzufügen',
     caseSensitiveLabel: 'Groß-/Kleinschreibung beachten',
+    regexLabel: 'Regulärer Ausdruck (Regex, fortgeschritten)',
+    regexHint: 'Ein Regex-Muster, zum Beispiel: EMP-\\d{5} deckt EMP-12345 ab. Leere Muster und Muster, die die Seite einfrieren könnten, werden abgelehnt.',
+    regexChipTitle: 'Regex-Muster',
+    regexErrors: { empty: 'Das Muster ist leer.', tooLong: 'Das Muster ist zu lang (höchstens 200 Zeichen).', invalid: 'Das ist kein gültiger regulärer Ausdruck.', matchesEmpty: 'Dieses Muster passt auf die leere Zeichenkette und würde alles abdecken; machen Sie es genauer.', risky: 'Dieses Muster enthält eine verschachtelte wiederholte Gruppe oder einen Rückverweis, was die Seite einfrieren kann; bitte vereinfachen.' },
+    regexSkipped: '{n} unsichere Regex-Muster beim Import übersprungen.',
     customEmpty: 'Noch keine benutzerdefinierten Begriffe.',
     exportBtn: 'Liste exportieren (.json)',
     importBtn: 'Liste importieren (.json)',
@@ -1805,6 +1832,9 @@ const customInputEl = document.getElementById('customInput');
 const customChipListEl = document.getElementById('customChipList');
 const customEmptyMsgEl = document.getElementById('customEmptyMsg');
 const customCaseSensitiveEl = document.getElementById('customCaseSensitive');
+const customIsRegexEl = document.getElementById('customIsRegex');
+const customRegexHintEl = document.getElementById('customRegexHint');
+const customRegexMsgEl = document.getElementById('customRegexMsg');
 customCaseSensitiveEl.checked = loadCustomCaseSensitive();
 
 // CLEAR_TERMS_FLOW_START
@@ -1922,7 +1952,13 @@ function renderCustomChips() {
     const chip = document.createElement('span');
     chip.className = 'chip';
     const label = document.createElement('span');
-    label.textContent = term;
+    if (isRegexTerm(term)) {
+      label.textContent = '/' + regexTermSource(term) + '/';
+      label.title = t.regexChipTitle;
+      chip.classList.add('chip-regex');
+    } else {
+      label.textContent = term;
+    }
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.textContent = '×';
@@ -1937,8 +1973,18 @@ function renderCustomChips() {
 }
 
 function addCustomTerm() {
-  const val = customInputEl.value.trim();
+  let val = customInputEl.value.trim();
   if (!val) return;
+  customRegexMsgEl.textContent = '';
+  if (customIsRegexEl.checked) {
+    const check = checkUserRegex(val);
+    if (!check.ok) {
+      customRegexMsgEl.textContent = I18N[currentLang].regexErrors[check.reason];
+      customInputEl.focus();
+      return; // keep what the person typed so they can fix it
+    }
+    val = REGEX_TERM_PREFIX + val;
+  }
   if (!customTerms.includes(val)) {
     clearedCount = null;
     customTerms.push(val);
@@ -1962,6 +2008,10 @@ document.getElementById('customAddBtn').addEventListener('click', addCustomTerm)
 customInputEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); addCustomTerm(); }
 });
+customIsRegexEl.addEventListener('change', () => {
+  customRegexHintEl.style.display = customIsRegexEl.checked ? 'block' : 'none';
+  customRegexMsgEl.textContent = '';
+});
 customCaseSensitiveEl.addEventListener('change', () => {
   saveCustomCaseSensitive(customCaseSensitiveEl.checked);
   if (typeof scheduleLiveScan === 'function') scheduleLiveScan(0);
@@ -1981,7 +2031,9 @@ document.getElementById('customImportFile').addEventListener('change', (e) => {
     try {
       const data = JSON.parse(reader.result);
       const incoming = Array.isArray(data) ? data : (Array.isArray(data.terms) ? data.terms : []);
-      const clean = incoming.filter(t => typeof t === 'string' && t.trim());
+      const clean = incoming.filter(t => typeof t === 'string' && t.trim() && (!isRegexTerm(t) || checkUserRegex(regexTermSource(t)).ok));
+      const skipped = incoming.filter(t => typeof t === 'string' && isRegexTerm(t) && !checkUserRegex(regexTermSource(t)).ok).length;
+      customRegexMsgEl.textContent = skipped ? I18N[currentLang].regexSkipped.replace('{n}', skipped) : '';
       // Merge with the existing list and de-duplicate, instead of
       // overwriting — avoids data loss if the user imports the
       // wrong file by mistake.
@@ -2075,6 +2127,43 @@ function getActiveRules() {
   return RULES.filter(r => checked.has(r.id));
 }
 
+// USER_REGEX_START
+// User-defined regular expressions live in the same list as plain terms,
+// marked with a "regex:" prefix, so they are saved, exported and imported
+// with the list and reach every redaction path (text, image OCR, PDF, Word,
+// PowerPoint) through findCustomMatches() without changing any signature.
+// A pattern is validated before it is stored: it must compile, must not
+// match the empty string (that would "match" everywhere), must be short,
+// and must not contain a nested quantifier such as (a+)+ -- the classic
+// shape that makes a regex freeze the page ("catastrophic backtracking").
+// The nested-quantifier check is a heuristic, not a proof; see the README.
+const REGEX_TERM_PREFIX = 'regex:';
+const REGEX_MAX_LENGTH = 200;
+const REGEX_MAX_MATCHES = 2000;
+function isRegexTerm(term) { return typeof term === 'string' && term.startsWith(REGEX_TERM_PREFIX); }
+function regexTermSource(term) { return term.slice(REGEX_TERM_PREFIX.length); }
+function checkUserRegex(src) {
+  if (typeof src !== 'string' || !src.trim()) return { ok: false, reason: 'empty' };
+  if (src.length > REGEX_MAX_LENGTH) return { ok: false, reason: 'tooLong' };
+  let re;
+  try { re = new RegExp(src, 'gi'); } catch (e) { return { ok: false, reason: 'invalid' }; }
+  if (re.test('')) return { ok: false, reason: 'matchesEmpty' };
+  // a group that contains a quantifier and is itself quantified, or a backreference
+  if (/\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)\s*(?:[+*]|\{\d*,\d*\})/.test(src) || /\\[1-9]/.test(src)) return { ok: false, reason: 'risky' };
+  return { ok: true };
+}
+const userRegexCache = new Map();
+function compileUserRegex(src, caseSensitive) {
+  const key = (caseSensitive ? 'c' : 'i') + src;
+  if (!userRegexCache.has(key)) {
+    let re = null;
+    if (checkUserRegex(src).ok) { try { re = new RegExp(src, caseSensitive ? 'g' : 'gi'); } catch (e) { re = null; } }
+    userRegexCache.set(key, re);
+  }
+  return userRegexCache.get(key);
+}
+// USER_REGEX_END
+
 // Finds matches against the custom term list (plain substring
 // matching, no regex, so we never have to worry about escaping
 // special characters in a company/server name).
@@ -2082,6 +2171,17 @@ function findCustomMatches(text, terms, caseSensitive) {
   const matches = [];
   const hay = caseSensitive ? text : text.toLowerCase();
   terms.forEach(term => {
+    if (isRegexTerm(term)) {
+      const re = compileUserRegex(regexTermSource(term), caseSensitive);
+      if (!re) return;
+      re.lastIndex = 0;
+      let m, n = 0;
+      while ((m = re.exec(text)) !== null && n++ < REGEX_MAX_MATCHES) {
+        if (m[0].length === 0) { re.lastIndex++; continue; }
+        matches.push({ start: m.index, end: m.index + m[0].length, ruleId: 'custom', priority: 0 });
+      }
+      return;
+    }
     const needle = caseSensitive ? term : term.toLowerCase();
     if (!needle) return;
     let idx = 0;
@@ -3806,6 +3906,7 @@ function foldedCustomSpans(joined, terms, caseSensitive) {
   const spans = [];
   const hay = foldForMatch(joined, caseSensitive);
   for (const term of terms) {
+    if (isRegexTerm(term)) continue; // regex terms are matched by findCustomMatches
     const needle = foldForMatch(String(term).normalize('NFC').replace(/\s+/g, ' ').trim(), caseSensitive);
     if (!needle) continue;
     let idx = 0;
@@ -3846,6 +3947,7 @@ function findPhraseWordMatches(words, terms, caseSensitive) {
   const keys = words.map(w => phraseWordKey(w.text, caseSensitive));
   let budget = 50000; // hard stop against pathological inputs
   for (const term of terms) {
+    if (isRegexTerm(term)) continue;
     const tokens = String(term).normalize('NFC').trim().split(/\s+/).map(t => phraseWordKey(t, caseSensitive)).filter(Boolean);
     if (tokens.length < 2) continue;
     const extend = (chain) => {
@@ -3910,7 +4012,7 @@ function scaleWords(words, factor) {
 // Custom terms with accents + an English-only OCR language is a classic
 // way to miss text: warn about it.
 function ocrLangMismatch(terms, lang) {
-  return lang === 'eng' && terms.some(t => /[^\u0000-\u007f]/.test(t));
+  return lang === 'eng' && terms.some(t => !isRegexTerm(t) && /[^\u0000-\u007f]/.test(t));
 }
 // The OCR engine is WebAssembly. Some environments switch WebAssembly
 // off on purpose -- Safari in Apple's Lockdown Mode is the common one --

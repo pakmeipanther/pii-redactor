@@ -49,6 +49,7 @@ const rulesCode = extractBetween(
   '\nconst ruleListEl',
   'RULES'
 );
+const userRegexCode = extractBetween('// USER_REGEX_START', '// USER_REGEX_END', 'USER_REGEX');
 const findCustomMatchesCode = extractBetween(
   'function findCustomMatches(text, terms, caseSensitive) {',
   '\nfunction findMatches(',
@@ -98,8 +99,8 @@ const redactWordsOnCanvasCode = extractBetween(
   'redactWordsOnCanvas'
 );
 
-const combined = `${rulesCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
-const { RULES, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
+const combined = `${rulesCode}\n${userRegexCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, REGEX_TERM_PREFIX, checkUserRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
+const { RULES, REGEX_TERM_PREFIX, checkUserRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -2944,6 +2945,63 @@ check('theme: the selector offers system / light / dark in all four languages, a
   const i18nBlock = html.slice(html.indexOf('const I18N = {'), html.indexOf('const I18N = {') + 200000);
   for (const key of ['themeLabel', 'themeSystem', 'themeLight', 'themeDark']) if ((i18nBlock.match(new RegExp('\\b' + key + ':', 'g')) || []).length < 4) throw new Error(key + ' missing in a language');
   if (!html.includes("localStorage.setItem(THEME_KEY, pref)")) throw new Error('choice not stored');
+});
+
+// --- user-defined regular expressions (v1.4) ---------------------------
+const RX = src => REGEX_TERM_PREFIX + src;
+
+check('regex terms: a valid pattern is accepted, and it covers every match in the text', () => {
+  if (!checkUserRegex('EMP-\\d{5}').ok) throw new Error('valid pattern refused');
+  const m = findCustomMatches('Staff EMP-12345 and EMP-99999 left', [RX('EMP-\\d{5}')], false);
+  if (m.length !== 2 || m[0].start !== 6 || m[1].start !== 20) throw new Error('expected two matches, got ' + JSON.stringify(m));
+});
+
+check('regex terms: the "case-sensitive" setting applies to patterns too', () => {
+  if (findCustomMatches('emp-12345', [RX('EMP-\\d{5}')], false).length !== 1) throw new Error('case-insensitive mode missed it');
+  if (findCustomMatches('emp-12345', [RX('EMP-\\d{5}')], true).length !== 0) throw new Error('case-sensitive mode matched a different case');
+});
+
+check('regex terms: empty, over-long, invalid, empty-matching and nested-quantifier patterns are all refused with a reason', () => {
+  const cases = [['', 'empty'], ['   ', 'empty'], ['a'.repeat(201), 'tooLong'], ['(unclosed', 'invalid'], ['a*', 'matchesEmpty'], ['(a+)+$', 'risky'], ['(x+x+)+y', 'risky'], ['(a)\\1', 'risky']];
+  for (const [src, reason] of cases) {
+    const r = checkUserRegex(src);
+    if (r.ok || r.reason !== reason) throw new Error(`${JSON.stringify(src.slice(0, 12))}: expected ${reason}, got ${JSON.stringify(r)}`);
+  }
+});
+
+check('regex terms: a stored pattern that is unsafe is ignored at match time instead of running', () => {
+  const t0 = Date.now();
+  const m = findCustomMatches('a'.repeat(40) + '!', [RX('(a+)+$')], false);
+  if (m.length !== 0) throw new Error('unsafe pattern was executed');
+  if (Date.now() - t0 > 500) throw new Error('took too long');
+});
+
+check('regex terms: they win over built-in rules and merge with plain terms in findMatches', () => {
+  const m = findMatches('Contact EMP-12345 at ACME', RULES, [RX('EMP-\\d{5}'), 'ACME'], false);
+  const custom = m.filter(x => x.ruleId === 'custom');
+  if (custom.length !== 2) throw new Error('expected 2 custom matches, got ' + JSON.stringify(m));
+});
+
+check('regex terms: they are not mistaken for plain text by the OCR helpers', () => {
+  if (foldedCustomSpans('EMP-12345', [RX('EMP-\\d{5}')], false).length !== 0) throw new Error('foldedCustomSpans used the regex as plain text');
+  if (findPhraseWordMatches([{ text: 'a' }, { text: 'b' }], [RX('a b')], false).size) throw new Error('phrase matcher used the regex as plain text');
+  if (ocrLangMismatch([RX('é+')], 'eng')) throw new Error('a regex with an accent must not trigger the language hint');
+  if (!isRegexTerm(RX('x')) || isRegexTerm('regexx') || isRegexTerm(5)) throw new Error('isRegexTerm wrong');
+});
+
+check('regex terms: a pattern in the word-level OCR path covers the matching words', () => {
+  const secretLine = [W('Badge', 10, 600, 60, 620), W('EMP-12345', 70, 600, 200, 620)];
+  const found = findWordRedactions([secretLine], [], [RX('EMP-\\d{5}')], false, false, new Set());
+  if (!found.regions.some(r => r.text === 'EMP-12345')) throw new Error('nothing covered: ' + JSON.stringify(found.regions));
+  if (found.regions.some(r => r.text === 'Badge')) throw new Error('covered an unrelated word');
+});
+
+check('regex terms: all four languages define the same new interface texts', () => {
+  const need = ['regexLabel', 'regexHint', 'regexChipTitle', 'regexSkipped'];
+  const blocks = html.match(/regexLabel:/g) || [];
+  if (blocks.length !== 4) throw new Error('regexLabel in ' + blocks.length + ' languages');
+  for (const k of need) if ((html.match(new RegExp(k + ':', 'g')) || []).length !== 4) throw new Error(k + ' is not in all four languages');
+  if ((html.match(/regexErrors: \{ empty:/g) || []).length !== 4) throw new Error('regexErrors missing');
 });
 
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {

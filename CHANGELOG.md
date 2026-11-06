@@ -23,6 +23,7 @@ one never removes an older one.
 
 ### Added
 
+- **Your own regular expressions.** Tick "Regular expression (regex, advanced)" next to the custom term field to add a pattern such as `EMP-\d{5}` instead of a fixed word. Patterns are stored, exported and imported with the list, use the case-sensitive setting, and work for text, images (OCR), PDF, Word and PowerPoint. A pattern is refused if it is empty, over 200 characters, invalid, matches the empty string, or has a nested repeated group or back-reference (a heuristic against freezing the page); unsafe patterns in an imported file are skipped with a message.
 - **Light, dark and "follow the system" themes.** A Theme selector next to the
   language selector offers System (default), Light and Dark. The choice is
   remembered in this browser only, and "System" follows the operating system
@@ -74,10 +75,10 @@ one never removes an older one.
 
 ### Testing
 
-- Test suite grown from 212 to 233 tests: the city table, nearest-city lookup
+- Test suite grown from 212 to 241 tests: the city table, nearest-city lookup
   (including "no city within 200 km"), strict GPS parsing, the report line,
   HEIC metadata and decoding, "a new file clears the old results", the
-  live preview's stale-result guard, the masked-text boxes and editing them, and the theme variables.
+  live preview's stale-result guard, the user-defined regular expressions (validation, matching, OCR path, languages), the masked-text boxes and editing them, and the theme variables.
 
 ## [1.3.2] — 2026-10-28
 
