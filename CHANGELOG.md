@@ -8,6 +8,33 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
+## [Unreleased]
+
+### Added
+
+- **A hosted version on GitHub Pages**, so the image, face, PDF, Word and
+  PowerPoint features work from a link, with no Python and no local server.
+  `.github/workflows/pages.yml` publishes only the files the app needs, and only
+  after the test suite passes.
+- **Use offline and install as an app.** On the hosted page a new "Use offline"
+  panel (English, Français, Deutsch, Tiếng Việt) saves the app (about 22 MB)
+  in the browser; afterwards it opens and runs with no connection. A web app
+  manifest and icons let browsers offer "Install as app".
+- **`sw.js`, a service worker that keeps only the app's own files.** It ignores
+  other origins and non-GET requests, stores only plain 200 answers, never sees
+  what the person pastes or drops, and never swaps in a new version silently
+  (the page offers "New version available" and waits for a reload).
+- `scripts/make-precache.mjs` writes the list of files to save for offline
+  use; it leaves out the OCR cores the app never starts and licence text.
+- The "opened as a file" warning now also points to the hosted version.
+
+### Changed
+
+- Test suite grown from 245 to 252 tests: offline helpers, translations of the
+  new strings, the promises `sw.js` makes, the manifest and its icons, the
+  precache list, and a guard that the Content Security Policy still names no
+  remote host.
+
 ## [1.4.0] — 2026-11-06
 
 ### Fixed

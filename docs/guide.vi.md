@@ -82,6 +82,8 @@ Tính năng nào dùng được chỉ bằng cách bấm đúp index.html, tính
 
 Nếu còn phân vân, cứ dùng local server: nó chạy được mọi thứ.
 
+> **Đường tắt: không cần local server.** Bạn có thể bỏ qua Bước 3 bằng cách dùng bản trực tuyến tại https://pakmeipanther.github.io/pii-redactor/ — ảnh, khuôn mặt và PDF chạy ngay mà không cần cài gì, và file của bạn vẫn chỉ được xử lý trong trình duyệt của bạn. Khung "Dùng khi không có mạng" ở cuối trang có thể lưu một bản vào trình duyệt để dùng cả khi không có Internet. Nếu bạn xử lý tài liệu rất nhạy cảm, hãy ưu tiên bản đã tải ở Bước 1 và làm theo các bước dưới đây.
+
 ## Bước 3 (nâng cao, cần cho ảnh, khuôn mặt và PDF) — Chạy local server
 
 Việc đọc chữ trong ảnh, tìm khuôn mặt và xử lý file PDF cần thêm một bước kỹ thuật nhỏ, do một hạn chế bảo mật của trình duyệt. "Chạy local server" nghe có vẻ đáng sợ, nhưng thực ra chỉ là gõ một dòng lệnh. Nếu bạn chỉ cần xử lý văn bản, Word hoặc PowerPoint thì có thể bỏ qua phần này.
