@@ -10,6 +10,16 @@ one never removes an older one.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Yellow "suspect" outlines were printed into the exported files.** A
+  harmless word flagged as a high-entropy suspect (e.g. `community-based`)
+  got a yellow rectangle stroked onto the page canvas, and that canvas is
+  exactly what is exported, so the rectangle appeared in the redacted PDF
+  (and in image-panel exports). Suspects are now only reported; the yellow
+  outline is drawn on a separate on-screen overlay that the export never
+  reads. Verified with headless Chrome: 0 yellow pixels in the exported PDF.
+
 ### Added
 
 - **A hosted version on GitHub Pages**, so the image, face, PDF, Word and
@@ -358,8 +368,8 @@ Presentation only: the program itself is unchanged.
     ticking one redraws the image from the untouched original with
     that suspect (and only that one) now really redacted.
   - PDF panel: a suspect gets a yellow outline stroked onto the
-    rendered page — visible in the exported PDF, pixels underneath
-    untouched.
+    on-screen preview only (never in the exported PDF), pixels
+    underneath untouched.
   - Word/PowerPoint panels: flag-only (a count + guidance message),
     since the output is freshly-drawn vector text with no canvas to
     outline. Confirming a suspect anywhere always goes through the

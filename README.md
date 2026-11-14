@@ -175,7 +175,9 @@ always a deliberate human action):
 - **PDF and Word/PowerPoint panels** — no per-page interactive
   checklist (redrawing a multi-page canvas on every tick is much more
   expensive than one image). A suspect instead gets a yellow outline
-  stroked onto the page (PDF) or is simply left untouched in the
+  on the on-screen preview only (a separate overlay, never part of the
+  exported file; the exported PDF page is byte-for-byte what the
+  redaction produced) or is simply left untouched in the
   output text (Word/PowerPoint, which build a fresh vector-text PDF
   with no canvas to outline) — in both cases the guidance is the
   same: if it's really a secret, add it to the custom term list above
