@@ -82,6 +82,8 @@ Quelles fonctions marchent par un simple double-clic sur index.html, et lesquell
 
 Dans le doute, utilisez le serveur local : il fonctionne pour tout.
 
+> **Raccourci : pas besoin de serveur local.** Vous pouvez sauter l'étape 3 en utilisant la version en ligne sur https://pakmeipanther.github.io/pii-redactor/ : les images, les visages et les PDF y fonctionnent sans rien installer, et vos fichiers restent traités uniquement dans votre navigateur. Le cadre « Utiliser hors ligne », en bas de page, peut enregistrer une copie dans votre navigateur pour fonctionner aussi sans Internet. Si vous manipulez des documents très sensibles, préférez la copie téléchargée à l'étape 1 et suivez les étapes ci-dessous.
+
 ## Étape 3 (avancée, nécessaire pour les images, les visages et les PDF) — Lancez un serveur local
 
 La lecture du texte dans les images, la détection des visages et le traitement des PDF demandent une petite étape technique supplémentaire, à cause d'une restriction de sécurité du navigateur. « Lancer un serveur local » semble effrayant, mais il s'agit simplement de taper une ligne de commande. Si vous n'avez besoin que du texte, de Word ou de PowerPoint, vous pouvez sauter cette section.

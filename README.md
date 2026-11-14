@@ -429,7 +429,39 @@ instructions in each of those languages, see the full user guide:
 [English](docs/guide.en.md) · [Tiếng Việt](docs/guide.vi.md) ·
 [Deutsch](docs/guide.de.md) · [Français](docs/guide.fr.md).
 
-## Running the image/OCR/PDF/Word/PowerPoint features
+## Using it online, installing it, or using it offline
+
+The easiest way to use the image, face, PDF, Word and PowerPoint features,
+with no Python and no local server, is the hosted version:
+
+**https://pakmeipanther.github.io/pii-redactor/**
+
+It is the same `index.html` and `vendor/` folder as in this repository,
+published by [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+only after the test suite passes. Your files are still processed inside your
+browser: the page's Content Security Policy lets it talk to its own site and
+nothing else, so there is nowhere for your data to go.
+
+- **Use offline / install as an app.** At the bottom of the hosted page, the
+  "Use offline" panel saves a copy of the app (about 22 MB) in your browser
+  through a service worker ([`sw.js`](sw.js)). After that it opens and works
+  with no internet connection. Where your browser supports it, "Install as app"
+  adds it to your Dock, Start menu or home screen. Only the app's own files are
+  stored, never anything you paste or drop.
+- **Updates are never silent.** When a new version is published, the page shows
+  "New version available" and waits for you to reload, so the page and its
+  libraries always come from the same build.
+- **What you are trusting.** With the hosted version, the program code reaches
+  your browser from GitHub when you first open it (and when you update). For
+  very sensitive documents, prefer a copy you downloaded and checked yourself
+  (next section), or the offline copy after you have checked its version: the
+  hosted `sw.js` contains the first 12 characters of the commit it was built
+  from, which you can compare with the repository.
+- **For the maintainer.** Turn it on once under Settings, Pages, Source:
+  "GitHub Actions". After that every push to `main` that passes the tests is
+  published.
+
+## Running the image/OCR/PDF/Word/PowerPoint features from a downloaded copy
 
 Opening `index.html` by double-clicking it uses the `file://` protocol,
 under which browsers block a page from fetching other local files (the
@@ -466,7 +498,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.4.0: 245 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.4.0: 253 tests, all passing.
 
 ```sh
 node test/run-tests.mjs

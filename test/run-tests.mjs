@@ -3041,6 +3041,102 @@ check('regex stress test: the new texts exist in all four languages', () => {
   for (const k of ['regexTesting', 'timeout: \'']) if ((html.match(new RegExp(k, 'g')) || []).length < 4) throw new Error(k + ' missing');
 });
 
+// ---- Hosted version: offline use (sw.js, manifest, precache list) ----
+import { mkdtempSync, mkdirSync, writeFileSync as writeTmp, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+const offlineHelpers = new Function(`${extractBetween('// OFFLINE_START', '// OFFLINE_END', 'OFFLINE helpers')}\nreturn { offlineAvailable, formatMegabytes, fillTemplate };`)();
+
+check('offline: the panel is offered only for https pages that can run a service worker', () => {
+  const { offlineAvailable } = offlineHelpers;
+  if (!offlineAvailable('https:', true)) throw new Error('https + service worker should be offered');
+  for (const [proto, sw] of [['file:', true], ['http:', true], ['https:', false], ['https:', undefined]]) {
+    if (offlineAvailable(proto, sw)) throw new Error(`should not be offered for ${proto} / ${sw}`);
+  }
+});
+
+check('offline: sizes and message templates are formatted as expected', () => {
+  const { formatMegabytes, fillTemplate } = offlineHelpers;
+  if (formatMegabytes(23068672) !== '22') throw new Error(formatMegabytes(23068672));
+  if (formatMegabytes(3 * 1048576) !== '3.0') throw new Error(formatMegabytes(3 * 1048576));
+  if (fillTemplate('{done} of {total} MB', { done: '1.5', total: '22' }) !== '1.5 of 22 MB') throw new Error('template');
+  if (fillTemplate('keep {unknown}', {}) !== 'keep {unknown}') throw new Error('unknown placeholders must stay visible');
+});
+
+check('offline: all four languages have every offline string, translated, with the placeholders intact', () => {
+  const main = new Function(`${extractBetween('const I18N = {', 'const ruleListEl', 'I18N main literal')}\nreturn I18N;`)();
+  const keys = ['offlineTitle', 'offlineDesc', 'offlineSaveBtn', 'offlineSaving', 'offlineReady', 'offlineFail', 'offlineInstallBtn', 'offlineUpdateBtn'];
+  const holders = { offlineSaveBtn: ['{mb}'], offlineSaving: ['{done}', '{total}'] };
+  for (const l of ['en', 'fr', 'de', 'vi']) {
+    for (const k of keys) {
+      const v = main[l][k];
+      if (typeof v !== 'string' || !v.trim()) throw new Error(`${l}.${k} missing or empty`);
+      if (l !== 'en' && v === main.en[k]) throw new Error(`${l}.${k} is identical to English -- untranslated?`);
+      for (const h of holders[k] || []) if (!v.includes(h)) throw new Error(`${l}.${k} lost the placeholder ${h}`);
+    }
+  }
+});
+
+check('offline: sw.js keeps its promises (same origin only, GET only, version placeholder, no data in the cache)', () => {
+  const sw = readRepoFile('sw.js');
+  if ((sw.match(/__BUILD_ID__/g) || []).length !== 1) throw new Error('sw.js must contain the __BUILD_ID__ placeholder exactly once, for the workflow to fill in');
+  if (!/new URL\(req\.url\)\.origin !== self\.location\.origin\) return;/.test(sw)) throw new Error('the fetch handler must ignore other origins');
+  if (!/req\.method !== 'GET'\) return;/.test(sw)) throw new Error('the fetch handler must ignore non-GET requests');
+  if (!/res\.status === 200 && res\.type === 'basic'/.test(sw)) throw new Error('only plain 200 answers may be stored');
+  if (/skipWaiting\(\)/.test(sw) && !/SKIP_WAITING/.test(sw)) throw new Error('skipWaiting must only run when the person asks for the update');
+  if (/\binstall['"]\s*,[^)]*skipWaiting/.test(sw)) throw new Error('skipWaiting must not run on install');
+  for (const f of ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png']) {
+    if (!sw.includes(`'${f}'`)) throw new Error(`CORE list lost ${f}`);
+  }
+});
+
+check('offline: every icon the page links is in the offline shell and in the precache list', () => {
+  const sw = readRepoFile('sw.js');
+  const pre = readRepoFile('scripts/make-precache.mjs');
+  const linked = [...html.matchAll(/<link rel="apple-touch-icon" href="([^"]+)"/g)].map(m => m[1]);
+  if (!linked.length) throw new Error('expected an apple-touch-icon link');
+  for (const f of linked) {
+    if (!sw.includes(`'${f}'`)) throw new Error(f + ' is linked by index.html but missing from the CORE list in sw.js');
+    if (!pre.includes(`'${f}'`)) throw new Error(f + ' is linked by index.html but missing from scripts/make-precache.mjs');
+  }
+});
+
+check('offline: the manifest is valid and its icons exist', () => {
+  const m = JSON.parse(readRepoFile('manifest.webmanifest'));
+  for (const k of ['name', 'short_name', 'start_url', 'scope', 'display', 'icons']) if (!m[k]) throw new Error('manifest lacks ' + k);
+  if (m.start_url !== './' || m.scope !== './') throw new Error('start_url and scope must be relative so the app works under /pii-redactor/');
+  const sizes = m.icons.map(i => i.sizes);
+  for (const need of ['192x192', '512x512']) if (!sizes.includes(need)) throw new Error('missing icon ' + need);
+  for (const i of m.icons) if (!existsSync(path.join(__dirname, '..', i.src))) throw new Error('icon file missing: ' + i.src);
+  if (!/<link rel="manifest" href="manifest\.webmanifest">/.test(html)) throw new Error('index.html does not link the manifest');
+});
+
+check('offline: precache list leaves out unused OCR cores and licence text, and keeps what is used', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'pii-precache-'));
+  const put = (rel, size) => { mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); writeTmp(path.join(dir, rel), 'x'.repeat(size)); };
+  for (const f of ['index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png']) put(f, 10);
+  for (const f of ['vendor/tesseract/tesseract-core-simd-lstm.wasm.js', 'vendor/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js', 'vendor/tesseract/tesseract-core-lstm.wasm.js',
+                   'vendor/tesseract/worker.min.js', 'vendor/tessdata/eng.traineddata.gz', 'vendor/pdf/pdf.min.mjs']) put(f, 20);
+  for (const f of ['vendor/tesseract/tesseract-core-simd.wasm.js', 'vendor/tesseract/tesseract-core.wasm.js', 'vendor/tesseract/tesseract-core-simd-lstm.wasm',
+                   'vendor/tesseract/tesseract-core.wasm', 'vendor/NOTICE.md', 'vendor/pico/LICENSE-pico.txt']) put(f, 30);
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'make-precache.mjs'), dir], { stdio: 'pipe' });
+  const list = JSON.parse(readFileSync(path.join(dir, 'precache.json'), 'utf8'));
+  const got = list.files.map(f => f.path).sort();
+  const want = ['icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'index.html', 'manifest.webmanifest',
+    'vendor/pdf/pdf.min.mjs', 'vendor/tesseract/tesseract-core-lstm.wasm.js', 'vendor/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js',
+    'vendor/tesseract/tesseract-core-simd-lstm.wasm.js', 'vendor/tesseract/worker.min.js', 'vendor/tessdata/eng.traineddata.gz'].sort();
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error('got ' + JSON.stringify(got));
+  if (list.totalBytes !== list.files.reduce((n, f) => n + f.size, 0)) throw new Error('totalBytes does not add up');
+});
+
+check('csp: the page still allows connections to its own origin only, with no remote host anywhere in the policy', () => {
+  const csp = (html.match(/http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1];
+  if (!csp) throw new Error('no CSP meta tag');
+  if (!/connect-src 'self';/.test(csp)) throw new Error('connect-src must be exactly self: ' + csp);
+  if (/https?:\/\//.test(csp) || /\*/.test(csp)) throw new Error('the policy names a remote host: ' + csp);
+  if (/unsafe-eval(?!\w)/.test(csp.replace(/wasm-unsafe-eval/g, ''))) throw new Error('unsafe-eval must not be allowed');
+});
+
 check('release: the test counts quoted in README and CHANGELOG match the suite', () => {
   const total = passed + failed + 1; // + this check itself
   const readmeClaim = Number((readmeText.match(/As of v\d+(?:\.\d+)*(?: \([a-z]+\))?:\s+(\d+)\s+tests,\s+all\s+passing/) || [])[1]);
