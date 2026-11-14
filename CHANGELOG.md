@@ -8,7 +8,7 @@ contract yet — see [README: Versioning](README.md#versioning)). Every
 tagged version stays downloadable on GitHub forever; publishing a new
 one never removes an older one.
 
-## [Unreleased]
+## [1.5.0] — 2026-11-14
 
 ### Changed
 
@@ -18,9 +18,21 @@ one never removes an older one.
   page (in all four languages) offers "Update now"; before, the only sign was a
   small button at the bottom of the page. Still never automatic: the update
   happens when you press the button, so a file you are working on is not lost.
+- Test suite grown from 245 to 256 tests: offline helpers, translations of the
+  new strings, the promises `sw.js` makes, the manifest and its icons, the
+  precache list, a check that every icon the page links is saved for offline
+  use, and a guard that the Content Security Policy still names no remote
+  host.
 
 ### Fixed
 
+- **A single character could stay visible next to a black box in a PDF.** Where
+  a match sits inside a line of text was estimated by assuming every character
+  is equally wide; on a long run of narrow letters that is off by a whole letter
+  (seen while making the demo: the "p" of "Corp", the "s" of "sk_test" stayed
+  readable). The position is now computed from the text measured in its own
+  font, with the old estimate as a fallback. It remains an estimate, so the
+  page previews should still be looked at before downloading.
 - **Yellow "suspect" outlines were printed into the exported files.** A
   harmless word flagged as a high-entropy suspect (e.g. `community-based`)
   got a yellow rectangle stroked onto the page canvas, and that canvas is
@@ -28,6 +40,19 @@ one never removes an older one.
   (and in image-panel exports). Suspects are now only reported; the yellow
   outline is drawn on a separate on-screen overlay that the export never
   reads. Verified with headless Chrome: 0 yellow pixels in the exported PDF.
+
+### Documentation
+
+- **README and the four user guides (English, Tiếng Việt, Deutsch, Français)
+  rewritten around the three ways to use the tool**: the website, an offline
+  copy and an installed app — with a downloaded copy kept as the advanced way
+  (Steps 1 to 3 of each guide, now marked "only for way D"). New "Start here"
+  section in every guide, new update-bar explanation, honest wording about what
+  is fetched from GitHub and what never leaves the computer.
+- The in-app messages shown when `index.html` is opened as a file now also point
+  to the website.
+- **New demo GIF** in the light theme, showing v1.5.0 (the website, an offline
+  save and the update bar included).
 
 ### Added
 
@@ -46,14 +71,6 @@ one never removes an older one.
 - `scripts/make-precache.mjs` writes the list of files to save for offline
   use; it leaves out the OCR cores the app never starts and licence text.
 - The "opened as a file" warning now also points to the hosted version.
-
-### Changed
-
-- Test suite grown from 245 to 254 tests: offline helpers, translations of the
-  new strings, the promises `sw.js` makes, the manifest and its icons, the
-  precache list, a check that every icon the page links is saved for offline
-  use, and a guard that the Content Security Policy still names no remote
-  host.
 
 ## [1.4.0] — 2026-11-06
 
@@ -435,6 +452,7 @@ First stable release.
   a duplicated copy.
 - Multi-language user guide and demo GIF.
 
+[1.5.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.5.0
 [1.4.0]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.4.0
 [1.3.2]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2
 [1.3.1]: https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.1

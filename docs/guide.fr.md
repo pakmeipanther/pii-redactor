@@ -10,7 +10,9 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 
 > **Le plus important :** ce logiciel n'établit aucune connexion Internet et n'envoie aucune donnée nulle part — tout le traitement se fait directement sur votre ordinateur. Vous pouvez complètement désactiver le Wi-Fi en l'utilisant, il continuera de fonctionner normalement — c'est aussi un moyen de le vérifier par vous-même.
 
-![Démo (mode clair) : choix du thème, aperçu en direct et copie du texte masqué, termes personnalisés et une expression régulière, une photo HEIC avec la ville du GPS, OCR, une zone dessinée à la main, et un PDF qui remplace le fichier précédent](images/demo.gif)
+> Avec le site web, le programme lui-même est téléchargé depuis GitHub à l'ouverture de la page (et lors d'une mise à jour) ; votre texte et vos fichiers ne quittent jamais votre ordinateur. Pour le vérifier vous-même, cliquez une fois sur « Enregistrer pour une utilisation hors ligne », puis coupez le réseau.
+
+![Démo (mode clair, v1.5) : le site web ouvert dans le navigateur, collage de texte avec aperçu en direct et copie en un clic, termes personnalisés et une expression régulière, OCR sur une capture d'écran, une photo avec métadonnées GPS et une zone dessinée à la main, un PDF, l'enregistrement de l'application pour l'utilisation hors ligne, et la barre bleue « nouvelle version »](images/demo.gif)
 
 *(Tout ce qui apparaît dans cet enregistrement est inventé.)*
 
@@ -29,8 +31,27 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 - **nouveau en v1.4 :** chaque résultat d'image, PDF, Word et PowerPoint a une **zone de texte masqué modifiable** (avec un bouton "Rétablir le texte masqué") et son propre bouton "Copier le texte masqué" ;
 - **nouveau en v1.4 :** ouvrez des **photos HEIC d'iPhone** ; le rapport de métadonnées affiche la **ville la plus proche** d'une position GPS (recherche entièrement hors ligne).
 - **nouveau en v1.4 :** décrivez vos propres **motifs** (expressions régulières), par exemple pour des numéros d'employé.
+- **nouveau en v1.5 :** utilisez-le directement depuis le **site web**, en **copie hors ligne** ou en **application installée** — rien à télécharger et pas de serveur local ; une barre bleue signale qu'une nouvelle version est prête (voir « Commencez ici » plus bas) ;
+- **corrigé en v1.5 :** le cadre jaune « suspect » n'est plus qu'une aide de relecture à l'écran et n'apparaît plus dans les PDF et images téléchargés.
 
-## Étape 1 — Téléchargez le logiciel
+## Commencez ici — quatre façons d'utiliser le logiciel
+
+Vous pouvez utiliser PII Redactor sans rien installer et sans taper une seule commande. Choisissez la façon qui vous convient :
+
+| Voie | Ce que vous faites | Internet nécessaire ? |
+|---|---|---|
+| **A. Le site web (le plus simple)** | Ouvrez https://pakmeipanther.github.io/pii-redactor/ dans votre navigateur. Tout y fonctionne : texte, images, visages, PDF, Word et PowerPoint. | Oui, pour ouvrir la page |
+| **B. Copie hors ligne** | Sur le site, descendez tout en bas jusqu'au cadre « Utiliser hors ligne » et cliquez sur « Enregistrer pour une utilisation hors ligne (environ 22 Mo) ». Ensuite la page s'ouvre et fonctionne même réseau coupé. | Seulement la première fois |
+| **C. Application installée** | Dans le même cadre, cliquez sur « Installer comme application » (Chrome, Edge et Brave le proposent ; dans Safari, utilisez « Ajouter au Dock » sur Mac ou « Sur l'écran d'accueil » sur iPhone et iPad). L'outil a sa propre fenêtre et son icône, et fonctionne aussi hors ligne. | Seulement la première fois |
+| **D. Copie téléchargée (avancé)** | Téléchargez les fichiers depuis GitHub et ouvrez-les vous-même — étapes 1 à 3 ci-dessous. Choisissez-la si vous voulez lire et vérifier le code avant de l'utiliser, ou si vous ne devez jamais ouvrir un site web avec des fichiers sensibles. | Non |
+
+Quelle que soit la voie, vos fichiers sont traités uniquement dans votre navigateur : la règle de sécurité de la page l'autorise à parler à son propre site et à personne d'autre, donc vos données n'ont aucun chemin pour sortir. Seuls les fichiers du programme lui-même sont téléchargés depuis Internet — à la première ouverture du site et lors d'une mise à jour.
+
+**Mises à jour.** Quand une nouvelle version est publiée, une barre bleue apparaît en haut de la page : « Une nouvelle version de l'outil est prête. … ». Téléchargez d'abord le fichier sur lequel vous travaillez, puis cliquez sur « Mettre à jour ». La page cherche d'elle-même les nouvelles versions à l'ouverture, quand vous revenez sur son onglet et toutes les 30 minutes. Elle ne se met jamais à jour dans votre dos : vous ne perdez donc aucun travail.
+
+**Quelle voie est la plus sûre pour des documents très sensibles ?** Avec le site, vous faites confiance à GitHub pour livrer le bon programme à chaque ouverture (et lors des mises à jour). Pour le plus sensible, utilisez la voie D, ou la voie B après avoir vérifié le numéro de version.
+
+## Étape 1 (uniquement pour la voie D) — Téléchargez le logiciel
 
 1. Ouvrez votre navigateur (Firefox ou Brave sont recommandés — deux navigateurs réputés pour la sécurité et la confidentialité ; Chrome, Safari et Edge fonctionnent aussi), et rendez-vous à l'adresse :
 
@@ -57,7 +78,7 @@ Imaginez que vous photocopiez votre pièce d'identité pour un inconnu — vous 
 
 ## Étape 2 — Ouvrez le logiciel et repérez-vous
 
-1. Ouvrez le dossier décompressé à l'étape 1 et double-cliquez sur le fichier nommé index.html. Il s'ouvre dans votre navigateur.
+1. Ouvrez le logiciel. Sur le site web ou dans l'application installée, il est déjà ouvert. Avec une copie téléchargée (voie D), ouvrez le dossier décompressé à l'étape 1 et double-cliquez sur le fichier index.html — il s'ouvre dans votre navigateur.
 1. En haut à droite, choisissez votre langue (English, Français, Deutsch ou Tiếng Việt).
 1. À côté du sélecteur de langue, le sélecteur "Thème" permet de choisir "Système" (suit votre ordinateur), "Clair" ou "Sombre". Votre choix est mémorisé dans ce navigateur uniquement.
 1. La ligne verte sous le titre indique qu'aucune connexion réseau n'est établie. C'est une promesse que vous pouvez vérifier vous-même (voir « Bonnes habitudes » à la fin).
@@ -72,7 +93,7 @@ La page se lit de haut en bas :
 | **4. Résultat** | Le texte avec les trouvailles surlignées, et le bouton de téléchargement. |
 | **Panneau Image / PDF / Word / PowerPoint** | N'apparaît qu'après le dépôt d'un fichier de ce type. |
 
-Quelles fonctions marchent par un simple double-clic sur index.html, et lesquelles demandent le serveur local de l'étape 3 ?
+Sur le site web, dans la copie hors ligne et dans l'application installée (voies A, B et C), chaque fonction marche sans étape supplémentaire. Le tableau ci-dessous ne compte **que pour une copie téléchargée (voie D)** : quelles fonctions marchent par un simple double-clic sur index.html, et lesquelles demandent le serveur local de l'étape 3 ?
 
 | Fonction | Double-clic sur index.html | Serveur local nécessaire (étape 3) |
 |---|---|---|
@@ -82,9 +103,7 @@ Quelles fonctions marchent par un simple double-clic sur index.html, et lesquell
 
 Dans le doute, utilisez le serveur local : il fonctionne pour tout.
 
-> **Raccourci : pas besoin de serveur local.** Vous pouvez sauter l'étape 3 en utilisant la version en ligne sur https://pakmeipanther.github.io/pii-redactor/ : les images, les visages et les PDF y fonctionnent sans rien installer, et vos fichiers restent traités uniquement dans votre navigateur. Le cadre « Utiliser hors ligne », en bas de page, peut enregistrer une copie dans votre navigateur pour fonctionner aussi sans Internet. Si vous manipulez des documents très sensibles, préférez la copie téléchargée à l'étape 1 et suivez les étapes ci-dessous.
-
-## Étape 3 (avancée, nécessaire pour les images, les visages et les PDF) — Lancez un serveur local
+## Étape 3 (avancée, uniquement pour la voie D, nécessaire pour les images, les visages et les PDF) — Lancez un serveur local
 
 La lecture du texte dans les images, la détection des visages et le traitement des PDF demandent une petite étape technique supplémentaire, à cause d'une restriction de sécurité du navigateur. « Lancer un serveur local » semble effrayant, mais il s'agit simplement de taper une ligne de commande. Si vous n'avez besoin que du texte, de Word ou de PowerPoint, vous pouvez sauter cette section.
 
@@ -231,7 +250,7 @@ Certains secrets n'ont pas de forme reconnaissable : un mot de passe qui a l'air
 
 **Si le logiciel a manqué quelque chose**, ouvrez « Ce que l'OCR a lu (et pourquoi chaque zone a été noircie) » sous l'image. Vous y voyez le texte lu par le logiciel et la raison de chaque rectangle noir. Si le mot attendu n'y figure pas, le logiciel ne l'a pas lu — choisissez la bonne langue, gardez « Analyse approfondie » active, ou couvrez l'endroit à la main.
 
-**Photos d'iPhone (HEIC).** Vous pouvez déposer directement une photo HEIC ou HEIF d'un iPhone ; elle s'ouvre sur votre ordinateur comme toute autre image. Nécessite le serveur local de l'Étape 3. **Texte de l'image.** Sous l'image, la zone "Texte masqué — prêt à copier" contient le texte lu dans l'image, avec les parties couvertes remplacées. Vous pouvez le modifier ; "Copier le texte masqué" le copie et "Rétablir le texte masqué" ramène la version automatique. Si vos propres modifications contiennent encore quelque chose de sensible, un avertissement apparaît à la copie. Ce texte vient de l'OCR et peut contenir des erreurs : relisez-le avant de l'utiliser.
+**Photos d'iPhone (HEIC).** Vous pouvez déposer directement une photo HEIC ou HEIF d'un iPhone ; elle s'ouvre sur votre ordinateur comme toute autre image. Fonctionne sur le site web et dans l'application ; une copie téléchargée nécessite le serveur local de l'Étape 3. **Texte de l'image.** Sous l'image, la zone "Texte masqué — prêt à copier" contient le texte lu dans l'image, avec les parties couvertes remplacées. Vous pouvez le modifier ; "Copier le texte masqué" le copie et "Rétablir le texte masqué" ramène la version automatique. Si vos propres modifications contiennent encore quelque chose de sensible, un avertissement apparaît à la copie. Ce texte vient de l'OCR et peut contenir des erreurs : relisez-le avant de l'utiliser.
 
 ## Fonction 5 — La liste des zones masquées
 
@@ -265,7 +284,7 @@ Pour tout ce que le logiciel ne sait pas lire : un logo, une écriture manuscrit
 1. Cliquez sur « Détecter les visages ». Un message indique combien ont été trouvés (« 1 visage trouvé. »).
 1. Chaque visage apparaît dans la liste des zones (Fonction 5) sous « Visage n° 1 », « Visage n° 2 »... Décochez une ligne pour laisser ce visage visible. Changer de style met l'image à jour immédiatement.
 1. **Le détecteur n'est fiable que pour les visages tournés à peu près vers l'objectif.** Les visages de profil, petits, cachés ou mal éclairés peuvent être manqués : regardez donc toujours l'image et couvrez les visages oubliés avec « Dessiner une zone à masquer » (Fonction 6). Les zones dessinées sont toujours en noir uni.
-1. Le détecteur fonctionne entièrement dans votre navigateur (un petit programme et son fichier de données se trouvent dans le dossier vendor du logiciel). Il fonctionne même dans Safari avec le mode Isolement (Lockdown Mode). Il demande le serveur local (étape 3) ; sans lui, vous obtenez un message et pouvez toujours dessiner à la main.
+1. Le détecteur fonctionne entièrement dans votre navigateur (un petit programme et son fichier de données se trouvent dans le dossier vendor du logiciel). Il fonctionne même dans Safari avec le mode Isolement (Lockdown Mode). Sur une copie téléchargée, il demande le serveur local (étape 3) ; sans lui, vous obtenez un message et pouvez toujours dessiner à la main.
 
 ## Fonction 8 — Fichiers PDF
 
@@ -305,7 +324,7 @@ Les « métadonnées » sont des informations cachées à l'intérieur d'un fich
 
 | Ce que vous voyez | Que faire |
 |---|---|
-| Un message sur le fichier (file://) ou « Erreur lors du traitement de l'image » | Les images, les visages et les PDF demandent le serveur local — voir l'étape 3. Le texte, Word et PowerPoint non. |
+| Un message sur le fichier (file://) ou « Erreur lors du traitement de l'image » | Vous double-cliquez probablement sur un index.html téléchargé. Utilisez plutôt le site https://pakmeipanther.github.io/pii-redactor/ (ou l'application installée), ou mettez en place le serveur local — voir l'étape 3. Le texte, Word et PowerPoint n'en ont pas besoin. |
 | Un message sur **WebAssembly** (Safari avec le mode Isolation / **Lockdown Mode**) | Le Lockdown Mode désactive WebAssembly, dont la lecture du texte dans les images a besoin. Utilisez Firefox ou Chrome pour les images, ou excluez ce site du Lockdown Mode dans les réglages du site de Safari. Le texte, les fichiers Word et PowerPoint, le dessin à la main et la détection des visages fonctionnent toujours. |
 | Un mot sensible n'a pas été masqué dans une image | Vérifiez « Langue OCR : », gardez « Analyse approfondie » active, ouvrez « Ce que l'OCR a lu », puis ajoutez le mot à votre liste personnalisée ou couvrez-le à la main. |
 | Un rectangle noir couvre quelque chose d'inoffensif | Décochez cette ligne dans la liste des zones (Fonction 5). |
@@ -318,6 +337,7 @@ Toujours bloqué ? Faites une capture d'écran (sans contenu sensible) et demand
 
 - Le logiciel est une aide, pas un remplaçant de votre propre vigilance : vérifiez toujours avant de faire confiance, car aucun outil ne détecte 100 % des cas.
 - Vous voulez vérifier qu'« aucune donnée n'est envoyée nulle part » ? Coupez le Wi-Fi/le réseau avant d'ouvrir le logiciel. Il fonctionne toujours normalement — et la page elle-même interdit aussi toute connexion sortante.
+- Avec le site web, la page n'a besoin d'Internet que pour s'ouvrir (et se mettre à jour). Pour tester la promesse « rien n'est envoyé nulle part », cliquez d'abord sur « Enregistrer pour une utilisation hors ligne », puis coupez le réseau.
 - Tout ce que vous chargez reste sur votre ordinateur. Seuls vos termes personnalisés sont mémorisés, dans votre propre navigateur.
 - Utilisez de fausses données pour essayer le logiciel.
 - Pour toute personne dont l'identité doit rester secrète : utilisez « Noir uni » pour les visages, vérifiez les bords de l'image, l'arrière-plan et les reflets à la recherche d'autres indices, et gardez l'original loin des outils d'IA.

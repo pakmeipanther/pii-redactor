@@ -502,7 +502,7 @@
     <!-- version-tag sits OUTSIDE the data-i18n span on purpose — applyI18n()
          overwrites a [data-i18n] element's whole textContent on every
          language switch, which would wipe out a nested span instantly. -->
-    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.4.0</span></h1>
+    <h1><span data-i18n="title">PII Redactor</span><span class="version-tag">v1.5.0</span></h1>
     <div class="tagline" data-i18n="tagline">Share documents. Not identities.</div>
     <div class="subtitle" data-i18n="subtitle">Remove personal data and secrets from text, images, PDFs, Word and PowerPoint files — entirely in your browser. Nothing leaves your computer.</div>
     </div>
@@ -855,7 +855,7 @@ const I18N = {
     imgProgressRecognizing: p => `Đang nhận diện chữ trong ảnh... ${p}%`,
     imgProgressDone: n => `Hoàn tất — đã làm đen ${n} vùng nhạy cảm trong ảnh.`,
     imgProgressNone: 'Không tìm thấy vùng nhạy cảm nào trong ảnh.',
-    imgProgressError: 'Lỗi khi xử lý ảnh — xem Bước 3 trong hướng dẫn sử dụng (cần chạy qua local server, không phải file://).',
+    imgProgressError: 'Lỗi khi xử lý ảnh — nếu bạn mở file index.html trực tiếp, hãy dùng trang web https://pakmeipanther.github.io/pii-redactor/ hoặc xem Bước 3 trong hướng dẫn sử dụng (cần chạy qua local server, không phải file://).',
     sectionPdf: 'File PDF',
     pdfDesc: 'Mỗi trang được vẽ lại thành ảnh, đè đen vùng nhạy cảm trực tiếp lên ảnh đó, rồi ghép thành PDF mới — không còn lớp chữ/metadata gốc nào sót lại (file xuất ra sẽ không còn chọn/copy chữ được, giống như một file scan).',
     pdfOcrCheckboxLabel: 'Cũng chạy OCR trên từng trang — chỉ cần bật nếu PDF là file scan/ảnh (không có lớp chữ chọn được), sẽ chậm hơn',
@@ -1005,7 +1005,7 @@ const I18N = {
     imgProgressRecognizing: p => `Recognizing text in image... ${p}%`,
     imgProgressDone: n => `Done — blacked out ${n} sensitive region(s) in the image.`,
     imgProgressNone: 'No sensitive regions found in the image.',
-    imgProgressError: 'Error processing the image — see Step 3 of the user guide (must run via a local server, not file://).',
+    imgProgressError: 'Error processing the image — if you opened index.html directly, use the website https://pakmeipanther.github.io/pii-redactor/ or see Step 3 of the user guide (must run via a local server, not file://).',
     sectionPdf: 'PDF file',
     pdfDesc: 'Each page is re-rendered as an image, sensitive regions are blacked out directly on that image, and the pages are reassembled into a new PDF — no original text layer or metadata survives (the exported file is no longer selectable/copyable text, like a scanned document).',
     pdfOcrCheckboxLabel: 'Also run OCR on each page — only needed if the PDF is a scan/image (no selectable text layer), slower',
@@ -1155,7 +1155,7 @@ const I18N = {
     imgProgressRecognizing: p => `Reconnaissance du texte dans l'image... ${p}%`,
     imgProgressDone: n => `Terminé — ${n} zone(s) sensible(s) noircie(s) dans l'image.`,
     imgProgressNone: 'Aucune zone sensible trouvée dans l\'image.',
-    imgProgressError: 'Erreur lors du traitement de l\'image — voir l\'étape 3 du guide d\'utilisation (doit passer par un serveur local, pas file://).',
+    imgProgressError: 'Erreur lors du traitement de l\'image — si vous avez ouvert index.html directement, utilisez le site https://pakmeipanther.github.io/pii-redactor/ ou voir l\'étape 3 du guide d\'utilisation (doit passer par un serveur local, pas file://).',
     sectionPdf: 'Fichier PDF',
     pdfDesc: 'Chaque page est redessinée en image, les zones sensibles sont noircies directement sur cette image, puis les pages sont réassemblées en un nouveau PDF — aucune couche de texte ni métadonnée d\'origine ne subsiste (le fichier exporté n\'est plus sélectionnable/copiable, comme un document scanné).',
     pdfOcrCheckboxLabel: 'Exécuter aussi l\'OCR sur chaque page — utile seulement si le PDF est un scan/image (pas de couche de texte sélectionnable), plus lent',
@@ -1305,7 +1305,7 @@ const I18N = {
     imgProgressRecognizing: p => `Text im Bild wird erkannt... ${p}%`,
     imgProgressDone: n => `Fertig — ${n} sensible Bereich(e) im Bild geschwärzt.`,
     imgProgressNone: 'Keine sensiblen Bereiche im Bild gefunden.',
-    imgProgressError: 'Fehler bei der Bildverarbeitung — siehe Schritt 3 im Benutzerhandbuch (muss über einen lokalen Server laufen, nicht file://).',
+    imgProgressError: 'Fehler bei der Bildverarbeitung — falls Sie index.html direkt geöffnet haben, nutzen Sie die Website https://pakmeipanther.github.io/pii-redactor/ oder siehe Schritt 3 im Benutzerhandbuch (muss über einen lokalen Server laufen, nicht file://).',
     sectionPdf: 'PDF-Datei',
     pdfDesc: 'Jede Seite wird neu als Bild gerendert, sensible Bereiche werden direkt auf diesem Bild geschwärzt, und die Seiten werden zu einem neuen PDF zusammengesetzt — es bleibt keine ursprüngliche Textebene oder Metadaten erhalten (die exportierte Datei ist nicht mehr auswählbar/kopierbar, wie ein gescanntes Dokument).',
     pdfOcrCheckboxLabel: 'Auch OCR auf jeder Seite ausführen — nur nötig, wenn das PDF ein Scan/Bild ist (keine auswählbare Textebene), langsamer',
@@ -1705,7 +1705,7 @@ const I18N_FACES = {
     faceFound: (n) => `Tìm thấy ${n} khuôn mặt.`,
     faceNone: 'Không tìm thấy khuôn mặt nào.',
     faceReviewHint: 'Bộ dò chỉ bắt tốt khuôn mặt nhìn thẳng — hãy xem lại ảnh và vẽ tay thêm nếu còn sót.',
-    faceError: 'Không tải được bộ nhận diện khuôn mặt (cần chạy qua local server, không phải file://). Bạn vẫn có thể vẽ vùng che bằng tay.',
+    faceError: 'Không tải được bộ nhận diện khuôn mặt (cần chạy qua trang web hoặc local server, không phải file://). Bạn vẫn có thể vẽ vùng che bằng tay.',
     faceNote_solid: 'Tô đen: dữ liệu gốc bị thay hoàn toàn.',
     faceNote_mosaic: 'Mosaic: mỗi khối chỉ còn một màu trung bình — rất khó khôi phục nhưng không phải là bảo đảm tuyệt đối.',
     faceNote_blur: 'Cảnh báo: làm mờ chỉ là hiệu ứng thị giác, khuôn mặt có thể được khôi phục một phần. Nếu cần ẩn danh thật sự, hãy chọn tô đen.'
@@ -1720,7 +1720,7 @@ const I18N_FACES = {
     faceFound: (n) => `Found ${n} face${n === 1 ? '' : 's'}.`,
     faceNone: 'No faces found.',
     faceReviewHint: 'The detector is reliable for faces looking straight at the camera only — check the image and draw any missed area by hand.',
-    faceError: 'Could not load the face detector (it needs a local server, not file://). You can still draw covered areas by hand.',
+    faceError: 'Could not load the face detector (it needs the website or a local server, not file://). You can still draw covered areas by hand.',
     faceNote_solid: 'Solid black: the original pixels are replaced completely.',
     faceNote_mosaic: 'Mosaic: each block keeps one average colour — very hard to reverse, but not a mathematical guarantee.',
     faceNote_blur: 'Warning: blur is only a visual effect and a face can be partly reconstructed. For real anonymity choose solid black.'
@@ -1735,7 +1735,7 @@ const I18N_FACES = {
     faceFound: (n) => `${n} visage${n === 1 ? '' : 's'} trouvé${n === 1 ? '' : 's'}.`,
     faceNone: 'Aucun visage trouvé.',
     faceReviewHint: "Le détecteur n'est fiable que pour les visages de face — vérifiez l'image et dessinez à la main ce qui a été manqué.",
-    faceError: "Impossible de charger le détecteur de visages (il faut un serveur local, pas file://). Vous pouvez toujours dessiner des zones à la main.",
+    faceError: "Impossible de charger le détecteur de visages (il faut le site web ou un serveur local, pas file://). Vous pouvez toujours dessiner des zones à la main.",
     faceNote_solid: "Noir uni : les pixels d'origine sont entièrement remplacés.",
     faceNote_mosaic: 'Mosaïque : chaque bloc garde une couleur moyenne — très difficile à inverser, mais sans garantie mathématique.',
     faceNote_blur: "Attention : le flou n'est qu'un effet visuel, un visage peut être en partie reconstitué. Pour un vrai anonymat, choisissez le noir uni."
@@ -1750,7 +1750,7 @@ const I18N_FACES = {
     faceFound: (n) => `${n} ${n === 1 ? 'Gesicht' : 'Gesichter'} gefunden.`,
     faceNone: 'Keine Gesichter gefunden.',
     faceReviewHint: 'Der Detektor erkennt zuverlässig nur Gesichter, die frontal in die Kamera blicken — prüfe das Bild und zeichne Übersehenes von Hand.',
-    faceError: 'Der Gesichtsdetektor konnte nicht geladen werden (er braucht einen lokalen Server, nicht file://). Bereiche zeichnen geht weiterhin.',
+    faceError: 'Der Gesichtsdetektor konnte nicht geladen werden (er braucht die Website oder einen lokalen Server, nicht file://). Bereiche zeichnen geht weiterhin.',
     faceNote_solid: 'Schwarz: Die Originalpixel werden vollständig ersetzt.',
     faceNote_mosaic: 'Mosaik: Jeder Block behält nur eine Durchschnittsfarbe — sehr schwer umkehrbar, aber keine mathematische Garantie.',
     faceNote_blur: 'Achtung: Weichzeichnen ist nur ein optischer Effekt, ein Gesicht lässt sich teilweise rekonstruieren. Für echte Anonymität wähle Schwarz.'
@@ -5341,6 +5341,33 @@ function redactionPadX(avgCharWidthPx, isSubRange) {
   return isSubRange ? Math.max(4, avgCharWidthPx) : 2;
 }
 
+// Where, as fractions of the item's width, a character range starts and
+// ends. pdf.js only reports the item's TOTAL width, and the first version
+// of the sub-range fix assumed every character is equally wide. On a long
+// run of narrow letters that is off by a whole letter, which left single
+// characters (the "p" of "Corp", the "s" of "sk_test") peeking out next to
+// a black box. This measures the item's text in its own font family with
+// the browser's canvas measureText and uses the RATIO of the measured
+// widths; the item's real total width still sets the size, so only how the
+// characters are spread along the line is estimated. It falls back to the
+// even-spacing estimate whenever measuring is not possible.
+function itemCharRange(measureCtx, item, style, charStart, charEnd) {
+  const str = item.str || '';
+  const len = str.length;
+  const even = [charStart / len, charEnd / len];
+  try {
+    measureCtx.font = `100px ${(style && style.fontFamily) || 'sans-serif'}`;
+    const total = measureCtx.measureText(str).width;
+    if (!(total > 0)) return even;
+    const a = measureCtx.measureText(str.slice(0, charStart)).width / total;
+    const b = measureCtx.measureText(str.slice(0, charEnd)).width / total;
+    if (!(b > a) || a < 0 || b > 1.0001) return even;
+    return [a, Math.min(1, b)];
+  } catch (e) {
+    return even;
+  }
+}
+
 // Renders one page to a canvas and blacks out any text-layer match
 // directly on it. Returns the canvas plus how many items were redacted.
 async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRules, terms, caseSensitive, entropyEnabled) {
@@ -5353,6 +5380,7 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
   await page.render({ canvasContext: ctx, viewport }).promise;
 
   const textContent = await page.getTextContent();
+  const measureCtx = document.createElement('canvas').getContext('2d'); // only to measure text widths
   let fullText = '';
   const spans = [];
   textContent.items.forEach(item => {
@@ -5387,7 +5415,7 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
       const charStart = Math.max(0, m.start - span.start);
       const charEnd = Math.min(len, m.end - span.start);
       if (charEnd <= charStart) return; // match only touches the inter-item separator space
-      const box = textItemBBox(viewport, span.item, charStart / len, charEnd / len);
+      const box = textItemBBox(viewport, span.item, ...itemCharRange(measureCtx, span.item, (textContent.styles || {})[span.item.fontName], charStart, charEnd));
       // textItemBBox's bottom edge sits at the glyph baseline, not below
       // it — so without extra bottom padding, descenders (g, y, p, q, j)
       // poke out below the black box. Confirmed visually while testing:
@@ -5438,7 +5466,7 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
         const charStart = Math.max(0, s.start - span.start);
         const charEnd = Math.min(len, s.end - span.start);
         if (charEnd <= charStart) return;
-        const box = textItemBBox(viewport, span.item, charStart / len, charEnd / len);
+        const box = textItemBBox(viewport, span.item, ...itemCharRange(measureCtx, span.item, (textContent.styles || {})[span.item.fontName], charStart, charEnd));
         const h = box.y1 - box.y0;
         const isSubRange = charStart > 0 || charEnd < len;
         const padX = redactionPadX(avgCharWidthPx, isSubRange);

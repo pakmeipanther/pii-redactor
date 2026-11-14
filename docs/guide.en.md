@@ -10,7 +10,9 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 
 > **The most important part:** this software makes no internet connection and sends no data anywhere — everything runs right on your own computer. You can turn off your Wi-Fi entirely while using it and it will still work normally — that's also how you can verify this for yourself.
 
-![Demo (light mode): theme choice, live preview and copy of masked text, custom terms and a regular expression, a HEIC photo with GPS city, OCR, a hand-drawn area, and a PDF that replaces the previous file](images/demo.gif)
+> On the website, the program itself is downloaded from GitHub when you open the page (and when you update); your own text and files never leave your computer. To check it yourself, press "Save for offline use" once, then switch the network off.
+
+![Demo (light mode, v1.5): the website opened in the browser, pasting text with a live masked preview and one-click copy, custom terms and a regular expression, OCR on a screenshot, a photo with GPS metadata and a hand-drawn covered area, a PDF, saving the app for offline use, and the blue "new version" bar](images/demo.gif)
 
 *(Everything in this recording is made-up sample data.)*
 
@@ -29,8 +31,27 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 - **new in v1.4:** every image, PDF, Word and PowerPoint result has an **editable masked-text box** (with a "Restore masked text" button) and its own "Copy masked text" button;
 - **new in v1.4:** open **iPhone HEIC photos**; the metadata report shows the **nearest city** of a GPS position (looked up offline).
 - **new in v1.4:** describe your own **patterns** (regular expressions) for things like employee numbers.
+- **new in v1.5:** use it straight from the **website**, as an **offline copy**, or as an **installed app** — nothing to download and no local server; a blue bar tells you when a new version is ready (see "Start here" below);
+- **fixed in v1.5:** the yellow "suspect" frame is only a review aid on screen and no longer ends up in downloaded PDFs and images.
 
-## Step 1 — Download the software
+## Start here — four ways to use the software
+
+You can use PII Redactor without installing anything and without typing a single command. Pick the way that suits you:
+
+| Way | What you do | Needs the internet? |
+|---|---|---|
+| **A. The website (easiest)** | Open https://pakmeipanther.github.io/pii-redactor/ in your browser. Everything works there: text, images, faces, PDF, Word and PowerPoint. | Yes, to open the page |
+| **B. Offline copy** | On the website, scroll to the bottom to the "Use offline" panel and press "Save for offline use (about 22 MB)". From then on the page also opens and works with the network switched off. | Only the first time |
+| **C. Installed app** | In the same panel press "Install as app" (Chrome, Edge and Brave offer it; in Safari use "Add to Dock" on a Mac or "Add to Home Screen" on an iPhone or iPad). The tool gets its own window and icon, and also works offline. | Only the first time |
+| **D. Downloaded copy (advanced)** | Download the files from GitHub and open them yourself — Steps 1 to 3 below. Choose this if you want to read and check the code before using it, or if you may never open a website with sensitive files. | No |
+
+On every way your files are processed only inside your browser: the page's own security rule lets it talk to its own site and nobody else, so there is nowhere for your data to go. The only things fetched from the internet are the program's own files — when you first open the website and when you update.
+
+**Updates.** When a new version is published, a blue bar appears at the top of the page: "A new version of the tool is ready. …". Download any file you are working on first, then press "Update now". The page looks for new versions by itself when you open it, when you come back to its tab and every 30 minutes. It never updates behind your back, so you never lose work.
+
+**Which way is safest for very sensitive documents?** On the website you trust GitHub to deliver the right program each time you open it (and when you update). For the most sensitive material, use way D, or way B after checking the version number.
+
+## Step 1 (only for way D) — Download the software
 
 1. Open your browser (Firefox or Brave are recommended — both are well known for security/privacy; Chrome, Safari, and Edge also work), and go to:
 
@@ -57,7 +78,7 @@ Imagine you're photocopying your ID card for a stranger — you'd naturally blac
 
 ## Step 2 — Open the software and find your way around
 
-1. Open the folder you unzipped in Step 1 and double-click the file named index.html. It opens in your browser.
+1. Open the software. On the website or in the installed app it is already open. With a downloaded copy (way D), open the folder you unzipped in Step 1 and double-click the file named index.html — it opens in your browser.
 1. In the top-right corner, pick your language (English, Français, Deutsch or Tiếng Việt).
 1. Next to the language selector, the "Theme" selector lets you choose "System" (follows your computer), "Light" or "Dark". Your choice is remembered in this browser only.
 1. The green line under the title says that no network connection is made. That is a promise you can check yourself (see "Good habits" at the end).
@@ -72,7 +93,7 @@ The page is read from top to bottom:
 | **4. Result** | The text with the findings highlighted, and the download button. |
 | **Image / PDF / Word / PowerPoint panel** | Appears only after you drop a file of that type. |
 
-Which features work by just double-clicking index.html, and which need the local server of Step 3?
+On the website, in the offline copy and in the installed app (ways A, B and C) every feature works with no extra step. The table below matters **only for a downloaded copy (way D)**: which features work by just double-clicking index.html, and which need the local server of Step 3?
 
 | Feature | Double-click index.html | Needs the local server (Step 3) |
 |---|---|---|
@@ -82,9 +103,7 @@ Which features work by just double-clicking index.html, and which need the local
 
 When in doubt, use the local server: it works for everything.
 
-> **Shortcut: no local server needed.** You can skip Step 3 by using the hosted version at https://pakmeipanther.github.io/pii-redactor/ — images, faces and PDF work there with nothing to install, and your files are still processed only in your browser. Its "Use offline" panel at the bottom can save a copy in your browser so it also works without internet. If you handle very sensitive documents, prefer the copy you downloaded in Step 1 and the steps below.
-
-## Step 3 (advanced, needed for images, faces and PDF) — Run a local server
+## Step 3 (advanced, only for way D, needed for images, faces and PDF) — Run a local server
 
 Reading text inside images, finding faces and handling PDF files need one extra small technical step, due to a browser security restriction. "Running a local server" sounds scary, but it's really just typing one line of command. If you only need text, Word or PowerPoint redaction, you can skip this section.
 
@@ -231,7 +250,7 @@ Some secrets have no recognisable shape: a random-looking password, a token. The
 
 **If the software missed something**, open "What the OCR read (and why each region was blacked out)" under the picture. It shows the text the software read and the reason for every black box. If the word you expected is not there, the software did not read it — choose the right language, keep "Thorough scan" on, or cover the spot by hand.
 
-**iPhone photos (HEIC).** You can drop a HEIC or HEIF photo straight from an iPhone; it is opened on your computer like any other picture. Needs the local server of Step 3. **Text of the image.** Under the picture, the box "Masked text — ready to copy" holds the text read from the image with the covered parts replaced. You can edit it; the button "Copy masked text" copies it, and "Restore masked text" brings back the automatic version. If your own edits still contain something that looks sensitive, a warning appears when you copy. This text comes from OCR and can contain mistakes: read it before you use it.
+**iPhone photos (HEIC).** You can drop a HEIC or HEIF photo straight from an iPhone; it is opened on your computer like any other picture. Works on the website and in the app; a downloaded copy needs the local server of Step 3. **Text of the image.** Under the picture, the box "Masked text — ready to copy" holds the text read from the image with the covered parts replaced. You can edit it; the button "Copy masked text" copies it, and "Restore masked text" brings back the automatic version. If your own edits still contain something that looks sensitive, a warning appears when you copy. This text comes from OCR and can contain mistakes: read it before you use it.
 
 ## Feature 5 — The list of covered areas
 
@@ -265,7 +284,7 @@ For anything the software cannot read: a logo, handwriting, a QR code, a name on
 1. Click "Detect faces". A message tells you how many were found ("Found 1 face.").
 1. Every face appears in the list of areas (Feature 5) as "Face #1", "Face #2"... Untick one to leave that face visible. Changing the style updates the picture straight away.
 1. **The detector is reliable only for faces looking roughly at the camera.** Faces that are turned, small, hidden or in poor light can be missed, so always look at the picture and cover missed faces with "Draw a covered area" (Feature 6). Drawn areas are always solid black.
-1. The detector runs entirely in your browser (a small program and its data file are inside the software's vendor folder). It works even in Safari with Lockdown Mode. It needs the local server (Step 3); without it you get a message and can still draw by hand.
+1. The detector runs entirely in your browser (a small program and its data file are inside the software's vendor folder). It works even in Safari with Lockdown Mode. On a downloaded copy it needs the local server (Step 3); without it you get a message and can still draw by hand.
 
 ## Feature 8 — PDF files
 
@@ -305,7 +324,7 @@ Under the result, the box "Masked text — ready to copy" shows the text that we
 
 | What you see | What to do |
 |---|---|
-| A message about the file (file://) or "Error processing the image" | Images, faces and PDF need the local server — see Step 3. Text, Word and PowerPoint do not. |
+| A message about the file (file://) or "Error processing the image" | You are probably double-clicking a downloaded index.html. Use the website https://pakmeipanther.github.io/pii-redactor/ instead (or the installed app), or set up the local server — see Step 3. Text, Word and PowerPoint do not need it. |
 | A message about **WebAssembly** (Safari with **Lockdown Mode**) | Lockdown Mode switches off WebAssembly, which reading text in images needs. Use Firefox or Chrome for images, or exclude this website from Lockdown Mode in Safari's settings for the site. Text, Word and PowerPoint files, drawing areas by hand and face detection still work. |
 | A sensitive word was not hidden in an image | Check "OCR language:", keep "Thorough scan" on, open "What the OCR read", then add the word to your custom list or cover it by hand. |
 | A black box covers something harmless | Untick that line in the list of areas (Feature 5). |
@@ -318,6 +337,7 @@ Still stuck? Take a screenshot (without sensitive content) and ask someone tech-
 
 - The software is a helper, not a replacement for your own care: always review before you trust, because no tool catches 100% of cases.
 - Want to verify that "no data is sent anywhere"? Turn off your Wi-Fi/network before opening the software. It still works normally — and the page itself also forbids outgoing connections.
+- On the website the page needs the internet only to open (and to update). To test the "nothing is sent anywhere" promise, press "Save for offline use" first, then switch your network off.
 - Everything you load stays on your computer. Only your custom terms are remembered, in your own browser.
 - Use fake data when you want to try the software out.
 - For anyone whose identity must stay secret: use "Solid black" for faces, check the picture's edges, backgrounds and reflections for other clues, and keep the original away from AI tools.

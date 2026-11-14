@@ -10,7 +10,9 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 
 > **Điều quan trọng nhất:** phần mềm này không kết nối Internet, không gửi bất kỳ dữ liệu nào đi đâu cả — mọi việc xử lý diễn ra ngay trên máy tính của bạn. Có thể tắt hẳn wifi khi dùng, nó vẫn chạy bình thường — đó cũng là cách để tự kiểm chứng điều này.
 
-![Demo (chế độ sáng): chọn giao diện, xem trước trực tiếp và sao chép văn bản đã che, từ khóa riêng và một mẫu regex, ảnh HEIC với thành phố từ GPS, OCR, vùng vẽ tay, và PDF thay thế tệp trước](images/demo.gif)
+> Trên trang web, chính chương trình được tải từ GitHub khi bạn mở trang (và khi bạn cập nhật); văn bản và file của bạn thì không bao giờ rời khỏi máy. Muốn tự kiểm chứng, hãy bấm "Lưu để dùng ngoại tuyến" một lần, rồi tắt mạng.
+
+![Demo (chế độ sáng, v1.5): mở trang web trong trình duyệt, dán văn bản với bản xem trước trực tiếp và sao chép một lần bấm, từ khóa riêng và một mẫu regex, OCR trên ảnh chụp màn hình, ảnh có metadata GPS và vùng che vẽ tay, một file PDF, lưu ứng dụng để dùng ngoại tuyến, và thanh xanh "có bản mới"](images/demo.gif)
 
 *(Mọi dữ liệu trong đoạn ghi hình này đều là dữ liệu mẫu bịa ra.)*
 
@@ -29,8 +31,27 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 - **mới ở v1.4:** kết quả của ảnh, PDF, Word và PowerPoint đều có **ô văn bản đã che có thể sửa** (kèm nút "Khôi phục bản đã che") và nút "Sao chép văn bản đã che" riêng;
 - **mới ở v1.4:** mở được **ảnh HEIC của iPhone**; báo cáo metadata hiển thị **thành phố gần nhất** với vị trí GPS (tra cứu hoàn toàn ngoại tuyến).
 - **mới ở v1.4:** tự mô tả **mẫu** (biểu thức chính quy) cho những thứ như mã nhân viên.
+- **mới ở v1.5:** dùng thẳng từ **trang web**, dưới dạng **bản ngoại tuyến** hoặc **ứng dụng đã cài** — không cần tải về, không cần local server; một thanh màu xanh báo khi có bản mới (xem phần "Bắt đầu tại đây" bên dưới);
+- **đã sửa ở v1.5:** khung vàng "nghi ngờ" chỉ là gợi ý xem lại trên màn hình, không còn bị in vào PDF và ảnh tải về.
 
-## Bước 1 — Tải phần mềm về máy
+## Bắt đầu tại đây — bốn cách dùng phần mềm
+
+Bạn có thể dùng PII Redactor mà không cần cài gì và không phải gõ một dòng lệnh nào. Chọn cách hợp với bạn:
+
+| Cách | Bạn làm gì | Cần Internet? |
+|---|---|---|
+| **A. Trang web (dễ nhất)** | Mở https://pakmeipanther.github.io/pii-redactor/ trong trình duyệt. Mọi thứ chạy ngay ở đó: văn bản, ảnh, khuôn mặt, PDF, Word và PowerPoint. | Có, để mở trang |
+| **B. Bản dùng khi không có mạng** | Trên trang web, cuộn xuống cuối đến khung "Dùng khi không có mạng" rồi bấm "Lưu để dùng ngoại tuyến (khoảng 22 MB)". Từ đó trang vẫn mở và chạy được khi đã tắt mạng. | Chỉ lần đầu |
+| **C. Ứng dụng đã cài** | Cũng trong khung đó, bấm "Cài như ứng dụng" (Chrome, Edge và Brave có nút này; trên Safari dùng "Thêm vào Dock" trên Mac hoặc "Thêm vào Màn hình chính" trên iPhone/iPad). Công cụ có cửa sổ và biểu tượng riêng, và cũng chạy được khi không có mạng. | Chỉ lần đầu |
+| **D. Bản tải về (nâng cao)** | Tải các file từ GitHub và tự mở — Bước 1 đến Bước 3 bên dưới. Chọn cách này nếu bạn muốn tự đọc và kiểm tra mã nguồn trước khi dùng, hoặc nếu bạn không bao giờ được mở một trang web cùng file nhạy cảm. | Không |
+
+Dù theo cách nào, file của bạn cũng chỉ được xử lý bên trong trình duyệt của bạn: quy tắc bảo mật của chính trang chỉ cho nó nói chuyện với trang của nó và không ai khác, nên dữ liệu của bạn không có đường nào để đi ra ngoài. Thứ duy nhất được tải từ Internet là các file của chính chương trình — khi bạn mở trang lần đầu và khi bạn cập nhật.
+
+**Cập nhật.** Khi có phiên bản mới, một thanh màu xanh hiện ở đầu trang: "Có bản mới của công cụ. …". Hãy tải file đang làm về trước, rồi bấm "Cập nhật ngay". Trang tự tìm bản mới khi bạn mở nó, khi bạn quay lại tab của nó và cứ 30 phút một lần. Nó không bao giờ tự cập nhật sau lưng bạn, nên bạn không mất công việc đang làm.
+
+**Cách nào an toàn nhất cho tài liệu rất nhạy cảm?** Với trang web, bạn tin rằng GitHub giao đúng chương trình mỗi lần bạn mở trang (và khi cập nhật). Với tài liệu nhạy cảm nhất, hãy dùng cách D, hoặc cách B sau khi đã kiểm tra số phiên bản.
+
+## Bước 1 (chỉ cho cách D) — Tải phần mềm về máy
 
 1. Mở trình duyệt (khuyến khích dùng Firefox hoặc Brave — hai trình duyệt nổi tiếng về bảo mật/quyền riêng tư; Chrome, Safari, Edge cũng dùng được), vào địa chỉ:
 
@@ -57,7 +78,7 @@ Hãy tưởng tượng bạn cầm giấy tờ tùy thân đi photocopy cho ngư
 
 ## Bước 2 — Mở phần mềm và làm quen với màn hình
 
-1. Mở thư mục bạn đã giải nén ở Bước 1, rồi bấm đúp vào file có tên index.html. File sẽ mở trong trình duyệt.
+1. Mở phần mềm. Trên trang web hoặc trong ứng dụng đã cài thì nó đã mở sẵn. Với bản tải về (cách D), mở thư mục bạn đã giải nén ở Bước 1 rồi bấm đúp vào file có tên index.html — file sẽ mở trong trình duyệt.
 1. Ở góc trên bên phải, chọn ngôn ngữ của bạn (English, Français, Deutsch hoặc Tiếng Việt).
 1. Cạnh ô chọn ngôn ngữ, ô chọn "Giao diện" cho bạn chọn "Theo hệ thống" (theo máy tính của bạn), "Sáng" hoặc "Tối". Lựa chọn chỉ được nhớ trong trình duyệt này.
 1. Dòng màu xanh dưới tiêu đề cho biết phần mềm không tạo kết nối mạng nào. Đó là lời hứa bạn có thể tự kiểm chứng (xem mục "Thói quen tốt" ở cuối).
@@ -72,7 +93,7 @@ Trang được đọc từ trên xuống dưới:
 | **4. Kết quả** | Văn bản với các phát hiện được tô sáng, và nút tải về. |
 | **Bảng Ảnh / PDF / Word / PowerPoint** | Chỉ hiện ra sau khi bạn thả file thuộc loại đó vào. |
 
-Tính năng nào dùng được chỉ bằng cách bấm đúp index.html, tính năng nào cần local server ở Bước 3?
+Trên trang web, bản ngoại tuyến và ứng dụng đã cài (cách A, B và C), mọi tính năng chạy ngay mà không cần thêm bước nào. Bảng dưới đây **chỉ quan trọng với bản tải về (cách D)**: tính năng nào dùng được chỉ bằng cách bấm đúp index.html, tính năng nào cần local server ở Bước 3?
 
 | Tính năng | Bấm đúp index.html | Cần local server (Bước 3) |
 |---|---|---|
@@ -82,9 +103,7 @@ Tính năng nào dùng được chỉ bằng cách bấm đúp index.html, tính
 
 Nếu còn phân vân, cứ dùng local server: nó chạy được mọi thứ.
 
-> **Đường tắt: không cần local server.** Bạn có thể bỏ qua Bước 3 bằng cách dùng bản trực tuyến tại https://pakmeipanther.github.io/pii-redactor/ — ảnh, khuôn mặt và PDF chạy ngay mà không cần cài gì, và file của bạn vẫn chỉ được xử lý trong trình duyệt của bạn. Khung "Dùng khi không có mạng" ở cuối trang có thể lưu một bản vào trình duyệt để dùng cả khi không có Internet. Nếu bạn xử lý tài liệu rất nhạy cảm, hãy ưu tiên bản đã tải ở Bước 1 và làm theo các bước dưới đây.
-
-## Bước 3 (nâng cao, cần cho ảnh, khuôn mặt và PDF) — Chạy local server
+## Bước 3 (nâng cao, chỉ cho cách D, cần cho ảnh, khuôn mặt và PDF) — Chạy local server
 
 Việc đọc chữ trong ảnh, tìm khuôn mặt và xử lý file PDF cần thêm một bước kỹ thuật nhỏ, do một hạn chế bảo mật của trình duyệt. "Chạy local server" nghe có vẻ đáng sợ, nhưng thực ra chỉ là gõ một dòng lệnh. Nếu bạn chỉ cần xử lý văn bản, Word hoặc PowerPoint thì có thể bỏ qua phần này.
 
@@ -231,7 +250,7 @@ Có những bí mật không có hình dạng dễ nhận ra: một mật khẩu
 
 **Nếu phần mềm bỏ sót thứ gì**, hãy mở "Chữ mà OCR đã đọc được (và lý do mỗi vùng bị đè đen)" dưới ảnh. Ở đó có chữ phần mềm đã đọc và lý do của từng ô đen. Nếu từ bạn mong đợi không có ở đó, nghĩa là phần mềm không đọc được nó — hãy chọn đúng ngôn ngữ, giữ "Quét kỹ", hoặc che chỗ đó bằng tay.
 
-**Ảnh iPhone (HEIC).** Bạn có thể thả thẳng ảnh HEIC hoặc HEIF từ iPhone; ảnh được mở ngay trên máy tính như mọi ảnh khác. Cần máy chủ cục bộ ở Bước 3. **Chữ trong ảnh.** Dưới bức ảnh, ô "Văn bản đã che — để sao chép" chứa chữ đọc được từ ảnh, với phần bị che đã được thay thế. Bạn có thể sửa nó; nút "Sao chép văn bản đã che" sao chép, còn "Khôi phục bản đã che" đưa bản tự động trở lại. Nếu phần bạn tự sửa vẫn chứa thứ trông nhạy cảm, một cảnh báo hiện ra khi bạn sao chép. Chữ này do OCR đọc nên có thể sai: hãy đọc lại trước khi dùng.
+**Ảnh iPhone (HEIC).** Bạn có thể thả thẳng ảnh HEIC hoặc HEIF từ iPhone; ảnh được mở ngay trên máy tính như mọi ảnh khác. Chạy được trên trang web và trong ứng dụng; bản tải về cần máy chủ cục bộ ở Bước 3. **Chữ trong ảnh.** Dưới bức ảnh, ô "Văn bản đã che — để sao chép" chứa chữ đọc được từ ảnh, với phần bị che đã được thay thế. Bạn có thể sửa nó; nút "Sao chép văn bản đã che" sao chép, còn "Khôi phục bản đã che" đưa bản tự động trở lại. Nếu phần bạn tự sửa vẫn chứa thứ trông nhạy cảm, một cảnh báo hiện ra khi bạn sao chép. Chữ này do OCR đọc nên có thể sai: hãy đọc lại trước khi dùng.
 
 ## Tính năng 5 — Danh sách các vùng sẽ bị che
 
@@ -265,7 +284,7 @@ Dùng cho mọi thứ phần mềm không đọc được: logo, chữ viết ta
 1. Bấm "Tìm khuôn mặt". Một thông báo cho biết đã tìm thấy bao nhiêu khuôn mặt ("Tìm thấy 1 khuôn mặt.").
 1. Mỗi khuôn mặt hiện trong danh sách vùng (Tính năng 5) là "Khuôn mặt #1", "Khuôn mặt #2"... Bỏ tick một dòng để giữ khuôn mặt đó hiển thị. Đổi kiểu che thì ảnh cập nhật ngay.
 1. **Bộ dò chỉ đáng tin với những khuôn mặt nhìn khoảng thẳng vào máy ảnh.** Khuôn mặt quay nghiêng, nhỏ, bị che hoặc thiếu sáng có thể bị sót, nên hãy luôn xem lại ảnh và che khuôn mặt bị sót bằng "Vẽ vùng che" (Tính năng 6). Vùng tự vẽ luôn là đen đặc.
-1. Bộ dò chạy hoàn toàn trong trình duyệt của bạn (một chương trình nhỏ và file dữ liệu của nó nằm trong thư mục vendor của phần mềm). Nó chạy được cả trên Safari bật Lockdown Mode. Nó cần local server (Bước 3); nếu không có, bạn nhận một thông báo và vẫn vẽ tay được.
+1. Bộ dò chạy hoàn toàn trong trình duyệt của bạn (một chương trình nhỏ và file dữ liệu của nó nằm trong thư mục vendor của phần mềm). Nó chạy được cả trên Safari bật Lockdown Mode. Trên bản tải về, nó cần local server (Bước 3); nếu không có, bạn nhận một thông báo và vẫn vẽ tay được.
 
 ## Tính năng 8 — File PDF
 
@@ -305,7 +324,7 @@ Dưới kết quả, ô "Văn bản đã che — để sao chép" hiện phần 
 
 | Bạn thấy gì | Nên làm gì |
 |---|---|
-| Thông báo về file (file://) hoặc "Lỗi khi xử lý ảnh" | Ảnh, khuôn mặt và PDF cần local server — xem Bước 3. Văn bản, Word và PowerPoint thì không. |
+| Thông báo về file (file://) hoặc "Lỗi khi xử lý ảnh" | Nhiều khả năng bạn đang bấm đúp vào file index.html đã tải về. Hãy dùng trang web https://pakmeipanther.github.io/pii-redactor/ (hoặc ứng dụng đã cài), hoặc dựng local server — xem Bước 3. Văn bản, Word và PowerPoint thì không cần. |
 | Thông báo về **WebAssembly** (Safari bật **Lockdown Mode**) | Lockdown Mode tắt WebAssembly, thứ mà việc đọc chữ trong ảnh cần đến. Hãy dùng Firefox hoặc Chrome cho ảnh, hoặc loại trừ trang web này khỏi Lockdown Mode trong phần cài đặt cho trang web của Safari. Văn bản, file Word và PowerPoint, vẽ vùng che bằng tay và nhận diện khuôn mặt vẫn chạy bình thường. |
 | Một từ nhạy cảm trong ảnh không bị ẩn | Kiểm tra "Ngôn ngữ OCR:", giữ "Quét kỹ", mở "Chữ mà OCR đã đọc được", rồi thêm từ đó vào danh sách tùy chỉnh hoặc che bằng tay. |
 | Một ô đen che thứ vô hại | Bỏ tick dòng đó trong danh sách vùng (Tính năng 5). |
@@ -318,6 +337,7 @@ Vẫn bí? Hãy chụp màn hình (không chứa nội dung nhạy cảm) rồi 
 
 - Phần mềm là người giúp việc, không thay được sự cẩn thận của chính bạn: luôn xem lại trước khi tin, vì không công cụ nào bắt được 100% trường hợp.
 - Muốn tự kiểm chứng rằng "không có dữ liệu nào bị gửi đi đâu cả"? Hãy tắt Wi-Fi/mạng trước khi mở phần mềm. Nó vẫn chạy bình thường — và bản thân trang cũng cấm mọi kết nối đi ra.
+- Với trang web, trang chỉ cần Internet để mở (và để cập nhật). Để thử lời hứa "không gửi dữ liệu đi đâu cả", hãy bấm "Lưu để dùng ngoại tuyến" trước, rồi mới tắt mạng.
 - Mọi thứ bạn nạp vào đều ở lại trên máy của bạn. Chỉ các từ khóa tùy chỉnh được ghi nhớ, trong chính trình duyệt của bạn.
 - Hãy dùng dữ liệu giả khi muốn thử phần mềm.
 - Với bất kỳ ai cần giữ kín danh tính: dùng "Tô đen đặc" cho khuôn mặt, kiểm tra cả rìa ảnh, hậu cảnh và hình phản chiếu xem có manh mối nào khác không, và đừng đưa bản gốc cho các công cụ AI.
