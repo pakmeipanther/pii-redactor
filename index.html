@@ -431,6 +431,8 @@
   /* A masked value in the cleaned preview: what a reader of the copied text will see. */
   .text-out { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  #updateBanner { position: sticky; top: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; background: var(--accent); color: var(--panel); font-weight: 600; box-shadow: 0 2px 8px var(--shade-1); }
+  #updateBanner button { background: var(--panel); color: var(--text); border: 0; border-radius: 6px; padding: 6px 14px; font-weight: 700; cursor: pointer; }
   .text-out-box {
     width: 100%; box-sizing: border-box; min-height: 150px; resize: vertical;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
@@ -485,6 +487,12 @@
 </style>
 </head>
 <body>
+
+<!-- Shown at the very top, on every screen position, when a new version is ready (hosted version only). -->
+<div id="updateBanner" role="alert" style="display:none;">
+  <span data-i18n="updateBannerText">A new version is ready.</span>
+  <button id="updateBannerBtn" type="button" data-i18n="updateBannerBtn">Update now</button>
+</div>
 
 <div class="topbar">
   <div class="brand">
@@ -912,6 +920,8 @@ const I18N = {
     offlineFail: 'Không lưu được đầy đủ. Hãy kiểm tra kết nối và dung lượng trống rồi thử lại.',
     offlineInstallBtn: 'Cài như ứng dụng',
     offlineUpdateBtn: 'Có bản mới — tải lại để cập nhật',
+    updateBannerText: 'Có bản mới của công cụ. Hãy tải file đã xử lý về trước, rồi cập nhật (trang sẽ tải lại).',
+    updateBannerBtn: 'Cập nhật ngay',
     editedNote: 'Bạn đã sửa văn bản này. Khi bạn đổi vùng che, phần bạn sửa được giữ nguyên — bấm "Khôi phục bản đã che" để lấy lại bản mới nhất. Phần bạn tự gõ KHÔNG được quét lại.',
     editedSensitiveWarn: n => `⚠ Văn bản bạn sửa có ${n} chuỗi nhạy cảm chưa được che. Đã sao chép — hãy kiểm tra lại trước khi dán đi.`,
     statsNoText: 'Chưa có văn bản để quét.',
@@ -1060,6 +1070,8 @@ const I18N = {
     offlineFail: 'Could not save everything. Check your connection and free space, then try again.',
     offlineInstallBtn: 'Install as app',
     offlineUpdateBtn: 'New version available — reload to update',
+    updateBannerText: 'A new version of the tool is ready. Download any processed files first, then update (the page will reload).',
+    updateBannerBtn: 'Update now',
     editedNote: 'You edited this text. If you change the covered areas, your edits are kept — click "Restore masked text" to get the latest version back. What you typed yourself is NOT scanned again.',
     editedSensitiveWarn: n => `⚠ Your edited text contains ${n} sensitive string(s) that are not masked. It was copied — check it before pasting it anywhere.`,
     statsNoText: 'No text to scan yet.',
@@ -1208,6 +1220,8 @@ const I18N = {
     offlineFail: 'L\'enregistrement n\'a pas pu se terminer. Vérifiez votre connexion et l\'espace disponible, puis réessayez.',
     offlineInstallBtn: 'Installer comme application',
     offlineUpdateBtn: 'Nouvelle version disponible — recharger pour mettre à jour',
+    updateBannerText: "Une nouvelle version de l'outil est prête. Téléchargez d'abord vos fichiers traités, puis mettez à jour (la page se rechargera).",
+    updateBannerBtn: 'Mettre à jour',
     editedNote: 'Vous avez modifié ce texte. Si vous changez les zones masquées, vos modifications sont conservées — cliquez sur « Rétablir le texte masqué » pour récupérer la dernière version. Ce que vous avez tapé n\'est PAS analysé à nouveau.',
     editedSensitiveWarn: n => `⚠ Votre texte modifié contient ${n} chaîne(s) sensible(s) non masquée(s). Il a été copié — vérifiez-le avant de le coller.`,
     statsNoText: 'Aucun texte à analyser.',
@@ -1356,6 +1370,8 @@ const I18N = {
     offlineFail: 'Es konnte nicht alles gespeichert werden. Prüfen Sie Verbindung und freien Speicher und versuchen Sie es erneut.',
     offlineInstallBtn: 'Als App installieren',
     offlineUpdateBtn: 'Neue Version verfügbar — neu laden zum Aktualisieren',
+    updateBannerText: 'Eine neue Version des Tools ist bereit. Laden Sie zuerst verarbeitete Dateien herunter, dann aktualisieren (die Seite lädt neu).',
+    updateBannerBtn: 'Jetzt aktualisieren',
     editedNote: 'Du hast diesen Text bearbeitet. Wenn du die abgedeckten Bereiche änderst, bleiben deine Änderungen erhalten — mit „Abgedeckten Text wiederherstellen“ holst du die neueste Version zurück. Was du selbst getippt hast, wird NICHT erneut geprüft.',
     editedSensitiveWarn: n => `⚠ Dein bearbeiteter Text enthält ${n} sensible Zeichenkette(n), die nicht abgedeckt sind. Er wurde kopiert — prüfe ihn, bevor du ihn einfügst.`,
     statsNoText: 'Noch kein Text zum Scannen.',
@@ -6059,6 +6075,8 @@ const offlineSaveBtn = document.getElementById('offlineSaveBtn');
 const offlineInstallBtn = document.getElementById('offlineInstallBtn');
 const offlineUpdateBtn = document.getElementById('offlineUpdateBtn');
 const offlineStatusEl = document.getElementById('offlineStatus');
+const updateBannerEl = document.getElementById('updateBanner');
+const updateBannerBtn = document.getElementById('updateBannerBtn');
 const offlineState = { phase: 'idle', done: 0, total: 0, installEvent: null, waitingWorker: null, reloadOnChange: false };
 
 function renderOfflineUi() {
@@ -6071,6 +6089,7 @@ function renderOfflineUi() {
   offlineInstallBtn.textContent = t.offlineInstallBtn;
   offlineUpdateBtn.style.display = st.waitingWorker ? '' : 'none';
   offlineUpdateBtn.textContent = t.offlineUpdateBtn;
+  updateBannerEl.style.display = st.waitingWorker ? 'flex' : 'none';
   let status = '';
   if (st.phase === 'saving') status = fillTemplate(t.offlineSaving, { done: formatMegabytes(st.done), total: formatMegabytes(st.total) });
   else if (st.phase === 'ready') status = t.offlineReady;
@@ -6099,8 +6118,16 @@ if (offlineAvailable(location.protocol, 'serviceWorker' in navigator)) {
       if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') flag(w); });
     });
   };
-  sw.register('sw.js').then(async reg => {
+  // Look for a newer version when the page opens, whenever the tab comes back
+  // to the front, and every 30 minutes while it stays open. update() only
+  // re-fetches sw.js from this same site; updateViaCache:'none' makes sure the
+  // browser does not answer from its HTTP cache.
+  const checkForUpdate = reg => { reg.update().catch(() => { /* offline: try again later */ }); };
+  sw.register('sw.js', { updateViaCache: 'none' }).then(async reg => {
     watchForUpdate(reg);
+    checkForUpdate(reg);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(reg); });
+    setInterval(() => checkForUpdate(reg), 30 * 60 * 1000);
     try {
       const size = await (await fetch('precache.json')).json();
       offlineState.total = size.totalBytes;
@@ -6114,11 +6141,13 @@ if (offlineAvailable(location.protocol, 'serviceWorker' in navigator)) {
     try { (await sw.ready).active.postMessage({ type: 'PRECACHE_ALL' }); }
     catch (e) { offlineState.phase = 'fail'; renderOfflineUi(); }
   });
-  offlineUpdateBtn.addEventListener('click', () => {
+  const applyUpdate = () => {
     if (!offlineState.waitingWorker) return;
     offlineState.reloadOnChange = true;
     offlineState.waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-  });
+  };
+  offlineUpdateBtn.addEventListener('click', applyUpdate);
+  updateBannerBtn.addEventListener('click', applyUpdate);
   window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); offlineState.installEvent = ev; renderOfflineUi(); });
   window.addEventListener('appinstalled', () => { offlineState.installEvent = null; renderOfflineUi(); });
   offlineInstallBtn.addEventListener('click', async () => {

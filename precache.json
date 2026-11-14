@@ -1,0 +1,105 @@
+{
+ "totalBytes": 23040911,
+ "files": [
+  {
+   "path": "index.html",
+   "size": 321166
+  },
+  {
+   "path": "manifest.webmanifest",
+   "size": 527
+  },
+  {
+   "path": "icons/icon-180.png",
+   "size": 6183
+  },
+  {
+   "path": "icons/icon-192.png",
+   "size": 6590
+  },
+  {
+   "path": "icons/icon-512.png",
+   "size": 17717
+  },
+  {
+   "path": "vendor/fonts/DejaVuSans.ttf",
+   "size": 759720
+  },
+  {
+   "path": "vendor/geo/cities15000.tsv",
+   "size": 788169
+  },
+  {
+   "path": "vendor/heic/libheif-bundle.js",
+   "size": 2044206
+  },
+  {
+   "path": "vendor/jszip/jszip.min.js",
+   "size": 97630
+  },
+  {
+   "path": "vendor/pdf/fontkit.umd.min.js",
+   "size": 758440
+  },
+  {
+   "path": "vendor/pdf/pdf-lib.min.js",
+   "size": 525099
+  },
+  {
+   "path": "vendor/pdf/pdf.min.mjs",
+   "size": 458904
+  },
+  {
+   "path": "vendor/pdf/pdf.worker.min.mjs",
+   "size": 1264342
+  },
+  {
+   "path": "vendor/pico/facefinder",
+   "size": 239632
+  },
+  {
+   "path": "vendor/pico/pico.js",
+   "size": 5589
+  },
+  {
+   "path": "vendor/regex-worker.js",
+   "size": 799
+  },
+  {
+   "path": "vendor/tessdata/deu.traineddata.gz",
+   "size": 854318
+  },
+  {
+   "path": "vendor/tessdata/eng.traineddata.gz",
+   "size": 1984273
+  },
+  {
+   "path": "vendor/tessdata/fra.traineddata.gz",
+   "size": 609363
+  },
+  {
+   "path": "vendor/tessdata/vie.traineddata.gz",
+   "size": 422253
+  },
+  {
+   "path": "vendor/tesseract/tesseract-core-lstm.wasm.js",
+   "size": 3896484
+  },
+  {
+   "path": "vendor/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js",
+   "size": 3905767
+  },
+  {
+   "path": "vendor/tesseract/tesseract-core-simd-lstm.wasm.js",
+   "size": 3899472
+  },
+  {
+   "path": "vendor/tesseract/tesseract.min.js",
+   "size": 62961
+  },
+  {
+   "path": "vendor/tesseract/worker.min.js",
+   "size": 111307
+  }
+ ]
+}

@@ -10,6 +10,15 @@ one never removes an older one.
 
 ## [Unreleased]
 
+### Changed
+
+- **Updates are announced and checked automatically (hosted version).** The page
+  now looks for a newer version when it opens, when you return to the tab, and
+  every 30 minutes. When one is ready, a full-width banner at the top of the
+  page (in all four languages) offers "Update now"; before, the only sign was a
+  small button at the bottom of the page. Still never automatic: the update
+  happens when you press the button, so a file you are working on is not lost.
+
 ### Fixed
 
 - **Yellow "suspect" outlines were printed into the exported files.** A
@@ -40,7 +49,7 @@ one never removes an older one.
 
 ### Changed
 
-- Test suite grown from 245 to 253 tests: offline helpers, translations of the
+- Test suite grown from 245 to 254 tests: offline helpers, translations of the
   new strings, the promises `sw.js` makes, the manifest and its icons, the
   precache list, a check that every icon the page links is saved for offline
   use, and a guard that the Content Security Policy still names no remote

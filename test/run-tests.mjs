@@ -3067,7 +3067,7 @@ check('offline: sizes and message templates are formatted as expected', () => {
 
 check('offline: all four languages have every offline string, translated, with the placeholders intact', () => {
   const main = new Function(`${extractBetween('const I18N = {', 'const ruleListEl', 'I18N main literal')}\nreturn I18N;`)();
-  const keys = ['offlineTitle', 'offlineDesc', 'offlineSaveBtn', 'offlineSaving', 'offlineReady', 'offlineFail', 'offlineInstallBtn', 'offlineUpdateBtn'];
+  const keys = ['offlineTitle', 'offlineDesc', 'offlineSaveBtn', 'offlineSaving', 'offlineReady', 'offlineFail', 'offlineInstallBtn', 'offlineUpdateBtn', 'updateBannerText', 'updateBannerBtn'];
   const holders = { offlineSaveBtn: ['{mb}'], offlineSaving: ['{done}', '{total}'] };
   for (const l of ['en', 'fr', 'de', 'vi']) {
     for (const k of keys) {
@@ -3090,6 +3090,12 @@ check('offline: sw.js keeps its promises (same origin only, GET only, version pl
   for (const f of ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png']) {
     if (!sw.includes(`'${f}'`)) throw new Error(`CORE list lost ${f}`);
   }
+});
+
+check('offline: a new version is announced by a banner, and the page looks for one on open, on return to the tab and periodically', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const needle of ['id="updateBanner"', "updateBannerEl.style.display = st.waitingWorker", "updateViaCache: 'none'", "visibilitychange", "setInterval(() => checkForUpdate(reg)", "updateBannerBtn.addEventListener('click', applyUpdate)"])
+    if (!html.includes(needle)) throw new Error('missing: ' + needle);
 });
 
 check('offline: every icon the page links is in the offline shell and in the precache list', () => {
