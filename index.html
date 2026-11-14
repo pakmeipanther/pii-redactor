@@ -351,6 +351,10 @@
     border-radius: 4px;
   }
   .pdf-page-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  /* The suspect outlines sit on a transparent canvas above the page canvas
+     and are never part of the exported PDF. */
+  .pdf-page-stage { position: relative; width: fit-content; max-width: 100%; }
+  .pdf-page-stage canvas.pdf-page-overlay { position: absolute; left: 1px; top: 1px; width: calc(100% - 2px); height: calc(100% - 2px); max-width: none; border: 0; border-radius: 0; pointer-events: none; }
   button {
     background: var(--accent);
     color: white;
@@ -4297,7 +4301,9 @@ function createDrawingTool() {
 }
 // Unconfirmed entropy suspects get a yellow OUTLINE only: the pixels
 // underneath are not touched (they are filled only once the person
-// confirms the suspect, which turns it into a region).
+// confirms the suspect, which turns it into a region). Only ever call
+// this on an OVERLAY canvas that is not part of an export; the yellow
+// marker is a review aid on screen, not part of the person's file.
 function paintSuspectOutlines(ctx, suspects) {
   suspects.filter(s => !s.confirmed).forEach(s => {
     ctx.save();
@@ -4633,14 +4639,16 @@ function findWordRedactions(lines, activeRules, terms, caseSensitive, entropyEna
 }
 
 // Paints the result of findWordRedactions onto a canvas: opaque black for
-// every region, and only a yellow OUTLINE (pixels untouched) around each
-// unconfirmed entropy suspect. Used where there is no region list to
-// edit -- the PDF panel's OCR pass; the image panel paints from its own
-// editable list of regions (see renderImageRedactions).
+// every region, and nothing else. Entropy suspects are RETURNED, never
+// painted: this canvas is what gets exported, so a yellow review marker
+// drawn on it would be printed into the person's redacted file. A caller
+// that wants to show the suspects draws them on a separate overlay (see
+// paintSuspectOutlines). Used where there is no region list to edit --
+// the PDF panel's OCR pass; the image panel paints from its own editable
+// list of regions (see renderImageRedactions).
 function redactWordsOnCanvas(ctx, lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds) {
   const found = findWordRedactions(lines, activeRules, terms, caseSensitive, entropyEnabled, confirmedIds);
   paintRedactionBoxes(ctx, found.regions.map(r => r.box));
-  paintSuspectOutlines(ctx, found.suspects);
   return { redactedCount: found.redactedCount, suspects: found.suspects, regions: found.regions };
 }
 
@@ -4656,6 +4664,7 @@ let imgScanned = false;      // has OCR run on the current image?
 let imgDrawMode = false;
 let imgHighlightKey = null;  // region hovered or focused in the list
 let lastImgEffective = [];   // every region (automatic + drawn) from the latest render
+let lastImgSuspects = [];    // entropy suspects of the latest render: outlined on the overlay only, so they are never exported
 const imgOverlay = document.getElementById('imgOverlay');
 const imgOverlayCtx = imgOverlay.getContext('2d');
 const imgDrawBar = document.getElementById('imgDrawBar');
@@ -4679,7 +4688,7 @@ function setImgDrawMode(on) {
   drawOverlay();
 }
 
-// Rubber band and highlight, on the overlay only (never on imgCanvas).
+// Suspect outlines, rubber band and highlight, on the overlay only (never on imgCanvas).
 function drawOverlay() {
   if (imgOverlay.width !== imgCanvas.width || imgOverlay.height !== imgCanvas.height) {
     imgOverlay.width = imgCanvas.width;
@@ -4687,6 +4696,7 @@ function drawOverlay() {
   }
   const c = imgOverlayCtx;
   c.clearRect(0, 0, imgOverlay.width, imgOverlay.height);
+  paintSuspectOutlines(c, lastImgSuspects);
   const line = Math.max(2, imgOverlay.width / 350);
   c.lineWidth = line;
   c.strokeStyle = '#33d6ff';
@@ -4815,6 +4825,7 @@ function resetImageRegionsUi(imageLoaded) {
   imgRegionStore.reset();
   imgScanned = false;
   lastImgEffective = [];
+  lastImgSuspects = [];
   imgHighlightKey = null;
   setImgDrawMode(false);
   imgDrawBar.style.display = imageLoaded ? 'flex' : 'none';
@@ -4944,7 +4955,7 @@ function renderImageRedactions() {
   );
   lastImgEffective = combineRegions(found.regions.concat(imgFaceRegions), imgRegionStore);
   paintAllRegions(imgCtx, lastImgEffective, imgFaceStyle);
-  paintSuspectOutlines(imgCtx, found.suspects);
+  lastImgSuspects = found.suspects; // shown on the overlay by drawOverlay(), never on imgCanvas
   lastImgRegionsText = formatRegions(found.regions);
   renderImgOcrText();
   renderImageTextOut(found.suspects.length - confirmedImgSuspects.size);
@@ -5385,18 +5396,20 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
   // Entropy suspects — same "never auto-redact" rule as everywhere
   // else, but the PDF panel has no per-page interactive checklist (a
   // multi-page canvas redraw is much more expensive than the single
-  // image panel's). Instead, a suspect gets a yellow OUTLINE stroked
-  // directly onto the page, baked into the downloaded PDF as a visible
-  // "review this" marker — never a black fill. The pixels underneath
-  // are left completely untouched. If the user agrees it's a secret,
-  // the fix is to add it to the custom term list and re-scan — a
+  // image panel's). Instead, a suspect is only REPORTED here, as a box
+  // in suspectBoxes. It is never drawn onto this canvas: this canvas is
+  // exactly what gets embedded in the downloaded PDF, so any marker on
+  // it would be printed into the person's redacted file. The caller
+  // outlines the boxes in yellow on a separate on-screen overlay
+  // (makePdfPageStage) that is not part of the export. The pixels
+  // underneath are left completely untouched. If the user agrees it's a
+  // secret, the fix is to add it to the custom term list and re-scan — a
   // custom term IS a certain match and gets a real fill, same as any
   // other confirmed region.
   let suspectCount = 0;
+  const suspectBoxes = [];
   if (entropyEnabled) {
     const suspects = findEntropyMatches(fullText, matches);
-    ctx.strokeStyle = '#facf6f';
-    ctx.lineWidth = 2;
     spans.forEach(span => {
       const str = span.item.str || '';
       const len = str.length;
@@ -5415,13 +5428,32 @@ async function renderAndRedactPdfPage(pdfjsLib, pdfDoc, pageNum, scale, activeRu
         const padX = redactionPadX(avgCharWidthPx, isSubRange);
         const padTop = Math.max(2, h * 0.10);
         const padBottom = Math.max(4, h * 0.35);
-        ctx.strokeRect(box.x0 - padX, box.y0 - padTop, (box.x1 - box.x0) + padX * 2, (box.y1 - box.y0) + padTop + padBottom);
+        suspectBoxes.push({ confirmed: false, box: { x0: box.x0 - padX, y0: box.y0 - padTop, x1: box.x1 + padX, y1: box.y1 + padBottom } });
         suspectCount++;
       });
     });
   }
 
-  return { canvas, ctx, redactedCount, suspectCount };
+  return { canvas, ctx, redactedCount, suspectCount, suspectBoxes };
+}
+
+// The on-screen preview of one PDF page: the page canvas (the exact pixels
+// that go into the downloaded PDF) with, on top of it, a second transparent
+// canvas that outlines the suspects in yellow. The overlay is never read by
+// the export, which only uses pdfPageCanvases.
+function makePdfPageStage(canvas, suspects) {
+  const stage = document.createElement('div');
+  stage.className = 'pdf-page-stage';
+  stage.appendChild(canvas);
+  if (suspects.length) {
+    const overlay = document.createElement('canvas');
+    overlay.className = 'pdf-page-overlay';
+    overlay.width = canvas.width;
+    overlay.height = canvas.height;
+    paintSuspectOutlines(overlay.getContext('2d'), suspects);
+    stage.appendChild(overlay);
+  }
+  return stage;
 }
 
 pdfScanBtn.addEventListener('click', async () => {
@@ -5479,11 +5511,12 @@ pdfScanBtn.addEventListener('click', async () => {
     let pagesWithoutText = 0;
     for (let i = 1; i <= numPages; i++) {
       pdfProgressEl.textContent = t.pdfProgressParsingPage(i, numPages);
-      const { canvas, ctx, redactedCount, suspectCount } = await renderAndRedactPdfPage(
+      const { canvas, ctx, redactedCount, suspectCount, suspectBoxes } = await renderAndRedactPdfPage(
         pdfjsLib, pdfDoc, i, scale, activeRules, customTerms, caseSensitive, entropyEnabled
       );
       totalRedacted += redactedCount;
       totalSuspects += suspectCount;
+      const pageSuspects = suspectBoxes.slice(); // outlined on the preview only
 
       // Text for the copy box: the page's own text layer when it has one,
       // run through the same detection as Word/PowerPoint text.
@@ -5501,11 +5534,13 @@ pdfScanBtn.addEventListener('click', async () => {
         // OCR fallback has no confirm-checklist of its own either (same
         // reasoning as above) — pass confirmedIds=undefined so
         // redactWordsOnCanvas defaults it to an empty set and every
-        // suspect stays an outline-only yellow box, never a black fill
+        // suspect stays unconfirmed: a yellow outline on the preview
+        // only, never a black fill and never a mark on the exported page
         const { redactedCount: ocrRedacted, suspects: ocrSuspects, regions: ocrRegions } =
           redactWordsOnCanvas(ctx, lines, activeRules, customTerms, caseSensitive, entropyEnabled);
         totalRedacted += ocrRedacted;
         totalSuspects += ocrSuspects.length;
+        pageSuspects.push(...ocrSuspects);
         // A page without a text layer (a scan): its text is what OCR read.
         if (!pageMasked) pageMasked = maskedLinesText(lines, ocrRegions.map(r => r.box), t.maskRegion);
       }
@@ -5519,7 +5554,7 @@ pdfScanBtn.addEventListener('click', async () => {
       label.className = 'pdf-page-label';
       label.textContent = t.pdfPageLabel(i, numPages);
       pageItem.appendChild(label);
-      pageItem.appendChild(canvas);
+      pageItem.appendChild(makePdfPageStage(canvas, pageSuspects));
       pdfPagesWrap.appendChild(pageItem);
     }
 

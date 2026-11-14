@@ -1962,7 +1962,7 @@ check('the whole flow on the model: detector regions + a drawn region, switch on
   if (boxesToPaint(combineRegions(auto, s)).length !== base + 1) throw new Error('undo');
 });
 
-check('paintSuspectOutlines: an unconfirmed suspect is only OUTLINED in yellow (nothing is filled); a confirmed one is left to the regions; the PDF wrapper outlines too', () => {
+check('paintSuspectOutlines: an unconfirmed suspect is only OUTLINED in yellow (nothing is filled); a confirmed one is left to the regions; redactWordsOnCanvas (the exported canvas) never strokes anything', () => {
   const strokes = [], fills = [];
   const ctx = { strokeStyle: '', lineWidth: 0, fillStyle: '', save() {}, restore() {}, strokeRect(...a) { strokes.push([this.strokeStyle, this.lineWidth, ...a]); }, fillRect(...a) { fills.push(a); } };
   paintSuspectOutlines(ctx, [{ confirmed: false, box: { x0: 10, y0: 20, x1: 60, y1: 50 } }, { confirmed: true, box: { x0: 0, y0: 0, x1: 5, y1: 5 } }]);
@@ -1971,7 +1971,9 @@ check('paintSuspectOutlines: an unconfirmed suspect is only OUTLINED in yellow (
   const ctx2 = { ...recordingCtx(), strokeRect(...a) { strokes2.push(a); } };
   const secret = [W('Zk9qLm3VxQ7rTb2Np', 10, 600, 200, 620)];
   redactWordsOnCanvas(ctx2, [secret], [], [], false, true);
-  if (strokes2.length !== 1 || ctx2.fills.length !== 0) throw new Error('wrapper: ' + JSON.stringify({ strokes2, fills: ctx2.fills }));
+  const res2 = redactWordsOnCanvas(ctx2, [secret], [], [], false, true);
+  if (res2.suspects.length !== 1) throw new Error('suspect must still be reported: ' + JSON.stringify(res2.suspects));
+  if (strokes2.length !== 0 || ctx2.fills.length !== 0) throw new Error('export canvas must carry no yellow marker: ' + JSON.stringify({ strokes2, fills: ctx2.fills }));
 });
 
 check('regionToolbarState: export needs a scan or a region; undo/redo/clear follow the store', () => {
