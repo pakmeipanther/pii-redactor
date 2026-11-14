@@ -20,7 +20,7 @@ import path from 'node:path';
 
 const root = path.resolve(process.argv[2] || '.');
 
-const INCLUDE_TOP = ['index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
+const INCLUDE_TOP = ['index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 const SKIP = [
   /\/tesseract-core[^/]*\.wasm$/,
   /\/tesseract-core(-simd|-relaxedsimd)?\.wasm\.js$/,

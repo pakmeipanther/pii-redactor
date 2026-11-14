@@ -28,7 +28,7 @@ const CACHE = CACHE_PREFIX + BUILD_ID;
 // The small shell that is stored as soon as the worker installs. The big
 // libraries (OCR engine, language data, pdf.js...) are stored the first time
 // they are used, or all at once when the person presses "Save for offline use".
-const CORE = ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-192.png', 'icons/icon-512.png'];
+const CORE = ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));

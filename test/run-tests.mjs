@@ -3085,8 +3085,19 @@ check('offline: sw.js keeps its promises (same origin only, GET only, version pl
   if (!/res\.status === 200 && res\.type === 'basic'/.test(sw)) throw new Error('only plain 200 answers may be stored');
   if (/skipWaiting\(\)/.test(sw) && !/SKIP_WAITING/.test(sw)) throw new Error('skipWaiting must only run when the person asks for the update');
   if (/\binstall['"]\s*,[^)]*skipWaiting/.test(sw)) throw new Error('skipWaiting must not run on install');
-  for (const f of ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-192.png', 'icons/icon-512.png']) {
+  for (const f of ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png']) {
     if (!sw.includes(`'${f}'`)) throw new Error(`CORE list lost ${f}`);
+  }
+});
+
+check('offline: every icon the page links is in the offline shell and in the precache list', () => {
+  const sw = readRepoFile('sw.js');
+  const pre = readRepoFile('scripts/make-precache.mjs');
+  const linked = [...html.matchAll(/<link rel="apple-touch-icon" href="([^"]+)"/g)].map(m => m[1]);
+  if (!linked.length) throw new Error('expected an apple-touch-icon link');
+  for (const f of linked) {
+    if (!sw.includes(`'${f}'`)) throw new Error(f + ' is linked by index.html but missing from the CORE list in sw.js');
+    if (!pre.includes(`'${f}'`)) throw new Error(f + ' is linked by index.html but missing from scripts/make-precache.mjs');
   }
 });
 
@@ -3103,7 +3114,7 @@ check('offline: the manifest is valid and its icons exist', () => {
 check('offline: precache list leaves out unused OCR cores and licence text, and keeps what is used', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'pii-precache-'));
   const put = (rel, size) => { mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); writeTmp(path.join(dir, rel), 'x'.repeat(size)); };
-  for (const f of ['index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png']) put(f, 10);
+  for (const f of ['index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png']) put(f, 10);
   for (const f of ['vendor/tesseract/tesseract-core-simd-lstm.wasm.js', 'vendor/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js', 'vendor/tesseract/tesseract-core-lstm.wasm.js',
                    'vendor/tesseract/worker.min.js', 'vendor/tessdata/eng.traineddata.gz', 'vendor/pdf/pdf.min.mjs']) put(f, 20);
   for (const f of ['vendor/tesseract/tesseract-core-simd.wasm.js', 'vendor/tesseract/tesseract-core.wasm.js', 'vendor/tesseract/tesseract-core-simd-lstm.wasm',
@@ -3111,7 +3122,7 @@ check('offline: precache list leaves out unused OCR cores and licence text, and 
   execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'make-precache.mjs'), dir], { stdio: 'pipe' });
   const list = JSON.parse(readFileSync(path.join(dir, 'precache.json'), 'utf8'));
   const got = list.files.map(f => f.path).sort();
-  const want = ['icons/icon-192.png', 'icons/icon-512.png', 'index.html', 'manifest.webmanifest',
+  const want = ['icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'index.html', 'manifest.webmanifest',
     'vendor/pdf/pdf.min.mjs', 'vendor/tesseract/tesseract-core-lstm.wasm.js', 'vendor/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js',
     'vendor/tesseract/tesseract-core-simd-lstm.wasm.js', 'vendor/tesseract/worker.min.js', 'vendor/tessdata/eng.traineddata.gz'].sort();
   if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error('got ' + JSON.stringify(got));

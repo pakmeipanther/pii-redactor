@@ -30,10 +30,11 @@ one never removes an older one.
 
 ### Changed
 
-- Test suite grown from 245 to 252 tests: offline helpers, translations of the
+- Test suite grown from 245 to 253 tests: offline helpers, translations of the
   new strings, the promises `sw.js` makes, the manifest and its icons, the
-  precache list, and a guard that the Content Security Policy still names no
-  remote host.
+  precache list, a check that every icon the page links is saved for offline
+  use, and a guard that the Content Security Policy still names no remote
+  host.
 
 ## [1.4.0] — 2026-11-06
 
