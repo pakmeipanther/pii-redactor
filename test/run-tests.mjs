@@ -99,8 +99,8 @@ const redactWordsOnCanvasCode = extractBetween(
   'redactWordsOnCanvas'
 );
 
-const combined = `${rulesCode}\n${userRegexCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
-const { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
+const combined = `${rulesCode}\n${userRegexCode}\n${findCustomMatchesCode}\n${findMatchesCode}\n${entropyCode}\n${textItemBBoxAndPadCode}\n${ocrSupportCode}\n${wordsToRedactCode}\n${regionModelCode}\n${redactWordsOnCanvasCode}\n${docxPureFunctionsCode}\n${pptxPureFunctionsCode}\nreturn { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, itemCharRange, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState };`;
+const { RULES, REGEX_TERM_PREFIX, checkUserRegex, stressTestRegex, isRegexTerm, findCustomMatches, findMatches, shannonEntropy, classifyAlphabet, findEntropyMatches, textItemBBox, redactionPadX, itemCharRange, wordsToRedact, decodeXmlText, extractDocxParagraphs, redactParagraphs, extractPptxParagraphs, foldForMatch, foldedCustomSpans, findPhraseWordMatches, wordsAreConsecutive, ocrGrayPixels, planOcrPasses, scaleWords, ocrLangMismatch, boxOverlapFraction, redactWordsOnCanvas, wasmAvailable, isWasmError, plausibleRuleMatch, formatRegions, findWordRedactions, normalizeRect, clampRect, rectIsUsable, clientToImagePoint, regionKey, createRegionStore, combineRegions, boxesToPaint, paintRedactionBoxes, createDrawingTool, paintSuspectOutlines, regionToolbarState } = new Function(combined)();
 
 const allRuleIds = RULES.map(r => r.id);
 function activeRules(ids) {
@@ -261,6 +261,26 @@ check('textItemBBox: a sub-range redacts a narrower box than the full item, not 
 // --- PDF redaction: a sub-range box's horizontal padding must be
 // generous enough to survive real per-character width variance, not
 // a tiny fixed amount ----------------------------------------------
+
+check('itemCharRange: a match is placed by measured character widths, not by an even spread (no letter left peeking out)', () => {
+  const w = { i: 1, m: 3 };
+  const ctx = { font: '', measureText(t) { return { width: [...t].reduce((n, c) => n + (w[c] || 2), 0) }; } };
+  const item = { str: 'iiiimm' };
+  const [a, b] = itemCharRange(ctx, item, { fontFamily: 'serif' }, 4, 6);
+  if (Math.abs(a - 0.4) > 1e-9 || b !== 1) throw new Error(`expected [0.4, 1], got [${a}, ${b}]`);
+  if (!/serif/.test(ctx.font)) throw new Error('should measure in the item\'s own font family: ' + ctx.font);
+  const evenStart = 4 / 6;
+  if (!(a < evenStart)) throw new Error('the measured start must differ from the even-spread start ' + evenStart);
+});
+
+check('itemCharRange: falls back to an even spread when measuring is impossible or inconsistent', () => {
+  const broken = { font: '', measureText() { throw new Error('no canvas'); } };
+  const zero = { font: '', measureText() { return { width: 0 }; } };
+  for (const ctx of [broken, zero]) {
+    const r = itemCharRange(ctx, { str: 'abcdef' }, undefined, 2, 4);
+    if (Math.abs(r[0] - 2 / 6) > 1e-9 || Math.abs(r[1] - 4 / 6) > 1e-9) throw new Error('fallback wrong: ' + JSON.stringify(r));
+  }
+});
 
 check('redactionPadX: a sub-range gets a full average-character-width of padding, not a tiny fixed amount', () => {
   // Regression test for the follow-up bug: once the whole-line-redacted

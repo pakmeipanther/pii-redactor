@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/images/logo.svg" alt="PII Redactor logo: a shield around a document with one line blacked out" width="120"></p>
 
-# PII Redactor <sup>v1.4.0</sup>
+# PII Redactor <sup>v1.5.0</sup>
 
 **Share documents. Not identities.**
 
@@ -18,21 +18,33 @@ removes what it finds and you confirm every result before download. It is
 a helper, not a legal guarantee of anonymisation or compliance — see
 [Known limitations](#known-limitations).
 
-> Status (v1.4.0): one unified input (paste text, or drop/pick an
+**Try it now — nothing to install:** open **https://pakmeipanther.github.io/pii-redactor/** in your
+browser. At the bottom of that page, "Use offline" keeps a copy in your
+browser (so it works with the network off) and "Install as app" puts it in
+your Dock, Start menu or home screen. Prefer to read the code and run your own
+copy? Download the repository — see [Usage](#usage). Either way, your text and
+files are processed only inside your browser.
+
+> Status (v1.5.0): one unified input (paste text, or drop/pick an
 > image, HEIC photo, PDF, Word, or PowerPoint file — the type is
 > auto-detected), text redaction (regex + custom term list +
 > entropy-based secret detection), image/screenshot OCR redaction, PDF
 > redaction, and Word/PowerPoint → redacted-PDF conversion are all
-> working, with a synthetic-data test suite and a demo GIF above.
+> working, with a synthetic-data test suite and a demo GIF below.
+> **New in v1.5.0:** a hosted version on GitHub Pages — every feature works
+> from a link, with no Python and no local server — that can also be saved for
+> offline use or installed as an app, looks for new versions by itself and
+> announces one with a bar at the top of the page; and the yellow "suspect"
+> frame is now only an on-screen review aid, never part of an exported file.
+> Since v1.4.0: your own regular expressions in the custom list
+> (safety-tested in a background worker); a live preview and a one-click
+> "Copy masked text" box for pasted text; an editable, copyable masked-text
+> box for image, PDF, Word and PowerPoint results; iPhone HEIC/HEIF photos;
+> the nearest city (offline) for GPS metadata; a new file always replaces the
+> previous results; and a Light / Dark / System theme selector. Since v1.3.0
+> images get one editable list of regions (OCR hits, faces, hand-drawn areas).
 > Since v1.2.1 it reports the file's metadata and re-scans every export
-> before download. Since v1.3.0 images get one editable list of regions
-> (OCR hits, faces, hand-drawn areas). **New in v1.4.0:** your own regular
-> expressions in the custom list (safety-tested in a background worker); a live preview
-> and a one-click "Copy masked text" box for pasted text; an editable,
-> copyable masked-text box for image, PDF, Word and PowerPoint results;
-> iPhone HEIC/HEIF photos; the nearest city (offline) for GPS metadata;
-> a new file always replaces the previous results; and a Light / Dark /
-> System theme selector. Local NER was investigated and deferred — see
+> before download. Local NER was investigated and deferred — see
 > [Known limitations](#known-limitations). Earlier releases:
 > [Versioning](#versioning). Plans: [Roadmap](#roadmap).
 
@@ -45,7 +57,7 @@ a helper, not a legal guarantee of anonymisation or compliance — see
 > layout), save your Word/PowerPoint file as a PDF yourself first,
 > then drop that PDF in.
 
-![Demo (light mode): choosing the theme, pasting text with a live masked preview and one-click copy, adding custom terms and a regular expression (a risky one is refused after 3 seconds), dropping an iPhone HEIC photo with GPS metadata shown as a city name, OCR blacking out sensitive text, hand-drawing an extra covered area over a face, copying the masked text, and dropping a PDF that replaces everything from the previous file](docs/images/demo.gif)
+![Demo (light mode, v1.5): the website opened in the browser, pasting text with a live masked preview and one-click copy, custom terms and a regular expression, OCR blacking out sensitive text in a screenshot, a photo with GPS metadata and a hand-drawn covered area, a PDF, saving the app for offline use, and the blue "new version" bar](docs/images/demo.gif)
 
 *(All data shown is synthetic/fake, invented for this recording —
 never a real person, company, or secret.)*
@@ -107,10 +119,13 @@ text only, or need a server/cloud component to touch images and PDFs.
 
 - **Single `.html` file, plus a `vendor/` folder for offline OCR** — no
   build step. Text redaction needs nothing but the browser; image/OCR/
-  PDF/Word/PowerPoint redaction need the vendored files beside them
-  (see
-  [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features)).
-- **No network calls** — enforced with a `Content-Security-Policy` meta
+  PDF/Word/PowerPoint redaction need the vendored files beside them. The
+  [hosted version](#using-it-online-installing-it-or-using-it-offline) serves
+  both together, so nothing has to be set up; a downloaded copy needs a small
+  local server (see
+  [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features-from-a-downloaded-copy)).
+- **No network calls once the page has loaded** — your text and files never
+  become a network request. Enforced with a `Content-Security-Policy` meta
   tag. `connect-src` is scoped to `'self'` only (not a wildcard or a CDN
   domain) so the page can read the vendored OCR engine and language
   files sitting next to it, but it is blocked from reaching any other
@@ -391,12 +406,15 @@ a glance.
 
 ## Usage
 
-1. For text-only redaction: open `index.html` directly in any modern
-   browser (Chrome, Firefox, Safari, Edge) — no install, no server.
-2. For image/screenshot, PDF, Word, or PowerPoint redaction: see
-   [Running the image/OCR/PDF/Word/PowerPoint features](#running-the-imageocrpdfwordpowerpoint-features)
-   below — all of them need a local server due to a browser
-   restriction on reading local files.
+1. **Easiest — the website.** Open https://pakmeipanther.github.io/pii-redactor/ in any modern browser (Chrome,
+   Firefox, Safari, Edge). Every feature works there, with nothing to install.
+   At the bottom of the page you can also save it for offline use or install
+   it as an app ([details](#using-it-online-installing-it-or-using-it-offline)).
+2. **Your own copy.** Download the repository and open `index.html`. Text-only
+   redaction works by double-clicking the file; image/screenshot, PDF, Word and
+   PowerPoint redaction need a small local server because of a browser
+   restriction on reading local files — see
+   [Running the image/OCR/PDF/Word/PowerPoint features from a downloaded copy](#running-the-imageocrpdfwordpowerpoint-features-from-a-downloaded-copy).
 3. Paste text directly into the text box, or drop/pick a file — one
    image, PDF, Word (.docx), or PowerPoint (.pptx) file — on the single
    drop zone right below it. There's no need to sort the file into the
@@ -450,9 +468,11 @@ nothing else, so there is nowhere for your data to go.
   with no internet connection. Where your browser supports it, "Install as app"
   adds it to your Dock, Start menu or home screen. Only the app's own files are
   stored, never anything you paste or drop.
-- **Updates are never silent.** When a new version is published, the page shows
-  "New version available" and waits for you to reload, so the page and its
-  libraries always come from the same build.
+- **Updates are announced, never forced.** The page looks for a newer version
+  when it opens, when you come back to its tab and every 30 minutes. When one
+  is ready, a bar at the top of the page says so and offers "Update now"; the
+  page reloads only when you press it, so a file you are working on is not lost
+  and the page and its libraries always come from the same build.
 - **What you are trusting.** With the hosted version, the program code reaches
   your browser from GitHub when you first open it (and when you update). For
   very sensitive documents, prefer a copy you downloaded and checked yourself
@@ -500,7 +520,7 @@ the scanner can see a leak, about 6,000 randomly corrupted files to
 check the scanner never crashes, a tiny fake DOM to exercise the report
 and the blocked-download path, i18n completeness checks for all four
 languages, and static guards on the wiring (for example: every export
-must go through `deliverVerifiedFile`). As of v1.4.0: 254 tests, all passing.
+must go through `deliverVerifiedFile`). As of v1.5.0: 256 tests, all passing.
 
 ```sh
 node test/run-tests.mjs
@@ -596,7 +616,16 @@ See [CHANGELOG.md](CHANGELOG.md) for exactly what changed in each one.
   editable SVG source) and a demo GIF re-recorded with the new header and logo.
   Tag: [`v1.3.2`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.3.2).
 
-- **v1.4.0** (current) — your own regular expressions in the custom list, live preview and copy box for text, editable masked-text
+- **v1.5.0** (current) — the hosted version on GitHub Pages: every feature
+  from a link with no Python and no local server, "Use offline", "Install as
+  app" (service worker `sw.js`, web app manifest, icons), an automatic check for
+  new versions with an "Update now" bar; the yellow suspect frame no longer
+  appears in exported PDFs and images; PDF match boxes placed by measured text
+  widths (no letter left peeking out); new demo GIF; README and the four guides
+  rewritten around the three ways to use it. Tag:
+  [`v1.5.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.5.0).
+
+- **v1.4.0** — your own regular expressions in the custom list, live preview and copy box for text, editable masked-text
   boxes for files, HEIC photos, nearest city for GPS metadata, new file replaces
   old results, Light/Dark/System themes, light-mode demo GIF, updated guides.
   Tag: [`v1.4.0`](https://github.com/pakmeipanther/pii-redactor/releases/tag/v1.4.0).
@@ -615,6 +644,12 @@ underneath you, even as `main` keeps moving forward.
 - [x] **v1.4.0** Light / Dark / System theme selector
 - [x] **v1.4.0** User-defined regular expressions in the custom list (validated: no empty-matching or nested-quantifier patterns)
 - [x] **v1.4.0** Demo GIF in light mode; guides updated in four languages
+- [x] **v1.5.0** Hosted version on GitHub Pages (no Python, no local server)
+- [x] **v1.5.0** "Use offline" (service worker) and "Install as app"
+- [x] **v1.5.0** Automatic check for new versions + "Update now" bar
+- [x] **v1.5.0** Fix: the yellow suspect frame is no longer exported
+- [x] **v1.5.0** Fix: PDF match boxes use measured text widths
+- [x] **v1.5.0** New demo GIF; README and guides in four languages updated
 
 ## Known limitations
 
@@ -711,6 +746,16 @@ underneath you, even as `main` keeps moving forward.
   be off by a few pixels — a small, padded margin of error, not the
   "redacts the whole line" bug this replaced. See
   [test/run-tests.mjs](test/run-tests.mjs)'s `textItemBBox` tests.
+- **(Fixed in v1.5.0)** The even-spacing estimate above could still leave a
+  single character visible next to a black box in a PDF (the "p" of "Corp", the
+  "s" of "sk_test"), because on a long run of narrow letters it is off by a
+  whole letter, more than the margin absorbs. Where a match sits inside a text
+  item is now worked out from the item's text measured in its own font (browser
+  canvas `measureText`, ratio of widths), falling back to the even spread only
+  if measuring fails; the margin stays as a second safety net. It is still an
+  estimate (pdf.js gives no per-character positions), so look at the page
+  previews before you download. See [test/run-tests.mjs](test/run-tests.mjs)'s
+  `itemCharRange` tests.
 - **(Fixed)** Re-scanning a PDF a second time (e.g. after adding a
   custom term and clicking "Scan & black out PDF" again) could fail
   with "Cannot perform Construct on a detached ArrayBuffer". pdf.js
@@ -813,6 +858,13 @@ underneath you, even as `main` keeps moving forward.
   network request.
 - The custom keyword list is stored only in `localStorage` on the user's
   own machine.
+- The hosted version adds a service worker ([`sw.js`](sw.js)). It answers
+  only requests for this site's own files, never touches another origin or
+  anything but a plain GET, stores only plain 200 answers, and never sees what
+  you paste or drop (that never becomes a request). A new version waits until
+  you press "Update now". What you trust there is the delivery of the program
+  code by GitHub when you open the page; for the most sensitive material use a
+  downloaded copy, or the offline copy after checking its version.
 - The OCR engine and language data, and the pdf.js/pdf-lib PDF
   libraries, are all vendored (bundled as files in this repo) rather
   than fetched from a CDN at runtime, so no outbound request is ever

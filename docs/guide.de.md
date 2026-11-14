@@ -10,7 +10,9 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 > **Das Wichtigste:** Diese Software stellt keine Internetverbindung her und sendet keinerlei Daten irgendwohin — die gesamte Verarbeitung erfolgt direkt auf Ihrem Computer. Sie können das WLAN beim Benutzen komplett ausschalten, und es funktioniert weiterhin normal — so können Sie dies auch selbst überprüfen.
 
-![Demo (heller Modus): Darstellung wählen, Live-Vorschau und Kopieren des abgedeckten Textes, eigene Begriffe und ein regulärer Ausdruck, ein HEIC-Foto mit GPS-Stadt, OCR, ein von Hand gezeichneter Bereich und eine PDF, die die vorherige Datei ersetzt](images/demo.gif)
+> Bei der Website wird das Programm selbst beim Öffnen der Seite (und bei Updates) von GitHub geladen; Ihr eigener Text und Ihre Dateien verlassen Ihren Computer nie. Zum Selbstprüfen klicken Sie einmal auf „Für die Offline-Nutzung speichern“ und schalten dann das Netzwerk aus.
+
+![Demo (heller Modus, v1.5): die Website im Browser geöffnet, Text einfügen mit Live-Vorschau und Kopieren per Klick, eigene Begriffe und ein regulärer Ausdruck, OCR auf einem Screenshot, ein Foto mit GPS-Metadaten und ein von Hand gezeichneter Bereich, eine PDF, die App für die Offline-Nutzung speichern und die blaue Leiste „neue Version“](images/demo.gif)
 
 *(Alles in dieser Aufnahme sind erfundene Beispieldaten.)*
 
@@ -29,8 +31,27 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 - **neu in v1.4:** jedes Ergebnis für Bild, PDF, Word und PowerPoint hat ein **bearbeitbares Feld mit dem abgedeckten Text** (mit Schaltfläche "Abgedeckten Text wiederherstellen") und eine eigene Schaltfläche "Abgedeckten Text kopieren";
 - **neu in v1.4:** **iPhone-HEIC-Fotos** lassen sich öffnen; der Metadatenbericht zeigt die **nächstgelegene Stadt** einer GPS-Position (offline nachgeschlagen).
 - **neu in v1.4:** eigene **Muster** (reguläre Ausdrücke) beschreiben, etwa für Mitarbeiternummern.
+- **neu in v1.5:** direkt über die **Website**, als **Offline-Kopie** oder als **installierte App** nutzen — nichts herunterzuladen und kein lokaler Server; eine blaue Leiste meldet, wenn eine neue Version bereit ist (siehe „Hier beginnen“ unten);
+- **behoben in v1.5:** der gelbe „Verdachts“-Rahmen ist nur noch eine Prüfhilfe auf dem Bildschirm und landet nicht mehr in heruntergeladenen PDFs und Bildern.
 
-## Schritt 1 — Software herunterladen
+## Hier beginnen — vier Wege, die Software zu nutzen
+
+Sie können PII Redactor nutzen, ohne etwas zu installieren und ohne einen einzigen Befehl einzutippen. Wählen Sie den Weg, der zu Ihnen passt:
+
+| Weg | Was Sie tun | Internet nötig? |
+|---|---|---|
+| **A. Die Website (am einfachsten)** | Öffnen Sie https://pakmeipanther.github.io/pii-redactor/ in Ihrem Browser. Dort funktioniert alles: Text, Bilder, Gesichter, PDF, Word und PowerPoint. | Ja, zum Öffnen der Seite |
+| **B. Offline-Kopie** | Scrollen Sie auf der Website ganz nach unten zum Bereich „Offline nutzen“ und klicken Sie auf „Für die Offline-Nutzung speichern (etwa 22 MB)“. Danach öffnet sich die Seite auch bei ausgeschaltetem Netzwerk und funktioniert. | Nur beim ersten Mal |
+| **C. Installierte App** | Klicken Sie im selben Bereich auf „Als App installieren“ (Chrome, Edge und Brave bieten das an; in Safari nutzen Sie auf dem Mac „Zum Dock hinzufügen“, auf iPhone und iPad „Zum Home-Bildschirm“). Das Tool bekommt ein eigenes Fenster und ein Symbol und funktioniert auch offline. | Nur beim ersten Mal |
+| **D. Heruntergeladene Kopie (fortgeschritten)** | Laden Sie die Dateien von GitHub herunter und öffnen Sie sie selbst — Schritte 1 bis 3 unten. Wählen Sie das, wenn Sie den Code vor der Nutzung selbst lesen und prüfen möchten oder nie eine Website zusammen mit sensiblen Dateien öffnen dürfen. | Nein |
+
+Bei jedem Weg werden Ihre Dateien nur in Ihrem Browser verarbeitet: Die Sicherheitsregel der Seite erlaubt ihr, nur mit ihrer eigenen Website zu sprechen und mit sonst niemandem, also gibt es für Ihre Daten keinen Weg nach draußen. Aus dem Internet geladen werden nur die eigenen Dateien des Programms — beim ersten Öffnen der Website und bei Updates.
+
+**Updates.** Sobald eine neue Version veröffentlicht ist, erscheint oben auf der Seite eine blaue Leiste: „Eine neue Version des Tools ist bereit. …“. Laden Sie zuerst die Datei herunter, an der Sie arbeiten, und klicken Sie dann auf „Jetzt aktualisieren“. Die Seite sucht von selbst nach neuen Versionen, wenn Sie sie öffnen, wenn Sie zu ihrem Tab zurückkehren und alle 30 Minuten. Sie aktualisiert nie hinter Ihrem Rücken, Sie verlieren also keine Arbeit.
+
+**Welcher Weg ist für sehr sensible Dokumente am sichersten?** Bei der Website vertrauen Sie darauf, dass GitHub Ihnen bei jedem Öffnen (und bei Updates) das richtige Programm liefert. Für das Sensibelste nutzen Sie Weg D oder Weg B, nachdem Sie die Versionsnummer geprüft haben.
+
+## Schritt 1 (nur für Weg D) — Software herunterladen
 
 1. Öffnen Sie Ihren Browser (Firefox oder Brave werden empfohlen — beide sind für Sicherheit/Datenschutz bekannt; Chrome, Safari und Edge funktionieren ebenfalls) und rufen Sie folgende Adresse auf:
 
@@ -57,7 +78,7 @@ Stellen Sie sich vor, Sie kopieren Ihren Ausweis für eine fremde Person — Sie
 
 ## Schritt 2 — Die Software öffnen und sich zurechtfinden
 
-1. Öffnen Sie den in Schritt 1 entpackten Ordner und doppelklicken Sie auf die Datei index.html. Sie öffnet sich in Ihrem Browser.
+1. Öffnen Sie die Software. Auf der Website oder in der installierten App ist sie bereits geöffnet. Bei einer heruntergeladenen Kopie (Weg D) öffnen Sie den in Schritt 1 entpackten Ordner und doppelklicken auf die Datei index.html — sie öffnet sich in Ihrem Browser.
 1. Wählen Sie oben rechts Ihre Sprache (English, Français, Deutsch oder Tiếng Việt).
 1. Neben der Sprachauswahl können Sie unter "Darstellung" zwischen "System" (folgt Ihrem Computer), "Hell" und "Dunkel" wählen. Ihre Wahl wird nur in diesem Browser gespeichert.
 1. Die grüne Zeile unter dem Titel sagt, dass keine Netzwerkverbindung hergestellt wird. Das ist ein Versprechen, das Sie selbst überprüfen können (siehe „Gute Gewohnheiten“ am Ende).
@@ -72,7 +93,7 @@ Die Seite liest sich von oben nach unten:
 | **4. Ergebnis** | Der Text mit markierten Funden und die Download-Schaltfläche. |
 | **Feld Bild / PDF / Word / PowerPoint** | Erscheint erst, nachdem Sie eine Datei dieses Typs abgelegt haben. |
 
-Welche Funktionen laufen per Doppelklick auf index.html, und welche brauchen den lokalen Server aus Schritt 3?
+Auf der Website, in der Offline-Kopie und in der installierten App (Wege A, B und C) funktioniert jede Funktion ohne zusätzlichen Schritt. Die folgende Tabelle ist **nur für eine heruntergeladene Kopie (Weg D)** wichtig: Welche Funktionen laufen per Doppelklick auf index.html, und welche brauchen den lokalen Server aus Schritt 3?
 
 | Funktion | Doppelklick auf index.html | Lokaler Server nötig (Schritt 3) |
 |---|---|---|
@@ -82,9 +103,7 @@ Welche Funktionen laufen per Doppelklick auf index.html, und welche brauchen den
 
 Im Zweifel nehmen Sie den lokalen Server: Er funktioniert für alles.
 
-> **Abkürzung: kein lokaler Server nötig.** Sie können Schritt 3 überspringen, indem Sie die Online-Version unter https://pakmeipanther.github.io/pii-redactor/ nutzen: Bilder, Gesichter und PDF funktionieren dort ohne Installation, und Ihre Dateien werden weiterhin nur in Ihrem Browser verarbeitet. Der Bereich „Offline nutzen“ am Seitenende kann eine Kopie im Browser speichern, damit es auch ohne Internet funktioniert. Wenn Sie sehr sensible Dokumente bearbeiten, bevorzugen Sie die in Schritt 1 heruntergeladene Kopie und die folgenden Schritte.
-
-## Schritt 3 (fortgeschritten, nötig für Bilder, Gesichter und PDF) — Einen lokalen Server starten
+## Schritt 3 (fortgeschritten, nur für Weg D, nötig für Bilder, Gesichter und PDF) — Einen lokalen Server starten
 
 Das Lesen von Text in Bildern, die Gesichtserkennung und die Verarbeitung von PDF-Dateien brauchen aufgrund einer Sicherheitsrichtlinie des Browsers einen zusätzlichen kleinen technischen Schritt. „Einen lokalen Server starten“ klingt beängstigend, ist aber nur eine einzige Zeile zum Eintippen. Wenn Sie nur Text, Word oder PowerPoint bearbeiten, können Sie diesen Abschnitt überspringen.
 
@@ -231,7 +250,7 @@ Manche Geheimnisse haben keine erkennbare Form: ein zufällig aussehendes Passwo
 
 **Wenn die Software etwas übersehen hat**, öffnen Sie unter dem Bild „Was die OCR gelesen hat (und warum jede Stelle geschwärzt wurde)“. Dort steht der Text, den die Software gelesen hat, und der Grund für jedes schwarze Rechteck. Steht das erwartete Wort dort nicht, hat die Software es nicht gelesen — wählen Sie die richtige Sprache, lassen Sie „Gründliche Analyse“ an oder decken Sie die Stelle von Hand ab.
 
-**iPhone-Fotos (HEIC).** Sie können ein HEIC- oder HEIF-Foto direkt vom iPhone ablegen; es wird auf Ihrem Computer wie jedes andere Bild geöffnet. Benötigt den lokalen Server aus Schritt 3. **Text des Bildes.** Unter dem Bild enthält das Feld "Abgedeckter Text — zum Kopieren" den aus dem Bild gelesenen Text, bei dem die abgedeckten Stellen ersetzt sind. Sie können ihn bearbeiten; "Abgedeckten Text kopieren" kopiert ihn, und "Abgedeckten Text wiederherstellen" bringt die automatische Fassung zurück. Enthalten Ihre eigenen Änderungen noch etwas Sensibles, erscheint beim Kopieren eine Warnung. Dieser Text stammt aus der OCR und kann Fehler enthalten: Lesen Sie ihn vor der Verwendung durch.
+**iPhone-Fotos (HEIC).** Sie können ein HEIC- oder HEIF-Foto direkt vom iPhone ablegen; es wird auf Ihrem Computer wie jedes andere Bild geöffnet. Funktioniert auf der Website und in der App; eine heruntergeladene Kopie benötigt den lokalen Server aus Schritt 3. **Text des Bildes.** Unter dem Bild enthält das Feld "Abgedeckter Text — zum Kopieren" den aus dem Bild gelesenen Text, bei dem die abgedeckten Stellen ersetzt sind. Sie können ihn bearbeiten; "Abgedeckten Text kopieren" kopiert ihn, und "Abgedeckten Text wiederherstellen" bringt die automatische Fassung zurück. Enthalten Ihre eigenen Änderungen noch etwas Sensibles, erscheint beim Kopieren eine Warnung. Dieser Text stammt aus der OCR und kann Fehler enthalten: Lesen Sie ihn vor der Verwendung durch.
 
 ## Funktion 5 — Die Liste der abgedeckten Bereiche
 
@@ -265,7 +284,7 @@ Für alles, was die Software nicht lesen kann: ein Logo, Handschrift, ein QR-Cod
 1. Klicken Sie auf „Gesichter erkennen“. Eine Meldung sagt, wie viele gefunden wurden („1 Gesicht gefunden.“).
 1. Jedes Gesicht erscheint in der Liste der Bereiche (Funktion 5) als „Gesicht Nr. 1“, „Gesicht Nr. 2“ ... Nehmen Sie bei einer Zeile den Haken weg, damit dieses Gesicht sichtbar bleibt. Ein Wechsel des Stils aktualisiert das Bild sofort.
 1. **Der Detektor ist nur bei Gesichtern zuverlässig, die ungefähr in die Kamera schauen.** Seitlich gedrehte, kleine, verdeckte oder schlecht beleuchtete Gesichter können übersehen werden — sehen Sie sich das Bild daher immer an und decken Sie übersehene Gesichter mit „Bereich zum Abdecken zeichnen“ ab (Funktion 6). Gezeichnete Bereiche sind immer vollständig schwarz.
-1. Der Detektor läuft komplett in Ihrem Browser (ein kleines Programm und seine Datendatei liegen im vendor-Ordner der Software). Er funktioniert sogar in Safari mit Lockdown-Modus. Er braucht den lokalen Server (Schritt 3); ohne ihn erhalten Sie eine Meldung und können trotzdem von Hand zeichnen.
+1. Der Detektor läuft komplett in Ihrem Browser (ein kleines Programm und seine Datendatei liegen im vendor-Ordner der Software). Er funktioniert sogar in Safari mit Lockdown-Modus. Bei einer heruntergeladenen Kopie braucht er den lokalen Server (Schritt 3); ohne ihn erhalten Sie eine Meldung und können trotzdem von Hand zeichnen.
 
 ## Funktion 8 — PDF-Dateien
 
@@ -305,7 +324,7 @@ Unter dem Ergebnis zeigt das Feld "Abgedeckter Text — zum Kopieren" den Text, 
 
 | Was Sie sehen | Was zu tun ist |
 |---|---|
-| Eine Meldung zur Datei (file://) oder „Fehler bei der Bildverarbeitung“ | Bilder, Gesichter und PDF brauchen den lokalen Server — siehe Schritt 3. Text, Word und PowerPoint nicht. |
+| Eine Meldung zur Datei (file://) oder „Fehler bei der Bildverarbeitung“ | Sie öffnen wahrscheinlich eine heruntergeladene index.html per Doppelklick. Nutzen Sie stattdessen die Website https://pakmeipanther.github.io/pii-redactor/ (oder die installierte App) oder richten Sie den lokalen Server ein — siehe Schritt 3. Text, Word und PowerPoint brauchen ihn nicht. |
 | Eine Meldung zu **WebAssembly** (Safari mit **Lockdown-Modus**) | Der Lockdown-Modus schaltet WebAssembly ab, das für das Lesen von Text in Bildern nötig ist. Nutzen Sie für Bilder Firefox oder Chrome oder nehmen Sie diese Website in den Einstellungen für Websites in Safari vom Lockdown-Modus aus. Text, Word- und PowerPoint-Dateien, Zeichnen von Hand und Gesichtserkennung funktionieren weiterhin. |
 | Ein sensibles Wort in einem Bild wurde nicht verborgen | Prüfen Sie „OCR-Sprache:“, lassen Sie „Gründliche Analyse“ an, öffnen Sie „Was die OCR gelesen hat“ und nehmen Sie das Wort dann in Ihre eigene Liste auf oder decken Sie es von Hand ab. |
 | Ein schwarzes Rechteck deckt etwas Harmloses ab | Nehmen Sie bei dieser Zeile in der Liste der Bereiche den Haken weg (Funktion 5). |
@@ -318,6 +337,7 @@ Kommen Sie nicht weiter? Machen Sie einen Screenshot (ohne sensible Inhalte) und
 
 - Die Software ist ein Helfer, kein Ersatz für Ihre eigene Sorgfalt: Prüfen Sie immer, bevor Sie vertrauen, denn kein Werkzeug erkennt 100 % der Fälle.
 - Sie möchten selbst überprüfen, dass „keine Daten irgendwohin gesendet werden“? Schalten Sie WLAN/Netzwerk aus, bevor Sie die Software öffnen. Sie funktioniert weiterhin normal — und die Seite selbst verbietet außerdem jede ausgehende Verbindung.
+- Bei der Website braucht die Seite das Internet nur zum Öffnen (und zum Aktualisieren). Um das Versprechen „nichts wird irgendwohin gesendet“ zu testen, klicken Sie zuerst auf „Für die Offline-Nutzung speichern“ und schalten dann das Netzwerk aus.
 - Alles, was Sie laden, bleibt auf Ihrem Computer. Nur Ihre eigenen Begriffe werden gemerkt, in Ihrem eigenen Browser.
 - Nutzen Sie erfundene Daten, wenn Sie die Software ausprobieren.
 - Für alle, deren Identität geheim bleiben muss: „Vollständig schwarz“ für Gesichter verwenden, Bildränder, Hintergründe und Spiegelungen auf andere Hinweise prüfen und das Original von KI-Tools fernhalten.
