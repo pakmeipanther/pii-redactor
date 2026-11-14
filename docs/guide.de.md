@@ -82,6 +82,8 @@ Welche Funktionen laufen per Doppelklick auf index.html, und welche brauchen den
 
 Im Zweifel nehmen Sie den lokalen Server: Er funktioniert für alles.
 
+> **Abkürzung: kein lokaler Server nötig.** Sie können Schritt 3 überspringen, indem Sie die Online-Version unter https://pakmeipanther.github.io/pii-redactor/ nutzen: Bilder, Gesichter und PDF funktionieren dort ohne Installation, und Ihre Dateien werden weiterhin nur in Ihrem Browser verarbeitet. Der Bereich „Offline nutzen“ am Seitenende kann eine Kopie im Browser speichern, damit es auch ohne Internet funktioniert. Wenn Sie sehr sensible Dokumente bearbeiten, bevorzugen Sie die in Schritt 1 heruntergeladene Kopie und die folgenden Schritte.
+
 ## Schritt 3 (fortgeschritten, nötig für Bilder, Gesichter und PDF) — Einen lokalen Server starten
 
 Das Lesen von Text in Bildern, die Gesichtserkennung und die Verarbeitung von PDF-Dateien brauchen aufgrund einer Sicherheitsrichtlinie des Browsers einen zusätzlichen kleinen technischen Schritt. „Einen lokalen Server starten“ klingt beängstigend, ist aber nur eine einzige Zeile zum Eintippen. Wenn Sie nur Text, Word oder PowerPoint bearbeiten, können Sie diesen Abschnitt überspringen.

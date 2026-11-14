@@ -21,6 +21,9 @@
 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; form-action 'none';">
 <title>PII Redactor</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1115">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <!-- Favicon: the same logo as docs/images/logo.svg, embedded as a data: URI so no file is fetched (img-src allows data:). -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='66 66 1800 1800' role='img' aria-label='PII Redactor logo: a shield around a document with one line blacked out'%3E%3Crect x='66' y='66' width='1800' height='1800' rx='280' fill='%23fff'/%3E%3Cpath fill='%23183a6e' d='M619 320 L965 192 L1585 382 V1050 C1585 1400 1280 1630 965 1740 C650 1630 347 1400 347 1050 V618 H483 V1030 C483 1300 700 1480 965 1596 C1230 1480 1449 1300 1449 1030 V492 L965 339 L619 459 Z'/%3E%3Cpath fill='%23ffaa28' d='M347 382 L579 331 V468 L483 490 V580 H347 Z'/%3E%3Cpath fill='%23fff' stroke='%23183a6e' stroke-width='57' stroke-linejoin='miter' d='M647 595 H1140 L1283 738 V1362 H647 Z'/%3E%3Cpath fill='none' stroke='%23183a6e' stroke-width='57' d='M1140 595 V725 H1283'/%3E%3Crect x='773' y='811' width='259' height='59' fill='%23183a6e'/%3E%3Crect x='773' y='946' width='386' height='116' fill='%23000'/%3E%3Crect x='773' y='1130' width='259' height='58' fill='%23183a6e'/%3E%3C/svg%3E">
 <script>
@@ -745,6 +748,19 @@
   <div class="result-note" id="cleanedNote" role="status"></div>
 </div>
 
+<!-- Shown only when the page comes from https (the hosted version): offers to keep a copy in the
+     browser so it also works offline. Hidden for file:// and a plain local server. -->
+<div class="panel" id="offlinePanel" style="display:none;">
+  <h2 data-i18n="offlineTitle">Use offline</h2>
+  <div class="subtitle" data-i18n="offlineDesc">Save this app in your browser once, and it also works without an internet connection. Your files are still never sent anywhere.</div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button id="offlineSaveBtn" class="secondary" style="display:none;"></button>
+    <button id="offlineInstallBtn" class="secondary" style="display:none;"></button>
+    <button id="offlineUpdateBtn" style="display:none;"></button>
+  </div>
+  <div class="subtitle" id="offlineStatus" role="status" aria-live="polite" style="margin-top:8px;"></div>
+</div>
+
 <footer>
   <div>
     <span data-i18n="footer">Chạy hoàn toàn cục bộ · không gửi dữ liệu ra ngoài ·</span>
@@ -816,7 +832,7 @@ const I18N = {
     customMatchLabel: 'Từ khóa tùy chỉnh',
     section2: '3. Loại dữ liệu cần nhận diện',
     section3: '4. Kết quả',
-    fileProtocolWarning: '⚠ Bạn đang mở file này trực tiếp (file://). Tính năng xử lý ảnh cần chạy qua một local server để trình duyệt cho phép đọc file cục bộ khác — chạy python3 -m http.server trong thư mục này rồi mở http://localhost:8000. Phần văn bản ở trên vẫn hoạt động bình thường.',
+    fileProtocolWarning: '⚠ Bạn đang mở file này trực tiếp (file://). Tính năng xử lý ảnh cần chạy qua một local server để trình duyệt cho phép đọc file cục bộ khác — chạy python3 -m http.server trong thư mục này rồi mở http://localhost:8000, hoặc dùng bản trực tuyến tại https://pakmeipanther.github.io/pii-redactor/ (file của bạn vẫn được xử lý ngay trong trình duyệt, không gửi đi đâu). Phần văn bản ở trên vẫn hoạt động bình thường.',
     sectionImage: 'Ảnh / ảnh chụp màn hình',
     imageDesc: 'OCR tìm chữ trong ảnh, rồi vẽ đè pixel thật lên vùng nhạy cảm — không phải lớp phủ trong suốt.',
     ocrLangLabel: 'Ngôn ngữ OCR:',
@@ -884,6 +900,14 @@ const I18N = {
     themeSystem: 'Theo hệ thống',
     themeLight: 'Sáng',
     themeDark: 'Tối',
+    offlineTitle: 'Dùng khi không có mạng',
+    offlineDesc: 'Lưu ứng dụng này vào trình duyệt một lần, sau đó nó chạy được cả khi không có kết nối Internet. File của bạn vẫn không bao giờ bị gửi đi đâu.',
+    offlineSaveBtn: 'Lưu để dùng ngoại tuyến (khoảng {mb} MB)',
+    offlineSaving: 'Đang lưu… {done}/{total} MB',
+    offlineReady: 'Đã lưu. Ứng dụng giờ chạy được khi không có mạng.',
+    offlineFail: 'Không lưu được đầy đủ. Hãy kiểm tra kết nối và dung lượng trống rồi thử lại.',
+    offlineInstallBtn: 'Cài như ứng dụng',
+    offlineUpdateBtn: 'Có bản mới — tải lại để cập nhật',
     editedNote: 'Bạn đã sửa văn bản này. Khi bạn đổi vùng che, phần bạn sửa được giữ nguyên — bấm "Khôi phục bản đã che" để lấy lại bản mới nhất. Phần bạn tự gõ KHÔNG được quét lại.',
     editedSensitiveWarn: n => `⚠ Văn bản bạn sửa có ${n} chuỗi nhạy cảm chưa được che. Đã sao chép — hãy kiểm tra lại trước khi dán đi.`,
     statsNoText: 'Chưa có văn bản để quét.',
@@ -956,7 +980,7 @@ const I18N = {
     customMatchLabel: 'Custom term',
     section2: '3. Data types to detect',
     section3: '4. Result',
-    fileProtocolWarning: '⚠ You\'re opening this file directly (file://). Image processing needs to run through a local server so the browser allows reading other local files — run python3 -m http.server in this folder, then open http://localhost:8000. The text section above still works normally.',
+    fileProtocolWarning: '⚠ You\'re opening this file directly (file://). Image processing needs to run through a local server so the browser allows reading other local files — run python3 -m http.server in this folder, then open http://localhost:8000, or use the hosted version at https://pakmeipanther.github.io/pii-redactor/ (your files are still processed inside your browser and never sent anywhere). The text section above still works normally.',
     sectionImage: 'Image / screenshot',
     imageDesc: 'OCR finds text in the image, then draws real pixels over sensitive regions — not a transparent overlay.',
     ocrLangLabel: 'OCR language:',
@@ -1024,6 +1048,14 @@ const I18N = {
     themeSystem: 'System',
     themeLight: 'Light',
     themeDark: 'Dark',
+    offlineTitle: 'Use offline',
+    offlineDesc: 'Save this app in your browser once, and it also works without an internet connection. Your files are still never sent anywhere.',
+    offlineSaveBtn: 'Save for offline use (about {mb} MB)',
+    offlineSaving: 'Saving… {done} of {total} MB',
+    offlineReady: 'Saved. This app now works without an internet connection.',
+    offlineFail: 'Could not save everything. Check your connection and free space, then try again.',
+    offlineInstallBtn: 'Install as app',
+    offlineUpdateBtn: 'New version available — reload to update',
     editedNote: 'You edited this text. If you change the covered areas, your edits are kept — click "Restore masked text" to get the latest version back. What you typed yourself is NOT scanned again.',
     editedSensitiveWarn: n => `⚠ Your edited text contains ${n} sensitive string(s) that are not masked. It was copied — check it before pasting it anywhere.`,
     statsNoText: 'No text to scan yet.',
@@ -1096,7 +1128,7 @@ const I18N = {
     customMatchLabel: 'Terme personnalisé',
     section2: '3. Types de données à détecter',
     section3: '4. Résultat',
-    fileProtocolWarning: "⚠ Vous ouvrez ce fichier directement (file://). Le traitement d'image nécessite un serveur local pour que le navigateur autorise la lecture d'autres fichiers locaux — lancez python3 -m http.server dans ce dossier, puis ouvrez http://localhost:8000. La section texte ci-dessus fonctionne normalement.",
+    fileProtocolWarning: "⚠ Vous ouvrez ce fichier directement (file://). Le traitement d'image nécessite un serveur local pour que le navigateur autorise la lecture d'autres fichiers locaux — lancez python3 -m http.server dans ce dossier, puis ouvrez http://localhost:8000, ou utilisez la version en ligne sur https://pakmeipanther.github.io/pii-redactor/ (vos fichiers restent traités dans votre navigateur et ne sont envoyés nulle part). La section texte ci-dessus fonctionne normalement.",
     sectionImage: 'Image / capture d\'écran',
     imageDesc: 'L\'OCR trouve le texte dans l\'image, puis noircit réellement les pixels des zones sensibles — pas un calque transparent.',
     ocrLangLabel: 'Langue OCR :',
@@ -1164,6 +1196,14 @@ const I18N = {
     themeSystem: 'Système',
     themeLight: 'Clair',
     themeDark: 'Sombre',
+    offlineTitle: 'Utiliser hors ligne',
+    offlineDesc: 'Enregistrez cette application une fois dans votre navigateur : elle fonctionnera aussi sans connexion Internet. Vos fichiers ne sont toujours envoyés nulle part.',
+    offlineSaveBtn: 'Enregistrer pour une utilisation hors ligne (environ {mb} Mo)',
+    offlineSaving: 'Enregistrement… {done} sur {total} Mo',
+    offlineReady: 'Enregistré. L\'application fonctionne désormais sans connexion Internet.',
+    offlineFail: 'L\'enregistrement n\'a pas pu se terminer. Vérifiez votre connexion et l\'espace disponible, puis réessayez.',
+    offlineInstallBtn: 'Installer comme application',
+    offlineUpdateBtn: 'Nouvelle version disponible — recharger pour mettre à jour',
     editedNote: 'Vous avez modifié ce texte. Si vous changez les zones masquées, vos modifications sont conservées — cliquez sur « Rétablir le texte masqué » pour récupérer la dernière version. Ce que vous avez tapé n\'est PAS analysé à nouveau.',
     editedSensitiveWarn: n => `⚠ Votre texte modifié contient ${n} chaîne(s) sensible(s) non masquée(s). Il a été copié — vérifiez-le avant de le coller.`,
     statsNoText: 'Aucun texte à analyser.',
@@ -1236,7 +1276,7 @@ const I18N = {
     customMatchLabel: 'Benutzerdefinierter Begriff',
     section2: '3. Zu erkennende Datentypen',
     section3: '4. Ergebnis',
-    fileProtocolWarning: '⚠ Sie öffnen diese Datei direkt (file://). Die Bildverarbeitung benötigt einen lokalen Server, damit der Browser das Lesen anderer lokaler Dateien erlaubt — führen Sie python3 -m http.server in diesem Ordner aus und öffnen Sie dann http://localhost:8000. Der Textbereich oben funktioniert weiterhin normal.',
+    fileProtocolWarning: '⚠ Sie öffnen diese Datei direkt (file://). Die Bildverarbeitung benötigt einen lokalen Server, damit der Browser das Lesen anderer lokaler Dateien erlaubt — führen Sie python3 -m http.server in diesem Ordner aus und öffnen Sie dann http://localhost:8000, oder nutzen Sie die Online-Version unter https://pakmeipanther.github.io/pii-redactor/ (Ihre Dateien werden weiterhin in Ihrem Browser verarbeitet und nirgendwohin gesendet). Der Textbereich oben funktioniert weiterhin normal.',
     sectionImage: 'Bild / Screenshot',
     imageDesc: 'OCR findet Text im Bild und übermalt sensible Bereiche dann mit echten Pixeln — keine durchsichtige Ebene.',
     ocrLangLabel: 'OCR-Sprache:',
@@ -1304,6 +1344,14 @@ const I18N = {
     themeSystem: 'System',
     themeLight: 'Hell',
     themeDark: 'Dunkel',
+    offlineTitle: 'Offline nutzen',
+    offlineDesc: 'Speichern Sie diese App einmal im Browser, dann funktioniert sie auch ohne Internetverbindung. Ihre Dateien werden weiterhin nirgendwohin gesendet.',
+    offlineSaveBtn: 'Für die Offline-Nutzung speichern (etwa {mb} MB)',
+    offlineSaving: 'Speichern … {done} von {total} MB',
+    offlineReady: 'Gespeichert. Die App funktioniert jetzt ohne Internetverbindung.',
+    offlineFail: 'Es konnte nicht alles gespeichert werden. Prüfen Sie Verbindung und freien Speicher und versuchen Sie es erneut.',
+    offlineInstallBtn: 'Als App installieren',
+    offlineUpdateBtn: 'Neue Version verfügbar — neu laden zum Aktualisieren',
     editedNote: 'Du hast diesen Text bearbeitet. Wenn du die abgedeckten Bereiche änderst, bleiben deine Änderungen erhalten — mit „Abgedeckten Text wiederherstellen“ holst du die neueste Version zurück. Was du selbst getippt hast, wird NICHT erneut geprüft.',
     editedSensitiveWarn: n => `⚠ Dein bearbeiteter Text enthält ${n} sensible Zeichenkette(n), die nicht abgedeckt sind. Er wurde kopiert — prüfe ihn, bevor du ihn einfügst.`,
     statsNoText: 'Noch kein Text zum Scannen.',
@@ -2101,6 +2149,7 @@ function applyI18n() {
     document.getElementById('stats').textContent = t.statsEmpty;
   }
   renderCustomChips();
+  renderOfflineUi();
 }
 
 function buildRuleCheckboxes() {
@@ -5955,6 +6004,95 @@ themeSelectEl.addEventListener('change', () => {
 // With "System" selected the page follows the OS when it switches (for example at sunset).
 if (systemDarkQuery && systemDarkQuery.addEventListener) {
   systemDarkQuery.addEventListener('change', () => { if (themeSelectEl.value === 'system') applyTheme('system'); });
+}
+
+// OFFLINE_START
+// Offline use (only on the hosted https version): sw.js keeps a copy of the
+// app's own files in the browser. See sw.js for what it does and does not do.
+function offlineAvailable(protocol, hasServiceWorker) {
+  return protocol === 'https:' && !!hasServiceWorker;
+}
+function formatMegabytes(bytes) {
+  return (bytes / 1048576).toFixed(bytes >= 10485760 ? 0 : 1);
+}
+function fillTemplate(text, values) {
+  return text.replace(/\{(\w+)\}/g, (m, k) => (values[k] !== undefined ? values[k] : m));
+}
+// OFFLINE_END
+const offlinePanelEl = document.getElementById('offlinePanel');
+const offlineSaveBtn = document.getElementById('offlineSaveBtn');
+const offlineInstallBtn = document.getElementById('offlineInstallBtn');
+const offlineUpdateBtn = document.getElementById('offlineUpdateBtn');
+const offlineStatusEl = document.getElementById('offlineStatus');
+const offlineState = { phase: 'idle', done: 0, total: 0, installEvent: null, waitingWorker: null, reloadOnChange: false };
+
+function renderOfflineUi() {
+  const t = I18N[currentLang];
+  const st = offlineState;
+  offlineSaveBtn.style.display = (st.total && st.phase !== 'ready') ? '' : 'none';
+  offlineSaveBtn.disabled = st.phase === 'saving';
+  offlineSaveBtn.textContent = fillTemplate(t.offlineSaveBtn, { mb: formatMegabytes(st.total) });
+  offlineInstallBtn.style.display = st.installEvent ? '' : 'none';
+  offlineInstallBtn.textContent = t.offlineInstallBtn;
+  offlineUpdateBtn.style.display = st.waitingWorker ? '' : 'none';
+  offlineUpdateBtn.textContent = t.offlineUpdateBtn;
+  let status = '';
+  if (st.phase === 'saving') status = fillTemplate(t.offlineSaving, { done: formatMegabytes(st.done), total: formatMegabytes(st.total) });
+  else if (st.phase === 'ready') status = t.offlineReady;
+  else if (st.phase === 'fail') status = t.offlineFail;
+  offlineStatusEl.textContent = status;
+}
+
+if (offlineAvailable(location.protocol, 'serviceWorker' in navigator)) {
+  offlinePanelEl.style.display = 'block';
+  const sw = navigator.serviceWorker;
+  sw.addEventListener('message', ev => {
+    const d = ev.data || {};
+    if (d.type === 'PRECACHE_PROGRESS') { offlineState.phase = 'saving'; offlineState.done = d.done; offlineState.total = d.total; }
+    else if (d.type === 'PRECACHE_DONE') { offlineState.phase = 'ready'; offlineState.total = d.total; }
+    else if (d.type === 'PRECACHE_FAIL') { offlineState.phase = 'fail'; }
+    else if (d.type === 'STATUS') { if (d.total) offlineState.total = d.total; if (d.complete) offlineState.phase = 'ready'; }
+    else return;
+    renderOfflineUi();
+  });
+  sw.addEventListener('controllerchange', () => { if (offlineState.reloadOnChange) location.reload(); });
+  const watchForUpdate = reg => {
+    const flag = worker => { if (sw.controller) { offlineState.waitingWorker = worker; renderOfflineUi(); } };
+    if (reg.waiting) flag(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') flag(w); });
+    });
+  };
+  sw.register('sw.js').then(async reg => {
+    watchForUpdate(reg);
+    try {
+      const size = await (await fetch('precache.json')).json();
+      offlineState.total = size.totalBytes;
+    } catch (e) { /* no size: the save button simply stays hidden */ }
+    const ready = await sw.ready;
+    if (ready.active) ready.active.postMessage({ type: 'STATUS' });
+    renderOfflineUi();
+  }).catch(() => { offlinePanelEl.style.display = 'none'; });
+  offlineSaveBtn.addEventListener('click', async () => {
+    offlineState.phase = 'saving'; offlineState.done = 0; renderOfflineUi();
+    try { (await sw.ready).active.postMessage({ type: 'PRECACHE_ALL' }); }
+    catch (e) { offlineState.phase = 'fail'; renderOfflineUi(); }
+  });
+  offlineUpdateBtn.addEventListener('click', () => {
+    if (!offlineState.waitingWorker) return;
+    offlineState.reloadOnChange = true;
+    offlineState.waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+  });
+  window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); offlineState.installEvent = ev; renderOfflineUi(); });
+  window.addEventListener('appinstalled', () => { offlineState.installEvent = null; renderOfflineUi(); });
+  offlineInstallBtn.addEventListener('click', async () => {
+    const ev = offlineState.installEvent;
+    if (!ev) return;
+    offlineState.installEvent = null;
+    renderOfflineUi();
+    try { await ev.prompt(); } catch (e) { /* the browser refused: nothing to do */ }
+  });
 }
 
 // Initialization

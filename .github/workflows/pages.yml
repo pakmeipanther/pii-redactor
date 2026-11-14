@@ -1,0 +1,65 @@
+# Publishes the app to GitHub Pages (https), so it can be opened from a link,
+# installed as an app and used offline without any local server.
+#
+# The tests run first: a build that fails them is never published.
+# Only the files the app needs are copied to the site folder (_site): no
+# tests, docs or workflow files. sw.js gets the commit hash as its version.
+#
+# One-time setup in the repository: Settings > Pages > Build and deployment >
+# Source: "GitHub Actions".
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run the regression suite
+        run: node test/run-tests.mjs
+
+      - name: Stage the site
+        run: |
+          mkdir _site
+          cp index.html manifest.webmanifest sw.js _site/
+          cp -r icons vendor _site/
+          touch _site/.nojekyll
+          sed -i "s/__BUILD_ID__/${GITHUB_SHA::12}/" _site/sw.js
+          grep -q "${GITHUB_SHA::12}" _site/sw.js
+          node scripts/make-precache.mjs _site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

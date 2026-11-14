@@ -82,6 +82,8 @@ Which features work by just double-clicking index.html, and which need the local
 
 When in doubt, use the local server: it works for everything.
 
+> **Shortcut: no local server needed.** You can skip Step 3 by using the hosted version at https://pakmeipanther.github.io/pii-redactor/ — images, faces and PDF work there with nothing to install, and your files are still processed only in your browser. Its "Use offline" panel at the bottom can save a copy in your browser so it also works without internet. If you handle very sensitive documents, prefer the copy you downloaded in Step 1 and the steps below.
+
 ## Step 3 (advanced, needed for images, faces and PDF) — Run a local server
 
 Reading text inside images, finding faces and handling PDF files need one extra small technical step, due to a browser security restriction. "Running a local server" sounds scary, but it's really just typing one line of command. If you only need text, Word or PowerPoint redaction, you can skip this section.
